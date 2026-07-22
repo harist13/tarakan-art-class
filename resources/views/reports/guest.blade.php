@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Raport Siswa - Tarakan Art Class</title>
+    <script>
+        (function () {
+            var t = localStorage.getItem('tac-theme') || 'light';
+            document.documentElement.setAttribute('data-bs-theme', t);
+        })();
+    </script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --grad-from: #38BDF8;
+            --grad-to: #2563EB;
+            --card-bg: #FFFFFF;
+            --card-shadow: rgba(37, 99, 235, 0.20);
+        }
+        [data-bs-theme="dark"] {
+            --grad-from: #0C4A6E;
+            --grad-to: #1E3A8A;
+            --card-bg: #111E33;
+            --card-shadow: rgba(0, 0, 0, 0.5);
+        }
+        body {
+            font-family: 'Nunito', sans-serif;
+            background: linear-gradient(145deg, var(--grad-from) 0%, var(--grad-to) 100%);
+            min-height: 100vh;
+            transition: background 0.4s ease;
+        }
+        .brand { color: #fff; font-weight: 800; letter-spacing: 1px; }
+        .card {
+            border: none;
+            border-radius: 1rem;
+            background-color: var(--card-bg);
+            box-shadow: 0 10px 40px var(--card-shadow);
+        }
+        .text-primary { color: #0EA5E9 !important; }
+        .btn-primary { background-color: #0EA5E9; border-color: #0EA5E9; }
+        .btn-primary:hover { background-color: #0369A1; border-color: #0369A1; }
+        .btn-outline-primary { color: #0EA5E9; border-color: #0EA5E9; }
+        .btn-outline-primary:hover { background-color: #0EA5E9; border-color: #0EA5E9; color: #fff; }
+        .theme-toggle {
+            position: fixed;
+            top: 1.25rem;
+            right: 1.25rem;
+            z-index: 10;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            background: rgba(255, 255, 255, 0.15);
+            color: #fff;
+            font-size: 1.1rem;
+            cursor: pointer;
+            backdrop-filter: blur(8px);
+            transition: all 0.25s ease;
+        }
+        .theme-toggle:hover { background: rgba(255, 255, 255, 0.28); transform: rotate(15deg); }
+
+        /* ── Report card ────────────────────────────── */
+        .report-card { overflow: hidden; }
+        .report-hero {
+            background: linear-gradient(135deg, #0EA5E9 0%, #2563EB 100%);
+            padding: 1.75rem;
+            display: flex;
+            align-items: center;
+            gap: 1.25rem;
+            flex-wrap: wrap;
+            color: #fff;
+        }
+        .hero-photo {
+            width: 84px; height: 112px; border-radius: 0.75rem; object-fit: cover;
+            border: 3px solid rgba(255,255,255,0.6); flex-shrink: 0; background: rgba(255,255,255,0.15);
+        }
+        .hero-avatar {
+            width: 84px; height: 84px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(255,255,255,0.2); border: 3px solid rgba(255,255,255,0.6);
+            font-size: 2rem; font-weight: 800; color: #fff; flex-shrink: 0;
+        }
+        .hero-main { flex: 1 1 180px; min-width: 0; }
+        .hero-main h4 { font-weight: 800; margin: 0 0 .15rem; }
+        .hero-sub { color: rgba(255,255,255,0.85); font-size: .85rem; }
+        .grade-pill {
+            display: inline-block; margin-top: .5rem; padding: .25rem .8rem; border-radius: 30px;
+            background: rgba(255,255,255,0.22); font-size: .78rem; font-weight: 700; letter-spacing: .3px;
+        }
+        .score-ring {
+            width: 96px; height: 96px; border-radius: 50%; flex-shrink: 0;
+            background: conic-gradient(#fff var(--deg), rgba(255,255,255,0.28) 0);
+            display: grid; place-items: center;
+        }
+        .score-inner {
+            width: 76px; height: 76px; border-radius: 50%; background: var(--card-bg);
+            display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1;
+        }
+        .score-num { font-size: 1.8rem; font-weight: 800; }
+        .score-max { font-size: .7rem; color: #94a3b8; margin-top: .1rem; }
+        .report-section { padding: 1.25rem 1.5rem; border-top: 1px solid rgba(148,163,184,0.18); }
+        .report-section h6 {
+            font-weight: 800; text-transform: uppercase; letter-spacing: .5px; font-size: .75rem;
+            color: #0EA5E9; display: flex; align-items: center; gap: .5rem; margin-bottom: .6rem;
+        }
+        .report-section p { margin: 0; white-space: pre-line; line-height: 1.7; }
+    </style>
+</head>
+<body class="py-5">
+    <button type="button" class="theme-toggle" id="themeToggle" title="Ganti Tema Terang / Gelap">
+        <i class="bi bi-moon-stars-fill" id="themeIcon"></i>
+    </button>
+    <div class="container" style="max-width: 720px;">
+        <div class="text-center mb-4">
+            <div class="brand fs-3"><i class="bi bi-palette-fill me-2"></i>Tarakan Art Class</div>
+            <p class="text-white-50 mb-0">Akses Raport Perkembangan Siswa</p>
+        </div>
+
+        @if(!isset($report))
+            <div class="card">
+                <div class="card-body p-4 p-md-5 text-center">
+                    <div class="d-inline-flex align-items-center justify-content-center mb-3"
+                         style="width:64px;height:64px;border-radius:50%;background:rgba(14,165,233,0.12);color:#0EA5E9;font-size:1.8rem;">
+                        <i class="bi bi-shield-lock"></i>
+                    </div>
+                    <h5 class="fw-bold mb-2">Masukkan Credential Key</h5>
+                    <p class="text-muted small mb-4">Masukkan credential key yang diberikan admin untuk melihat raport perkembangan putra/putri Anda.</p>
+                    @if($errors->any())
+                        <div class="alert alert-danger py-2 text-start"><i class="bi bi-exclamation-circle me-1"></i>{{ $errors->first('credential_key') }}</div>
+                    @endif
+                    <form action="{{ route('reports.guest.show') }}" method="POST">
+                        @csrf
+                        <div class="mb-3">
+                            <input type="text" name="credential_key" class="form-control form-control-lg text-center fw-bold" style="letter-spacing:2px;" placeholder="TAC-2026-001" value="{{ old('credential_key') }}" required autofocus>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-lg w-100"><i class="bi bi-unlock me-1"></i> Lihat Raport</button>
+                    </form>
+                </div>
+            </div>
+        @else
+            @php
+                $score = $report->achievement_score;
+                $grade = $score >= 90 ? 'Istimewa' : ($score >= 80 ? 'Sangat Baik' : ($score >= 70 ? 'Baik' : ($score >= 60 ? 'Cukup' : 'Perlu Bimbingan')));
+                $initial = strtoupper(mb_substr($report->student->name ?? '?', 0, 1));
+            @endphp
+            <div class="card report-card">
+                <div class="report-hero">
+                    @if($report->photoUrl())
+                        <img src="{{ $report->photoUrl() }}" alt="Foto {{ $report->student->name }}" class="hero-photo">
+                    @else
+                        <div class="hero-avatar">{{ $initial }}</div>
+                    @endif
+                    <div class="hero-main">
+                        <h4>{{ $report->student->name }}</h4>
+                        <div class="hero-sub"><i class="bi bi-calendar3 me-1"></i>{{ $report->period_start->format('d M Y') }} — {{ $report->period_end->format('d M Y') }}</div>
+                        <span class="grade-pill"><i class="bi bi-award me-1"></i>{{ $grade }}</span>
+                    </div>
+                    <div class="score-ring" style="--deg: {{ $score * 3.6 }}deg;">
+                        <div class="score-inner">
+                            <span class="score-num text-primary">{{ $score }}</span>
+                            <span class="score-max">/ 100</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="report-section">
+                    <h6><i class="bi bi-graph-up-arrow"></i> Perkembangan</h6>
+                    <p>{{ $report->activity_notes }}</p>
+                </div>
+
+                @if($report->tutor_notes)
+                    <div class="report-section">
+                        <h6><i class="bi bi-chat-square-quote"></i> Catatan Tutor</h6>
+                        <p>{{ $report->tutor_notes }}</p>
+                    </div>
+                @endif
+
+                <div class="report-section text-center">
+                    <a href="{{ route('reports.guest') }}" class="btn btn-outline-primary btn-sm"><i class="bi bi-arrow-left me-1"></i> Cek Raport Lain</a>
+                </div>
+            </div>
+        @endif
+
+        <p class="text-center text-white-50 small mt-4 mb-0">&copy; {{ date('Y') }} Tarakan Art Class</p>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        (function () {
+            const toggle = document.getElementById('themeToggle');
+            const icon = document.getElementById('themeIcon');
+            function syncIcon() {
+                const theme = document.documentElement.getAttribute('data-bs-theme');
+                icon.className = theme === 'dark' ? 'bi bi-sun-fill' : 'bi bi-moon-stars-fill';
+            }
+            syncIcon();
+            toggle.addEventListener('click', function () {
+                const current = document.documentElement.getAttribute('data-bs-theme');
+                const next = current === 'dark' ? 'light' : 'dark';
+                document.documentElement.setAttribute('data-bs-theme', next);
+                localStorage.setItem('tac-theme', next);
+                syncIcon();
+            });
+        })();
+    </script>
+</body>
+</html>

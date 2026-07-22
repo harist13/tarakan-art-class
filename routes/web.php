@@ -1,0 +1,96 @@
+<?php
+
+use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\ActivityLogController;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ExportController;
+use App\Http\Controllers\UserController;
+use App\Http\Controllers\StudentController;
+use App\Http\Controllers\ClassRoomController;
+use App\Http\Controllers\ScheduleController;
+use App\Http\Controllers\AttendanceController;
+use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\FinancialController;
+use App\Http\Controllers\ReportController;
+use App\Http\Controllers\InventoryController;
+
+// ─── Auth Routes (Guest Only) ──────────────────────────────────
+Route::middleware('guest')->group(function () {
+    Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
+    Route::post('/login', [AuthController::class, 'login']);
+});
+
+Route::post('/logout', [AuthController::class, 'logout'])->name('logout')->middleware('auth');
+
+// ─── Guest Report Access (F9) — tanpa login sistem ─────────────
+Route::get('/raport', [ReportController::class, 'guestForm'])->name('reports.guest');
+Route::post('/raport', [ReportController::class, 'guestShow'])->name('reports.guest.show');
+
+// ─── Protected Routes (Auth Required) ─────────────────────────
+Route::middleware('auth')->group(function () {
+
+    // Dashboard (F1)
+    Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+
+    // ─── Export Report (F12) — Excel(CSV)/PDF ──────────────────
+    Route::get('export/students', [ExportController::class, 'students'])->name('export.students');
+    Route::get('export/payments', [ExportController::class, 'payments'])->name('export.payments');
+    Route::get('export/financials', [ExportController::class, 'financials'])->name('export.financials');
+    Route::get('export/attendances', [ExportController::class, 'attendances'])->name('export.attendances');
+
+    // ─── User Management (F13) + Activity Log (F15) — Super Admin only ──
+    Route::middleware('role:super_admin')->group(function () {
+        Route::resource('users', UserController::class)->except('show');
+        Route::get('activity-logs', [ActivityLogController::class, 'index'])->name('activity-logs.index');
+    });
+
+    // ─── Student Management (F2) ───────────────────────────────
+    Route::get('students', [StudentController::class, 'index'])->name('students.index');
+    Route::get('students/create', [StudentController::class, 'create'])->name('students.create');
+    Route::post('students', [StudentController::class, 'store'])->name('students.store');
+    Route::get('students/{student}/edit', [StudentController::class, 'edit'])->name('students.edit');
+    Route::put('students/{student}', [StudentController::class, 'update'])->name('students.update');
+    // Hapus permanen murid — hanya Super Admin.
+    Route::delete('students/{student}', [StudentController::class, 'destroy'])
+        ->middleware('role:super_admin')->name('students.destroy');
+
+    // ─── Class Management (F3) + Tutor ─────────────────────────
+    Route::post('tutors', [ClassRoomController::class, 'storeTutor'])->name('tutors.store');
+    Route::patch('classes/{class}/toggle-status', [ClassRoomController::class, 'toggleStatus'])->name('classes.toggle-status');
+    Route::resource('classes', ClassRoomController::class)
+        ->parameters(['classes' => 'class'])->except('show');
+
+    // ─── Scheduler / Replacement Class (F4) ────────────────────
+    Route::get('schedules/calendar', [ScheduleController::class, 'calendar'])->name('schedules.calendar');
+    Route::patch('schedules/{schedule}/status', [ScheduleController::class, 'updateStatus'])
+        ->middleware('role:super_admin')->name('schedules.status');
+    Route::resource('schedules', ScheduleController::class)->except('show');
+
+    // ─── Attendance (F5) ───────────────────────────────────────
+    Route::get('attendances', [AttendanceController::class, 'index'])->name('attendances.index');
+    Route::get('attendances/create', [AttendanceController::class, 'create'])->name('attendances.create');
+    Route::post('attendances', [AttendanceController::class, 'store'])->name('attendances.store');
+    Route::delete('attendances/{attendance}', [AttendanceController::class, 'destroy'])->name('attendances.destroy');
+
+    // ─── Payment (F6) ──────────────────────────────────────────
+    Route::get('payments', [PaymentController::class, 'index'])->name('payments.index');
+    Route::get('payments/create', [PaymentController::class, 'create'])->name('payments.create');
+    Route::post('payments', [PaymentController::class, 'store'])->name('payments.store');
+    Route::get('payments/{payment}/edit', [PaymentController::class, 'edit'])->name('payments.edit');
+    Route::put('payments/{payment}', [PaymentController::class, 'update'])->name('payments.update');
+    Route::patch('payments/{payment}/confirm', [PaymentController::class, 'confirmPaid'])->name('payments.confirm');
+    // Void pembayaran — hanya Super Admin.
+    Route::delete('payments/{payment}', [PaymentController::class, 'destroy'])
+        ->middleware('role:super_admin')->name('payments.destroy');
+
+    // ─── Financial Tracking (F7) ───────────────────────────────
+    Route::resource('financials', FinancialController::class)->except('show');
+
+    // ─── Student Report (F8) ───────────────────────────────────
+    Route::resource('reports', ReportController::class);
+
+    // ─── Inventory (F10) ───────────────────────────────────────
+    Route::post('inventory/movement', [InventoryController::class, 'storeMovement'])->name('inventory.movement');
+    Route::resource('inventory', InventoryController::class)->except('show');
+});
