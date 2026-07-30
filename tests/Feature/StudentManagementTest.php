@@ -1,0 +1,260 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\ActivityLog;
+use App\Models\ClassRoom;
+use App\Models\Student;
+use App\Models\Tutor;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Role;
+use Tests\TestCase;
+
+/**
+ * QA: Menu "Murid & Wali" (Student Management / F2).
+ * Menguji index+filter, create, store+validasi, edit, update, dan destroy (otorisasi).
+ */
+class StudentManagementTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private function makeUser(string $role): User
+    {
+        Role::firstOrCreate(['name' => $role]);
+        $user = User::create([
+            'full_name' => ucfirst($role).' User',
+            'email' => $role.'@example.com',
+            'username' => $role,
+            'password' => bcrypt('password'),
+            'role' => $role,
+            'status' => 'active',
+        ]);
+        $user->assignRole($role);
+
+        return $user;
+    }
+
+    private function makeClass(string $category = 'drawing', int $capacity = 5, string $status = 'open'): ClassRoom
+    {
+        $tutor = Tutor::create(['name' => 'Kak Tutor', 'status' => 'active']);
+
+        return ClassRoom::create([
+            'class_name' => 'Kelas '.ucfirst($category),
+            'class_category' => $category,
+            'tutor_id' => $tutor->id,
+            'capacity' => $capacity,
+            'schedule_date' => now()->toDateString(),
+            'schedule_time' => '09:00',
+            'class_fee' => 100000,
+            'status' => $status,
+        ]);
+    }
+
+    private function validPayload(array $overrides = []): array
+    {
+        return array_merge([
+            'name' => 'Budi Santoso',
+            'date_of_birth' => '2018-05-10',
+            'parent_name' => 'Ibu Ani',
+            'phone_number' => '081234567890',
+            'instagram_username' => null,
+            'address' => 'Jl. Mawar 1',
+            'class_type' => 'drawing',
+            'status' => 'active',
+            'join_date' => '2026-01-15',
+        ], $overrides);
+    }
+
+    // ─── INDEX + FILTER ────────────────────────────────────────────
+
+    public function test_index_page_loads(): void
+    {
+        $this->makeClass();
+        Student::create($this->validPayload(['name' => 'Ani Listing']));
+
+        $this->actingAs($this->makeUser('admin'))
+            ->get(route('students.index'))
+            ->assertOk()
+            ->assertSee('Data Murid &amp; Wali', false)
+            ->assertSee('Ani Listing');
+    }
+
+    public function test_index_search_filters_by_name(): void
+    {
+        Student::create($this->validPayload(['name' => 'Zaki Unik']));
+        Student::create($this->validPayload(['name' => 'Lain Orang']));
+
+        $this->actingAs($this->makeUser('admin'))
+            ->get(route('students.index', ['search' => 'Zaki']))
+            ->assertOk()
+            ->assertSee('Zaki Unik')
+            ->assertDontSee('Lain Orang');
+    }
+
+    public function test_index_filters_by_status(): void
+    {
+        Student::create($this->validPayload(['name' => 'Si Aktif', 'status' => 'active']));
+        Student::create($this->validPayload(['name' => 'Si Nonaktif', 'status' => 'inactive']));
+
+        $this->actingAs($this->makeUser('admin'))
+            ->get(route('students.index', ['status' => 'inactive']))
+            ->assertOk()
+            ->assertSee('Si Nonaktif')
+            ->assertDontSee('Si Aktif');
+    }
+
+    public function test_index_filters_by_class(): void
+    {
+        $classA = $this->makeClass('drawing');
+        $classB = $this->makeClass('coloring');
+
+        $inA = Student::create($this->validPayload(['name' => 'Murid Kelas A']));
+        $inA->classes()->attach($classA->id, ['status' => 'active', 'enrolled_at' => now()->toDateString()]);
+        $inB = Student::create($this->validPayload(['name' => 'Murid Kelas B']));
+        $inB->classes()->attach($classB->id, ['status' => 'active', 'enrolled_at' => now()->toDateString()]);
+
+        $this->actingAs($this->makeUser('admin'))
+            ->get(route('students.index', ['class_id' => $classA->id]))
+            ->assertOk()
+            ->assertSee('Murid Kelas A')
+            ->assertDontSee('Murid Kelas B');
+    }
+
+    // ─── CREATE + STORE ────────────────────────────────────────────
+
+    public function test_create_page_loads(): void
+    {
+        $this->makeClass();
+
+        $this->actingAs($this->makeUser('admin'))
+            ->get(route('students.create'))
+            ->assertOk()
+            ->assertSee('Tambah Murid Baru');
+    }
+
+    public function test_store_creates_student_and_enrolls_class(): void
+    {
+        $class = $this->makeClass('drawing');
+        $admin = $this->makeUser('admin');
+
+        $response = $this->actingAs($admin)->post(route('students.store'), $this->validPayload([
+            'class_type' => 'drawing',
+            'class_id' => $class->id,
+        ]));
+
+        $response->assertRedirect(route('students.index'));
+        $response->assertSessionHas('success');
+
+        $student = Student::first();
+        $this->assertNotNull($student);
+        $this->assertSame('STD001', $student->student_id, 'ID murid harus auto-generate STD001');
+        $this->assertTrue($student->classes->contains($class->id), 'Murid harus terdaftar ke kelas');
+        $this->assertSame('active', $student->classes->first()->pivot->status);
+        $this->assertDatabaseHas('activity_logs', ['action' => 'created']);
+    }
+
+    public function test_student_id_auto_increments(): void
+    {
+        $class = $this->makeClass('drawing');
+        $admin = $this->makeUser('admin');
+
+        $this->actingAs($admin)->post(route('students.store'), $this->validPayload(['name' => 'Pertama', 'class_id' => $class->id]));
+        $this->actingAs($admin)->post(route('students.store'), $this->validPayload(['name' => 'Kedua', 'class_id' => $class->id]));
+
+        $this->assertSame(['STD001', 'STD002'], Student::orderBy('id')->pluck('student_id')->all());
+    }
+
+    public function test_store_requires_mandatory_fields(): void
+    {
+        $this->makeClass();
+
+        $this->actingAs($this->makeUser('admin'))
+            ->post(route('students.store'), $this->validPayload(['name' => '', 'class_id' => null]))
+            ->assertSessionHasErrors(['name', 'class_id']);
+
+        $this->assertDatabaseCount('students', 0);
+    }
+
+    public function test_store_rejects_non_numeric_phone(): void
+    {
+        $class = $this->makeClass();
+
+        $this->actingAs($this->makeUser('admin'))
+            ->post(route('students.store'), $this->validPayload(['phone_number' => '0812-abc', 'class_id' => $class->id]))
+            ->assertSessionHasErrors('phone_number');
+
+        $this->assertDatabaseCount('students', 0);
+    }
+
+    public function test_store_rejects_invalid_class(): void
+    {
+        $this->makeClass();
+
+        $this->actingAs($this->makeUser('admin'))
+            ->post(route('students.store'), $this->validPayload(['class_id' => 99999]))
+            ->assertSessionHasErrors('class_id');
+    }
+
+    // ─── EDIT + UPDATE ─────────────────────────────────────────────
+
+    public function test_edit_page_loads(): void
+    {
+        $this->makeClass();
+        $student = Student::create($this->validPayload(['name' => 'Untuk Edit']));
+
+        $this->actingAs($this->makeUser('admin'))
+            ->get(route('students.edit', $student))
+            ->assertOk()
+            ->assertSee('Untuk Edit');
+    }
+
+    public function test_update_modifies_student(): void
+    {
+        $class = $this->makeClass('drawing');
+        $student = Student::create($this->validPayload(['name' => 'Nama Lama']));
+
+        $response = $this->actingAs($this->makeUser('admin'))->put(route('students.update', $student), $this->validPayload([
+            'name' => 'Nama Baru',
+            'status' => 'inactive',
+            'class_id' => $class->id,
+        ]));
+
+        $response->assertRedirect(route('students.index'));
+        $student->refresh();
+        $this->assertSame('Nama Baru', $student->name);
+        $this->assertSame('inactive', $student->status);
+        $this->assertTrue($student->classes->contains($class->id));
+        $this->assertDatabaseHas('activity_logs', ['action' => 'updated']);
+    }
+
+    // ─── DESTROY (OTORISASI) ───────────────────────────────────────
+
+    public function test_super_admin_can_delete_student(): void
+    {
+        $student = Student::create($this->validPayload());
+
+        $this->actingAs($this->makeUser('super_admin'))
+            ->delete(route('students.destroy', $student))
+            ->assertRedirect(route('students.index'));
+
+        $this->assertDatabaseMissing('students', ['id' => $student->id]);
+        $this->assertDatabaseHas('activity_logs', ['action' => 'deleted']);
+    }
+
+    public function test_non_super_admin_cannot_delete_student(): void
+    {
+        $student = Student::create($this->validPayload());
+
+        $this->actingAs($this->makeUser('admin'))
+            ->delete(route('students.destroy', $student))
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('students', ['id' => $student->id]);
+    }
+
+    public function test_guest_is_redirected_to_login(): void
+    {
+        $this->get(route('students.index'))->assertRedirect(route('login'));
+    }
+}

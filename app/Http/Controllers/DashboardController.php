@@ -18,6 +18,8 @@ class DashboardController extends Controller
         $inactiveStudents = $totalStudents - $activeStudents;
         $totalClasses = ClassRoom::count();
 
+        $totalIncome = Transaction::where('type', 'income')->sum('amount');
+
         $monthIncome = Transaction::where('type', 'income')
             ->whereYear('transaction_date', now()->year)
             ->whereMonth('transaction_date', now()->month)
@@ -32,13 +34,16 @@ class DashboardController extends Controller
         $pendingReplacements = ReplacementRequest::where('request_status', 'pending')->count();
         $todayAttendance = Attendance::whereDate('attendance_date', today())->count();
 
-        // Grafik pertumbuhan murid 6 bulan terakhir.
+        // Grafik pertumbuhan murid 6 bulan terakhir (kumulatif murid aktif,
+        // konsisten dengan scorecard "Total Murid" yang membedakan aktif/nonaktif).
         $growthLabels = [];
         $growthData = [];
         for ($i = 5; $i >= 0; $i--) {
             $month = now()->subMonths($i);
             $growthLabels[] = $month->translatedFormat('M Y');
-            $growthData[] = Student::whereDate('join_date', '<=', $month->copy()->endOfMonth())->count();
+            $growthData[] = Student::where('status', 'active')
+                ->whereDate('join_date', '<=', $month->copy()->endOfMonth())
+                ->count();
         }
 
         // Kelas terlaris (berdasarkan jumlah murid).
@@ -54,6 +59,7 @@ class DashboardController extends Controller
             'activeStudents',
             'inactiveStudents',
             'totalClasses',
+            'totalIncome',
             'monthIncome',
             'monthExpense',
             'unpaidCount',

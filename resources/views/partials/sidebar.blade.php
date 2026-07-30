@@ -3,7 +3,7 @@
         <div class="sidebar-brand-icon me-2">
             <i class="bi bi-palette-fill"></i>
         </div>
-        <div class="sidebar-brand-text ms-1">Tarakan Art</div>
+        <div class="sidebar-brand-text ms-1">Tarakan Art Class</div>
     </div>
 
     <ul class="list-unstyled components">

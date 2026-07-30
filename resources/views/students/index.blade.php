@@ -14,14 +14,25 @@
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
         <span>Daftar Murid</span>
-        <form method="GET" data-live class="d-flex gap-2" style="max-width:420px;">
-            <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
+        <form method="GET" data-live class="d-flex flex-wrap align-items-center gap-2">
+            <div class="input-group input-group-sm" style="width:180px;">
+                <span class="input-group-text bg-transparent border-end-0"><i class="bi bi-search text-muted"></i></span>
+                <input type="text" name="search" value="{{ $search }}" class="form-control border-start-0 ps-0 py-2" placeholder="Cari nama / ID...">
+            </div>
+            <select name="class_id" class="form-select form-select-sm" style="width:160px;">
+                <option value="">Semua Kelas</option>
+                @foreach($classes as $class)
+                    <option value="{{ $class->id }}" @selected($classId == $class->id)>{{ $class->class_name }}</option>
+                @endforeach
+            </select>
+            <select name="status" class="form-select form-select-sm" style="width:150px;">
                 <option value="">Semua Status</option>
                 <option value="active" @selected($status === 'active')>Aktif</option>
                 <option value="inactive" @selected($status === 'inactive')>Nonaktif</option>
             </select>
-            <input type="text" name="search" value="{{ $search }}" class="form-control form-control-sm" placeholder="Cari nama / ID...">
-            <button class="btn btn-sm btn-primary"><i class="bi bi-search"></i></button>
+            @if($search !== '' || $classId || $status !== '')
+                <a href="{{ route('students.index') }}" class="btn btn-sm btn-outline-secondary" title="Reset filter"><i class="bi bi-x-lg"></i></a>
+            @endif
         </form>
     </div>
     <div class="card-body">

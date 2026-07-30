@@ -12,14 +12,19 @@
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
         <span>Daftar Transaksi Pembayaran</span>
-        <form method="GET" data-live class="d-flex gap-2" style="max-width:420px;">
-            <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
+        <form method="GET" data-live class="d-flex flex-wrap align-items-center gap-2">
+            <div class="input-group input-group-sm" style="width:200px;">
+                <span class="input-group-text bg-transparent border-end-0"><i class="bi bi-search text-muted"></i></span>
+                <input type="text" name="search" value="{{ $search }}" class="form-control border-start-0 ps-0 py-2" placeholder="Cari invoice / murid...">
+            </div>
+            <select name="status" class="form-select form-select-sm" style="width:160px;">
                 <option value="">Semua Status</option>
                 <option value="paid" @selected($status === 'paid')>Paid</option>
                 <option value="unpaid" @selected($status === 'unpaid')>Unpaid</option>
             </select>
-            <input type="text" name="search" value="{{ $search }}" class="form-control form-control-sm" placeholder="Cari invoice / murid...">
-            <button class="btn btn-sm btn-primary"><i class="bi bi-search"></i></button>
+            @if($search !== '' || $status !== '')
+                <a href="{{ route('payments.index') }}" class="btn btn-sm btn-outline-secondary" title="Reset filter"><i class="bi bi-x-lg"></i></a>
+            @endif
         </form>
     </div>
     <div class="card-body">

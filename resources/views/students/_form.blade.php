@@ -14,7 +14,10 @@
     </div>
     <div class="col-md-6 mb-3">
         <label class="form-label">No HP Wali</label>
-        <input type="text" name="phone_number" class="form-control" value="{{ old('phone_number', $student->phone_number ?? '') }}" required>
+        <input type="tel" name="phone_number" class="form-control" value="{{ old('phone_number', $student->phone_number ?? '') }}"
+               inputmode="numeric" pattern="[0-9]+" maxlength="20" title="Hanya boleh angka"
+               oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
+        <div class="form-text">Hanya angka, mis. 081234567890.</div>
     </div>
     <div class="col-md-6 mb-3">
         <label class="form-label">Instagram (opsional)</label>
@@ -45,13 +48,13 @@
     </div>
     <div class="col-md-6 mb-3">
         <label class="form-label">Daftarkan ke Kelas <span class="text-danger">*</span></label>
-        <select name="class_id" id="class_id" class="form-select" required>
+        <select name="class_id" id="class_id" class="form-select" data-no-search required>
             <option value="" disabled @selected($selectedClass === '' || $selectedClass === null)>-- Pilih Kelas --</option>
             @foreach($classes as $class)
                 @php
                     $isSelected = (string) $selectedClass === (string) $class->id;
                     $isAvail = $class->isAvailable();
-                    $statusLabel = $isAvail ? '' : ($class->isClosed() ? ' — Ditutup' : ' — Penuh');
+                    $statusLabel = $isAvail ? '' : ($class->isClosed() ? ' — Kelas Ditutup' : ' — Kelas Penuh');
                 @endphp
                 <option value="{{ $class->id }}"
                     data-category="{{ $class->class_category }}"

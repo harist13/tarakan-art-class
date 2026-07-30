@@ -15,6 +15,7 @@ class StudentController extends Controller
     {
         $search = $request->string('search')->toString();
         $status = $request->string('status')->toString();
+        $classId = $request->integer('class_id');
 
         $students = Student::query()
             ->with('classes')
@@ -24,11 +25,14 @@ class StudentController extends Controller
                     ->orWhere('parent_name', 'like', "%{$search}%");
             }))
             ->when(in_array($status, ['active', 'inactive'], true), fn ($q) => $q->where('status', $status))
+            ->when($classId, fn ($q) => $q->whereHas('classes', fn ($c) => $c->where('classes.id', $classId)))
             ->orderByDesc('id')
             ->paginate(10)
             ->withQueryString();
 
-        return view('students.index', compact('students', 'search', 'status'));
+        $classes = ClassRoom::orderBy('class_name')->get();
+
+        return view('students.index', compact('students', 'search', 'status', 'classId', 'classes'));
     }
 
     public function create()
@@ -95,7 +99,7 @@ class StudentController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'date_of_birth' => ['required', 'date'],
             'parent_name' => ['required', 'string', 'max:255'],
-            'phone_number' => ['required', 'string', 'max:30'],
+            'phone_number' => ['required', 'string', 'regex:/^[0-9]+$/', 'max:20'],
             'instagram_username' => ['nullable', 'string', 'max:255'],
             'address' => ['nullable', 'string'],
             'class_type' => ['required', Rule::in(['preschool', 'coloring', 'drawing'])],
@@ -105,6 +109,7 @@ class StudentController extends Controller
         ], [
             'class_id.required' => 'Kelas wajib dipilih.',
             'class_id.exists' => 'Kelas yang dipilih tidak valid.',
+            'phone_number.regex' => 'No HP Wali harus berupa angka.',
         ]);
     }
 

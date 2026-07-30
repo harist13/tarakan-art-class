@@ -57,6 +57,8 @@ Route::middleware('auth')->group(function () {
 
     // ─── Class Management (F3) + Tutor ─────────────────────────
     Route::post('tutors', [ClassRoomController::class, 'storeTutor'])->name('tutors.store');
+    Route::put('tutors/{tutor}', [ClassRoomController::class, 'updateTutor'])->name('tutors.update');
+    Route::delete('tutors/{tutor}', [ClassRoomController::class, 'destroyTutor'])->name('tutors.destroy');
     Route::patch('classes/{class}/toggle-status', [ClassRoomController::class, 'toggleStatus'])->name('classes.toggle-status');
     Route::resource('classes', ClassRoomController::class)
         ->parameters(['classes' => 'class'])->except('show');

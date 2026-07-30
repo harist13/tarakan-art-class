@@ -17,6 +17,7 @@ class ExportController extends Controller
     {
         $search = $request->string('search')->toString();
         $status = $request->string('status')->toString();
+        $classId = $request->integer('class_id');
 
         $students = Student::query()
             ->with('classes')
@@ -26,6 +27,7 @@ class ExportController extends Controller
                     ->orWhere('parent_name', 'like', "%{$search}%");
             }))
             ->when(in_array($status, ['active', 'inactive'], true), fn ($q) => $q->where('status', $status))
+            ->when($classId, fn ($q) => $q->whereHas('classes', fn ($c) => $c->where('classes.id', $classId)))
             ->orderByDesc('id')
             ->get();
 

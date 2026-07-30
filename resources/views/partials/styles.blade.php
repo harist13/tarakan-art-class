@@ -11,6 +11,8 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
 <!-- Google Fonts -->
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<!-- Tom Select (searchable dropdowns) -->
+<link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
 <style>
     :root {
         --primary-color: #0EA5E9;   /* Sky 500 */
@@ -86,13 +88,18 @@
 
     #sidebar .sidebar-brand {
         flex-shrink: 0;
-        padding: 1.8rem 1rem;
+        padding: 1.5rem 1rem;
         text-align: center;
         font-weight: 800;
-        font-size: 1.4rem;
-        letter-spacing: 1px;
+        letter-spacing: 0.5px;
         background: rgba(255, 255, 255, 0.06);
         border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    #sidebar .sidebar-brand-text {
+        font-size: 1rem;
+        line-height: 1.2;
+        white-space: nowrap;
     }
 
     #sidebar .sidebar-brand-icon {
@@ -362,5 +369,54 @@
     /* Flex grow for main container */
     .main-container {
         flex: 1 0 auto;
+    }
+
+    /* ── Tom Select (searchable dropdown) — selaraskan dengan tema ── */
+    .ts-control {
+        background-color: var(--surface) !important;
+        border-color: var(--border) !important;
+        color: var(--text) !important;
+        border-radius: 0.5rem !important;
+    }
+    .ts-control, .ts-control input, .ts-control .item { color: var(--text) !important; }
+    .ts-control input::placeholder { color: var(--text-muted) !important; }
+    .ts-dropdown {
+        background-color: var(--surface);
+        border: 1px solid var(--border);
+        color: var(--text);
+        box-shadow: 0 6px 24px var(--shadow-md);
+    }
+    .ts-dropdown .option { color: var(--text); padding: 0.55rem 0.85rem; font-size: 0.95rem; line-height: 1.3; }
+    .ts-dropdown .option.active { background-color: var(--surface-2); color: var(--primary-color); }
+    /* Kotak pencarian di dalam dropdown (plugin dropdown_input) */
+    .ts-dropdown .dropdown-input-wrap { padding: 0.4rem; border-bottom: 1px solid var(--border); }
+    .ts-dropdown .dropdown-input {
+        background-color: var(--surface);
+        border: 1px solid var(--border);
+        color: var(--text);
+        border-radius: 0.4rem;
+        padding: 0.35rem 0.6rem;
+        width: 100%;
+    }
+    .ts-dropdown .dropdown-input::placeholder { color: var(--text-muted); }
+    .ts-dropdown .dropdown-input:focus { border-color: var(--primary-color); outline: none; box-shadow: 0 0 0 0.15rem rgba(14,165,233,0.15); }
+    .ts-dropdown .no-results { color: var(--text-muted); }
+    .ts-dropdown .optgroup-header { color: var(--text-muted); background: var(--surface-2); font-weight: 700; }
+    .ts-control:focus-within { border-color: var(--primary-color) !important; box-shadow: 0 0 0 0.2rem rgba(14,165,233,0.15); }
+    /* Tinggi kontrol Tom Select -sm disamakan PERSIS dengan field search/date ber-py-2.
+       Target = font(0.875rem)*line-height(1.5) + padding py-2(2*0.5rem) + border(2px). */
+    .tac-ts-sm.ts-wrapper .ts-control {
+        min-height: calc(0.875rem * 1.5 + 1rem + 2px) !important;
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+        padding-left: 0.75rem !important;
+        display: flex !important;
+        align-items: center !important;
+        font-size: 0.875rem;
+    }
+    .tac-ts-sm.ts-wrapper .ts-control > .item,
+    .tac-ts-sm.ts-wrapper .ts-control > input {
+        line-height: 1.5;
+        margin: 0 !important;
     }
 </style>

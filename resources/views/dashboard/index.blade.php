@@ -27,9 +27,9 @@
             <div class="card-body">
                 <div class="row align-items-center">
                     <div class="col">
-                        <div class="text-success text-uppercase mb-1" style="font-size:0.7rem; font-weight:800; letter-spacing:.5px;">Pemasukan Bulan Ini</div>
-                        <div class="h5 mb-0 fw-bold text-gray-800">Rp {{ number_format($monthIncome, 0, ',', '.') }}</div>
-                        <div class="small text-muted mt-1">Pengeluaran: Rp {{ number_format($monthExpense, 0, ',', '.') }}</div>
+                        <div class="text-success text-uppercase mb-1" style="font-size:0.7rem; font-weight:800; letter-spacing:.5px;">Total Pendapatan</div>
+                        <div class="h5 mb-0 fw-bold text-gray-800">Rp {{ number_format($totalIncome, 0, ',', '.') }}</div>
+                        <div class="small text-muted mt-1">Bulan ini: Rp {{ number_format($monthIncome, 0, ',', '.') }} &middot; Pengeluaran: Rp {{ number_format($monthExpense, 0, ',', '.') }}</div>
                     </div>
                     <div class="col-auto"><i class="bi bi-cash-stack fs-1" style="color:#E2E8F0;"></i></div>
                 </div>
@@ -133,6 +133,8 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
     const ctx = document.getElementById('growthChart');
+    // Guard: jika Chart.js gagal dimuat (mis. CDN tidak tersedia), lewati agar tidak error.
+    if (ctx && window.Chart) {
     new Chart(ctx, {
         type: 'line',
         data: {
@@ -153,5 +155,6 @@
             scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
         }
     });
+    }
 </script>
 @endpush
