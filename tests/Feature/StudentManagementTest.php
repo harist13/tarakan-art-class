@@ -76,7 +76,7 @@ class StudentManagementTest extends TestCase
         $this->actingAs($this->makeUser('admin'))
             ->get(route('students.index'))
             ->assertOk()
-            ->assertSee('Data Murid &amp; Wali', false)
+            ->assertSee('Data Murid & Wali', false)
             ->assertSee('Ani Listing');
     }
 

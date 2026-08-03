@@ -11,11 +11,17 @@ return new class extends Migration
      */
     public function up(): void
     {
-        DB::statement("ALTER TABLE payments MODIFY payment_method ENUM('cash', 'transfer', 'qris', 'virtual_account') NOT NULL");
+        // ENUM MODIFY hanya didukung MySQL/MariaDB. SQLite (dipakai saat testing)
+        // menyimpan kolom ini sebagai teks bebas, jadi tidak perlu diubah.
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE payments MODIFY payment_method ENUM('cash', 'transfer', 'qris', 'virtual_account') NOT NULL");
+        }
     }
 
     public function down(): void
     {
-        DB::statement("ALTER TABLE payments MODIFY payment_method ENUM('cash', 'transfer') NOT NULL");
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE payments MODIFY payment_method ENUM('cash', 'transfer') NOT NULL");
+        }
     }
 };

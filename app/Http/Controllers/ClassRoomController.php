@@ -22,6 +22,18 @@ class ClassRoomController extends Controller
         // Subquery jumlah murid aktif per kelas (untuk membandingkan dengan kapasitas).
         $enrolledSql = '(select count(*) from student_class where student_class.class_id = classes.id and student_class.status = ?)';
 
+        // Batas "sekarang" untuk membandingkan jadwal (portable MySQL/SQLite: bandingkan string).
+        $today = now()->toDateString();
+        $nowTime = now()->toTimeString();
+        $isPast = function ($q) use ($today, $nowTime) {
+            $q->where('classes.schedule_date', '<', $today)
+                ->orWhere(fn ($w) => $w->where('classes.schedule_date', $today)->where('classes.schedule_time', '<', $nowTime));
+        };
+        $notPast = function ($q) use ($today, $nowTime) {
+            $q->where('classes.schedule_date', '>', $today)
+                ->orWhere(fn ($w) => $w->where('classes.schedule_date', $today)->where('classes.schedule_time', '>=', $nowTime));
+        };
+
         $classes = ClassRoom::query()
             ->with('tutor')
             ->withCount([
@@ -36,11 +48,16 @@ class ClassRoomController extends Controller
             // Rentang tanggal jadwal (dari–hingga), keduanya opsional.
             ->when($dateFrom, fn ($q) => $q->whereDate('schedule_date', '>=', $dateFrom))
             ->when($dateTo, fn ($q) => $q->whereDate('schedule_date', '<=', $dateTo))
-            // Status ketersediaan — "ditutup" berprioritas di atas "penuh" (sesuai badge).
+            // Status ketersediaan — mengikuti prioritas badge: ditutup > lewat > tutor kosong > penuh > tersedia.
             ->when($status === 'ditutup', fn ($q) => $q->where('classes.status', 'closed'))
-            ->when($status === 'penuh', fn ($q) => $q->where('classes.status', '!=', 'closed')
+            ->when($status === 'lewat', fn ($q) => $q->where('classes.status', '!=', 'closed')->where($isPast))
+            ->when($status === 'tanpa-tutor', fn ($q) => $q->where('classes.status', '!=', 'closed')->where($notPast)
+                ->whereHas('tutor', fn ($t) => $t->where('status', '!=', 'active')))
+            ->when($status === 'penuh', fn ($q) => $q->where('classes.status', '!=', 'closed')->where($notPast)
+                ->whereHas('tutor', fn ($t) => $t->where('status', 'active'))
                 ->whereRaw("{$enrolledSql} >= classes.capacity", ['active']))
-            ->when($status === 'tersedia', fn ($q) => $q->where('classes.status', '!=', 'closed')
+            ->when($status === 'tersedia', fn ($q) => $q->where('classes.status', '!=', 'closed')->where($notPast)
+                ->whereHas('tutor', fn ($t) => $t->where('status', 'active'))
                 ->whereRaw("{$enrolledSql} < classes.capacity", ['active']))
             ->orderBy('class_name')
             ->paginate(10)
@@ -124,10 +141,24 @@ class ClassRoomController extends Controller
     /**
      * Buka/tutup kelas untuk penerimaan murid & replacement.
      */
-    public function toggleStatus(ClassRoom $class)
+    public function toggleStatus(Request $request, ClassRoom $class)
     {
-        $class->status = $class->status === 'closed' ? 'open' : 'closed';
-        $label = $class->status === 'closed' ? 'ditutup' : 'dibuka';
+        $closing = $class->status !== 'closed';
+
+        if ($closing) {
+            // Alasan opsional tapi disarankan, agar admin lain paham kenapa slot ditutup.
+            $reason = $request->validate([
+                'closed_reason' => ['nullable', 'string', 'max:255'],
+            ])['closed_reason'] ?? null;
+
+            $class->status = 'closed';
+            $class->closed_reason = $reason;
+        } else {
+            $class->status = 'open';
+            $class->closed_reason = null; // bersihkan alasan saat slot dibuka kembali
+        }
+
+        $label = $closing ? 'ditutup' : 'dibuka';
 
         DB::transaction(function () use ($class, $label) {
             $class->save();

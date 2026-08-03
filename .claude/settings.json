@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(php -l app/Models/ClassRoom.php)",
+      "PowerShell(php -l app/Http/Controllers/ScheduleController.php)",
+      "PowerShell(php -l app/Http/Controllers/ClassRoomController.php; echo '---'; php artisan tinker --execute=\"foreach\\(['ditutup','lewat','tanpa-tutor','penuh','tersedia'] as \\\\$s\\){ request\\(\\)->merge\\(['status'=>\\\\$s]\\); \\\\$c=app\\(App\\\\Http\\\\Controllers\\\\ClassRoomController::class\\)->index\\(request\\(\\)\\); echo \\\\$s.' OK'.PHP_EOL; }\")",
+      "PowerShell(php \"C:\\\\Users\\\\LENOVO\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--laragon-www-tarakan-art-class\\\\7b704970-429c-4686-b28c-0dc23945c341\\\\scratchpad\\\\filter_check.php\")",
+      "PowerShell(php artisan test --filter=SlotAvailabilityTest 2>&1)",
+      "Bash(rm -f \"/c/Users/LENOVO/AppData/Local/Temp/claude/c--laragon-www-tarakan-art-class/7b704970-429c-4686-b28c-0dc23945c341/scratchpad/filter_check.php\")",
+      "PowerShell(php -l resources/views/schedules/calendar.blade.php 2>&1)",
+      "PowerShell(php -l app/Http/Controllers/ScheduleController.php 2>&1)",
+      "PowerShell(php -l resources/views/schedules/index.blade.php)",
+      "PowerShell(php -l resources/views/schedules/calendar.blade.php)",
+      "PowerShell(php \"C:\\\\Users\\\\LENOVO\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--laragon-www-tarakan-art-class\\\\7b704970-429c-4686-b28c-0dc23945c341\\\\scratchpad\\\\check_classes.php\")",
+      "PowerShell(php -l resources/views/schedules/_form.blade.php)",
+      "Bash(rm -f \"/c/Users/LENOVO/AppData/Local/Temp/claude/c--laragon-www-tarakan-art-class/7b704970-429c-4686-b28c-0dc23945c341/scratchpad/check_classes.php\")",
+      "PowerShell(php \"C:\\\\Users\\\\LENOVO\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--laragon-www-tarakan-art-class\\\\7b704970-429c-4686-b28c-0dc23945c341\\\\scratchpad\\\\check_overbook.php\")"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\LENOVO\\AppData\\Local\\Temp\\claude\\c--laragon-www-tarakan-art-class\\7b704970-429c-4686-b28c-0dc23945c341\\scratchpad"
+    ]
+  }
+}

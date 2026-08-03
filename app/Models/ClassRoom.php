@@ -21,6 +21,7 @@ class ClassRoom extends Model
         'schedule_time',
         'class_fee',
         'status',
+        'closed_reason',
     ];
 
     protected $casts = [
@@ -101,22 +102,114 @@ class ClassRoom extends Model
     }
 
     /**
-     * Slot bisa diisi (mis. untuk replacement) bila dibuka & masih ada kursi.
+     * Slot sudah lewat bila tanggal+jam jadwalnya di masa lalu.
      */
-    public function isAvailable(): bool
+    public function isPast(): bool
     {
-        return ! $this->isClosed() && ! $this->isFull();
+        return $this->scheduleAt()->isPast();
     }
 
     /**
-     * Label + warna bootstrap untuk badge ketersediaan.
+     * Daftar tanggal libur (string Y-m-d), dimemo per-request agar tidak N+1.
+     */
+    protected static ?array $holidayDates = null;
+
+    public static function holidayDates(): array
+    {
+        if (static::$holidayDates === null) {
+            static::$holidayDates = Holiday::pluck('date')
+                ->map(fn ($d) => \Illuminate\Support\Carbon::parse($d)->toDateString())
+                ->all();
+        }
+
+        return static::$holidayDates;
+    }
+
+    /**
+     * Kosongkan memo setelah data libur berubah (dipanggil dari controller).
+     */
+    public static function flushHolidayCache(): void
+    {
+        static::$holidayDates = null;
+    }
+
+    /**
+     * Jadwal slot jatuh pada hari libur / tanggal kelas ditiadakan.
+     */
+    public function isHoliday(): bool
+    {
+        return in_array($this->schedule_date->toDateString(), static::holidayDates(), true);
+    }
+
+    /**
+     * Tutor tersedia untuk slot ini (ada & berstatus aktif).
+     */
+    public function hasTutor(): bool
+    {
+        return $this->tutor && $this->tutor->status === 'active';
+    }
+
+    /**
+     * Kategori kelas cocok dengan tipe kelas murid (mis. murid coloring → slot coloring).
+     */
+    public function matchesLevel(?string $studentType): bool
+    {
+        return $studentType !== null && $this->class_category === $studentType;
+    }
+
+    /**
+     * Slot bisa diisi (mis. untuk replacement) bila: dibuka manual, masih ada kursi,
+     * belum lewat, dan tutornya tersedia. Level cocok dinilai relatif ke murid
+     * lewat isAvailableFor().
+     */
+    public function isAvailable(): bool
+    {
+        return ! $this->isClosed()
+            && ! $this->isFull()
+            && ! $this->isPast()
+            && ! $this->isHoliday()
+            && $this->hasTutor();
+    }
+
+    /**
+     * Available untuk murid tertentu: available umum + kategori cocok dengan tipe murid.
+     */
+    public function isAvailableFor(Student $student): bool
+    {
+        return $this->isAvailable() && $this->matchesLevel($student->class_type);
+    }
+
+    /**
+     * Gabungan tanggal + jam jadwal sebagai Carbon.
+     */
+    public function scheduleAt(): \Illuminate\Support\Carbon
+    {
+        $time = $this->schedule_time ? substr($this->schedule_time, 0, 8) : '00:00:00';
+
+        return $this->schedule_date->copy()->setTimeFromTimeString($time);
+    }
+
+    /**
+     * Label + warna bootstrap untuk badge ketersediaan. Urutan cek disengaja:
+     * tutup manual (keputusan admin) diutamakan, lalu kondisi terhitung.
      *
      * @return array{text: string, color: string}
      */
     public function availability(): array
     {
         if ($this->isClosed()) {
-            return ['text' => 'Ditutup', 'color' => 'secondary'];
+            $text = $this->closed_reason ? 'Ditutup — '.$this->closed_reason : 'Ditutup';
+
+            return ['text' => $text, 'color' => 'secondary'];
+        }
+        if ($this->isPast()) {
+            return ['text' => 'Sudah lewat', 'color' => 'dark'];
+        }
+        if ($this->isHoliday()) {
+            return ['text' => 'Hari libur', 'color' => 'info'];
+        }
+        if (! $this->hasTutor()) {
+            return ['text' => 'Tutor kosong', 'color' => 'warning'];
         }
         if ($this->isFull()) {
             return ['text' => 'Penuh', 'color' => 'danger'];

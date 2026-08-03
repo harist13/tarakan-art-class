@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\ActivityLog;
+use App\Models\CalendarEvent;
 use App\Models\ClassRoom;
+use App\Models\Holiday;
 use App\Models\ReplacementRequest;
 use App\Models\Student;
 use Illuminate\Http\Request;
@@ -30,12 +32,98 @@ class ScheduleController extends Controller
 
         // Daftar slot kelas + ketersediaan, untuk panel tutup/buka slot di layar Scheduler.
         $slots = ClassRoom::query()
+            ->with('tutor')
             ->withCount(['students as enrolled_count' => fn ($q) => $q->where('student_class.status', 'active')])
             ->orderBy('schedule_date')
             ->orderBy('schedule_time')
             ->get();
 
-        return view('schedules.index', compact('requests', 'status', 'search', 'slots'));
+        // Hari libur untuk panel pengelolaan (yang akan datang di atas).
+        $holidays = Holiday::orderBy('date')->get();
+
+        // Acara / agenda umum untuk panel pengelolaan.
+        $calendarEvents = CalendarEvent::orderBy('date')->orderBy('start_time')->get();
+
+        // Ringkasan untuk scorecard di atas halaman.
+        $pendingCount = ReplacementRequest::where('request_status', 'pending')->count();
+        $availableSlots = $slots->filter->isAvailable()->count();
+
+        return view('schedules.index', compact(
+            'requests', 'status', 'search', 'slots', 'holidays', 'calendarEvents',
+            'pendingCount', 'availableSlots'
+        ));
+    }
+
+    /**
+     * Tambah acara / agenda umum ke kalender.
+     */
+    public function storeEvent(Request $request)
+    {
+        $data = $request->validateWithBag('event', [
+            'title' => ['required', 'string', 'max:255'],
+            'date' => ['required', 'date'],
+            'start_time' => ['nullable', 'date_format:H:i'],
+            'end_time' => ['nullable', 'date_format:H:i', 'after:start_time'],
+            'description' => ['nullable', 'string', 'max:255'],
+            'color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+        ], [
+            'end_time.after' => 'Jam selesai harus setelah jam mulai.',
+        ]);
+
+        DB::transaction(function () use ($data) {
+            $event = CalendarEvent::create($data);
+            ActivityLog::record('created', $event, "Menambah acara \"{$event->title}\"");
+        });
+
+        return back()->with('success', 'Acara berhasil ditambahkan ke kalender.');
+    }
+
+    /**
+     * Hapus acara / agenda.
+     */
+    public function destroyEvent(CalendarEvent $event)
+    {
+        DB::transaction(function () use ($event) {
+            ActivityLog::record('deleted', $event, "Menghapus acara \"{$event->title}\"");
+            $event->delete();
+        });
+
+        return back()->with('success', 'Acara berhasil dihapus.');
+    }
+
+    /**
+     * Tambah tanggal libur / kelas ditiadakan.
+     */
+    public function storeHoliday(Request $request)
+    {
+        $data = $request->validateWithBag('holiday', [
+            'date' => ['required', 'date', 'unique:holidays,date'],
+            'name' => ['nullable', 'string', 'max:255'],
+        ], [
+            'date.unique' => 'Tanggal tersebut sudah terdaftar sebagai hari libur.',
+        ]);
+
+        DB::transaction(function () use ($data) {
+            $holiday = Holiday::create($data);
+            ActivityLog::record('created', $holiday, 'Menambah hari libur '.$holiday->date->format('d M Y'));
+        });
+        ClassRoom::flushHolidayCache();
+
+        return back()->with('success', 'Hari libur berhasil ditambahkan.');
+    }
+
+    /**
+     * Hapus tanggal libur.
+     */
+    public function destroyHoliday(Holiday $holiday)
+    {
+        DB::transaction(function () use ($holiday) {
+            ActivityLog::record('deleted', $holiday, 'Menghapus hari libur '.$holiday->date->format('d M Y'));
+            $holiday->delete();
+        });
+        ClassRoom::flushHolidayCache();
+
+        return back()->with('success', 'Hari libur berhasil dihapus.');
     }
 
     /**
@@ -61,6 +149,8 @@ class ScheduleController extends Controller
                     'type' => 'Kelas Reguler',
                     'tutor' => $class->tutor->name ?? '-',
                     'category' => ucfirst($class->class_category),
+                    'cat' => $class->class_category, // nilai mentah untuk pencocokan level murid
+                    'classId' => $class->id,
                     'code' => $class->class_code,
                     'availability' => $av['text'],
                     'available' => $available,
@@ -86,7 +176,55 @@ class ScheduleController extends Controller
             ];
         }
 
-        return view('schedules.calendar', ['events' => $events]);
+        // Hari libur: tampil sebagai event seharian, berdiri sendiri walau tak ada jadwal kelas.
+        // Dua representasi: tint latar seharian + chip berlabel (agar jelas & muncul di tampilan daftar).
+        foreach (Holiday::orderBy('date')->get() as $holiday) {
+            $date = $holiday->date->format('Y-m-d');
+            $props = [
+                'type' => 'Hari Libur',
+                'reason' => $holiday->name ?: 'Kelas ditiadakan',
+                'holiday' => true,
+            ];
+            // Tint latar seharian.
+            $events[] = [
+                'start' => $date,
+                'allDay' => true,
+                'display' => 'background',
+                'color' => '#38BDF8',
+                'extendedProps' => $props,
+            ];
+            // Chip berlabel (bisa diklik, tampil juga di listMonth).
+            $events[] = [
+                'title' => '🏖️ Libur'.($holiday->name ? ': '.$holiday->name : ''),
+                'start' => $date,
+                'allDay' => true,
+                'color' => '#0EA5E9',
+                'extendedProps' => $props,
+            ];
+        }
+
+        // Acara / agenda umum. Jam kosong = seharian.
+        foreach (CalendarEvent::orderBy('date')->get() as $ev) {
+            $allDay = $ev->isAllDay();
+            $events[] = [
+                'title' => $ev->title,
+                'start' => $allDay ? $ev->date->format('Y-m-d') : $this->combineDateTime($ev->date, $ev->start_time),
+                'end' => (! $allDay && $ev->end_time) ? $this->combineDateTime($ev->date, $ev->end_time) : null,
+                'allDay' => $allDay,
+                'color' => $ev->color ?: '#6366F1',
+                'extendedProps' => [
+                    'type' => 'Acara',
+                    'note' => $ev->description ?: '-',
+                ],
+            ];
+        }
+
+        // Murid aktif untuk mode "Cari kelas pengganti" (filter slot per level murid).
+        $students = Student::where('status', 'active')
+            ->orderBy('name')
+            ->get(['id', 'name', 'student_id', 'class_type']);
+
+        return view('schedules.calendar', ['events' => $events, 'students' => $students]);
     }
 
     /**
@@ -102,7 +240,7 @@ class ScheduleController extends Controller
     public function create()
     {
         $students = Student::where('status', 'active')->orderBy('name')->get();
-        $classes = ClassRoom::withCount(['students as enrolled_count' => fn ($q) => $q->where('student_class.status', 'active')])
+        $classes = ClassRoom::with('tutor')->withCount(['students as enrolled_count' => fn ($q) => $q->where('student_class.status', 'active')])
             ->orderBy('class_name')->get();
 
         return view('schedules.create', compact('students', 'classes'));
@@ -126,7 +264,7 @@ class ScheduleController extends Controller
     public function edit(ReplacementRequest $schedule)
     {
         $students = Student::orderBy('name')->get();
-        $classes = ClassRoom::withCount(['students as enrolled_count' => fn ($q) => $q->where('student_class.status', 'active')])
+        $classes = ClassRoom::with('tutor')->withCount(['students as enrolled_count' => fn ($q) => $q->where('student_class.status', 'active')])
             ->orderBy('class_name')->get();
 
         return view('schedules.edit', ['request' => $schedule, 'students' => $students, 'classes' => $classes]);
@@ -184,22 +322,48 @@ class ScheduleController extends Controller
             'class_id' => [
                 'required',
                 'exists:classes,id',
-                function ($attribute, $value, $fail) use ($current) {
+                function ($attribute, $value, $fail) use ($current, $request) {
                     // Biarkan kelas yang sama saat edit walau statusnya kini berubah.
                     if ($current && (int) $value === (int) $current->class_id) {
                         return;
                     }
 
-                    $class = ClassRoom::find($value);
-                    if ($class && ! $class->isAvailable()) {
-                        $reason = $class->isClosed() ? 'sudah ditutup' : 'sudah penuh';
+                    $class = ClassRoom::with('tutor')->find($value);
+                    if (! $class) {
+                        return;
+                    }
+
+                    if (! $class->isAvailable()) {
+                        // Alasan spesifik sesuai kondisi slot.
+                        $reason = match (true) {
+                            $class->isClosed() => 'sudah ditutup admin',
+                            $class->isPast() => 'jadwalnya sudah lewat',
+                            $class->isHoliday() => 'jatuh pada hari libur',
+                            ! $class->hasTutor() => 'belum ada tutor',
+                            $class->isFull() => 'sudah penuh',
+                            default => 'tidak tersedia',
+                        };
                         $fail("Kelas \"{$class->class_name}\" {$reason} sehingga tidak bisa dijadikan slot pengganti. Silakan pilih slot lain yang tersedia.");
+
+                        return;
+                    }
+
+                    // Level harus cocok dengan tipe kelas murid.
+                    $student = Student::find($request->input('student_id'));
+                    if ($student && ! $class->matchesLevel($student->class_type)) {
+                        $fail("Kelas \"{$class->class_name}\" ({$class->class_category}) tidak cocok dengan tipe kelas murid ({$student->class_type}). Pilih slot yang sesuai.");
                     }
                 },
             ],
             'replacement_date' => ['required', 'date'],
             'replacement_time' => ['required'],
             'reason' => ['nullable', 'string'],
+        ], [
+            // Pesan Indonesia agar admin langsung paham apa yang kurang.
+            'student_id.required' => 'Murid belum dipilih.',
+            'class_id.required' => 'Kelas tujuan belum dipilih. Jika daftar kelas kosong, berarti tidak ada slot yang cocok & tersedia untuk murid tersebut.',
+            'replacement_date.required' => 'Tanggal pengganti belum diisi.',
+            'replacement_time.required' => 'Jam pengganti belum diisi.',
         ]);
     }
 }

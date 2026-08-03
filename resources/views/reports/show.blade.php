@@ -20,13 +20,19 @@
     .hero-main { flex: 1 1 180px; min-width: 0; }
     .hero-main h4 { font-weight: 800; margin: 0 0 .15rem; }
     .hero-sub { color: rgba(255,255,255,0.85); font-size: .85rem; }
+    .hero-meta { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .5rem; }
     .grade-pill {
-        display: inline-block; margin-top: .5rem; padding: .25rem .8rem; border-radius: 30px;
+        display: inline-block; padding: .25rem .8rem; border-radius: 30px;
         background: rgba(255,255,255,0.22); font-size: .78rem; font-weight: 700; letter-spacing: .3px;
+    }
+    .class-chip {
+        display: inline-flex; align-items: center; gap: .3rem; padding: .25rem .8rem; border-radius: 30px;
+        background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.35);
+        font-size: .78rem; font-weight: 700; letter-spacing: .3px;
     }
     .score-ring {
         width: 96px; height: 96px; border-radius: 50%; flex-shrink: 0;
-        background: conic-gradient(#fff var(--deg), rgba(255,255,255,0.28) 0);
+        background: conic-gradient(var(--ring-color) var(--deg), rgba(255,255,255,0.28) 0);
         display: grid; place-items: center;
     }
     .score-inner {
@@ -54,6 +60,7 @@
     $score = $report->achievement_score;
     $grade = $score >= 90 ? 'Istimewa' : ($score >= 80 ? 'Sangat Baik' : ($score >= 70 ? 'Baik' : ($score >= 60 ? 'Cukup' : 'Perlu Bimbingan')));
     $initial = strtoupper(mb_substr($report->student->name ?? '?', 0, 1));
+    $scoreColor = $score >= 70 ? '#22C55E' : ($score >= 60 ? '#EAB308' : '#EF4444');
 @endphp
 
 <div class="d-sm-flex align-items-center justify-content-between mb-4">
@@ -78,11 +85,18 @@
                 <span class="mx-1">·</span>
                 <i class="bi bi-calendar3 me-1"></i>{{ $report->period_start->format('d M Y') }} — {{ $report->period_end->format('d M Y') }}
             </div>
-            <span class="grade-pill"><i class="bi bi-award me-1"></i>{{ $grade }}</span>
+            <div class="hero-meta">
+                <span class="grade-pill"><i class="bi bi-award me-1"></i>{{ $grade }}</span>
+                @forelse($report->student->classes as $class)
+                    <span class="class-chip"><i class="bi bi-easel2"></i>{{ $class->class_name }}</span>
+                @empty
+                    <span class="class-chip"><i class="bi bi-easel2"></i>Belum ada kelas</span>
+                @endforelse
+            </div>
         </div>
-        <div class="score-ring" style="--deg: {{ $score * 3.6 }}deg;">
+        <div class="score-ring" style="--deg: {{ $score * 3.6 }}deg; --ring-color: {{ $scoreColor }};">
             <div class="score-inner">
-                <span class="score-num text-primary">{{ $score }}</span>
+                <span class="score-num" style="color: {{ $scoreColor }};">{{ $score }}</span>
                 <span class="score-max">/ 100</span>
             </div>
         </div>

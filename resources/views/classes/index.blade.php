@@ -35,6 +35,8 @@
                 <option value="">Semua Status</option>
                 <option value="tersedia" @selected($status === 'tersedia')>Tersedia</option>
                 <option value="penuh" @selected($status === 'penuh')>Penuh</option>
+                <option value="tanpa-tutor" @selected($status === 'tanpa-tutor')>Tutor Kosong</option>
+                <option value="lewat" @selected($status === 'lewat')>Sudah Lewat</option>
                 <option value="ditutup" @selected($status === 'ditutup')>Ditutup</option>
             </select>
             <div class="input-group input-group-sm" style="width:240px;">
