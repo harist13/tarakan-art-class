@@ -14,7 +14,16 @@
       "PowerShell(php \"C:\\\\Users\\\\LENOVO\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--laragon-www-tarakan-art-class\\\\7b704970-429c-4686-b28c-0dc23945c341\\\\scratchpad\\\\check_classes.php\")",
       "PowerShell(php -l resources/views/schedules/_form.blade.php)",
       "Bash(rm -f \"/c/Users/LENOVO/AppData/Local/Temp/claude/c--laragon-www-tarakan-art-class/7b704970-429c-4686-b28c-0dc23945c341/scratchpad/check_classes.php\")",
-      "PowerShell(php \"C:\\\\Users\\\\LENOVO\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--laragon-www-tarakan-art-class\\\\7b704970-429c-4686-b28c-0dc23945c341\\\\scratchpad\\\\check_overbook.php\")"
+      "PowerShell(php \"C:\\\\Users\\\\LENOVO\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--laragon-www-tarakan-art-class\\\\7b704970-429c-4686-b28c-0dc23945c341\\\\scratchpad\\\\check_overbook.php\")",
+      "Bash(mkdir -p public/images/gallery public/images/tutors)",
+      "Bash(touch public/images/gallery/.gitkeep public/images/tutors/.gitkeep)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" \"http://127.0.0.1:8099/galeri?kategori=coloring\")",
+      "Bash(curl -s http://127.0.0.1:8099/sitemap.xml)",
+      "Bash(curl -s http://127.0.0.1:8099/)",
+      "Bash(curl -s http://127.0.0.1:8099/jadwal)",
+      "Bash(rm -f resources/views/partials/site-theme.blade.php)",
+      "Bash(git checkout *)",
+      "PowerShell(php artisan test --filter=PublicSiteTest)"
     ],
     "additionalDirectories": [
       "C:\\Users\\LENOVO\\AppData\\Local\\Temp\\claude\\c--laragon-www-tarakan-art-class\\7b704970-429c-4686-b28c-0dc23945c341\\scratchpad"

@@ -2,9 +2,13 @@
 
 namespace App\Models;
 
+use App\Observers\PaymentObserver;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
+#[ObservedBy(PaymentObserver::class)]
 class Payment extends Model
 {
     protected $fillable = [
@@ -42,5 +46,13 @@ class Payment extends Model
     public function student(): BelongsTo
     {
         return $this->belongsTo(Student::class);
+    }
+
+    /**
+     * Transaksi pemasukan otomatis di Laporan Keuangan (dibuat oleh PaymentObserver).
+     */
+    public function transaction(): HasOne
+    {
+        return $this->hasOne(Transaction::class);
     }
 }

@@ -14,6 +14,20 @@ use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\FinancialController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\InventoryController;
+use App\Http\Controllers\PublicSiteController;
+
+// ─── Website Publik (marketing & informasi) ────────────────────
+// Terpisah dari sistem admin: tanpa auth, layout & sistem desain sendiri.
+Route::controller(PublicSiteController::class)->group(function () {
+    Route::get('/', 'home')->name('public.home');
+    Route::get('/tentang', 'about')->name('public.about');
+    Route::get('/program', 'programs')->name('public.programs');
+    Route::get('/galeri', 'gallery')->name('public.gallery');
+    Route::get('/jadwal', 'schedule')->name('public.schedule');
+    Route::get('/kontak', 'contact')->name('public.contact');
+    Route::post('/kontak', 'storeLead')->name('public.contact.store')->middleware('throttle:6,1');
+    Route::get('/sitemap.xml', 'sitemap')->name('public.sitemap');
+});
 
 // ─── Auth Routes (Guest Only) ──────────────────────────────────
 Route::middleware('guest')->group(function () {
@@ -30,8 +44,8 @@ Route::post('/raport', [ReportController::class, 'guestShow'])->name('reports.gu
 // ─── Protected Routes (Auth Required) ─────────────────────────
 Route::middleware('auth')->group(function () {
 
-    // Dashboard (F1)
-    Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+    // Dashboard (F1) — `/` dipakai website publik, jadi dashboard di /dashboard
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     // ─── Export Report (F12) — Excel(CSV)/PDF ──────────────────
     Route::get('export/students', [ExportController::class, 'students'])->name('export.students');

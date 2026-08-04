@@ -22,7 +22,7 @@
 
 ## 2. Pendekatan Teknis
 
-- **Stack:** Laravel (Blade) + Tailwind CSS, disatukan dalam project yang sama dengan sistem.
+- **Stack:** Laravel (Blade) + bootstrap, disatukan dalam project yang sama dengan sistem.
 - **Routing:** route publik `/` s/d `/kontak`; halaman login yang sudah ada tetap di jalurnya sendiri.
 - **Satu domain, satu deploy** — komponen Blade (navbar, footer, kartu) dibuat reusable via `@include` / komponen Blade.
 - **Responsive:** desktop, tablet, mobile (mengacu non-functional requirement PRD).
@@ -176,7 +176,7 @@ Section:
 ## 7. Fase Pembuatan (Prioritas)
 
 **Fase 1 — Fondasi & konversi**
-1. Template dasar: navbar + footer + layout + sistem desain (Tailwind config warna & font).
+1. Template dasar: navbar + footer + layout + sistem desain (bootstrap warna & font).
 2. Home (integrasi landing page yang sudah ada).
 3. Program & Kelas.
 4. Kontak & Pendaftaran.
@@ -194,9 +194,11 @@ Section:
 
 ## 8. Langkah Berikutnya
 
-- [ ] Setup Tailwind config (warna & font sistem desain).
-- [ ] Buat komponen global (navbar, footer, tombol, kartu, WA float).
-- [ ] Bangun Home dari landing page yang sudah ada.
-- [ ] Bangun Program & Kelas + Kontak (jalur konversi).
-- [ ] Siapkan endpoint form Kontak → email/WhatsApp admin.
-- [ ] Lanjut Tentang, Galeri, Jadwal.
+- [x] Setup bootstrap (warna & font sistem desain) — `public/css/site.css`.
+- [x] Buat komponen global (navbar, footer, tombol, kartu, WA float).
+- [x] Bangun Home dari landing page yang sudah ada.
+- [x] Bangun Program & Kelas + Kontak (jalur konversi).
+- [x] Siapkan endpoint form Kontak → email/WhatsApp admin.
+- [x] Lanjut Tentang, Galeri, Jadwal.
+- [ ] Blog / Tips — fase 3, belum dikerjakan.
+- [ ] Isi konten asli: data kontak di `.env`, foto galeri & tutor, `public/images/og-image.jpg`.

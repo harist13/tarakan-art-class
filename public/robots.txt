@@ -1,2 +1,19 @@
 User-agent: *
-Disallow:
+Allow: /
+
+# Area sistem admin — tidak untuk diindeks.
+Disallow: /dashboard
+Disallow: /login
+Disallow: /users
+Disallow: /students
+Disallow: /classes
+Disallow: /schedules
+Disallow: /attendances
+Disallow: /payments
+Disallow: /financials
+Disallow: /reports
+Disallow: /inventory
+Disallow: /activity-logs
+Disallow: /export
+
+Sitemap: /sitemap.xml

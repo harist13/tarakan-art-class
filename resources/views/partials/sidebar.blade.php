@@ -7,8 +7,8 @@
     </div>
 
     <ul class="list-unstyled components">
-        <li class="{{ request()->is('/') ? 'active' : '' }}">
-            <a href="/"><i class="bi bi-grid-1x2-fill"></i> Dashboard</a>
+        <li class="{{ request()->routeIs('dashboard') ? 'active' : '' }}">
+            <a href="{{ route('dashboard') }}"><i class="bi bi-grid-1x2-fill"></i> Dashboard</a>
         </li>
 
         <li class="px-4 mt-4 mb-2 text-uppercase sidebar-heading">Manajemen</li>

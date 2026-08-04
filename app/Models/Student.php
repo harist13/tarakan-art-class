@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Observers\StudentObserver;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+#[ObservedBy(StudentObserver::class)]
 class Student extends Model
 {
     protected $fillable = [

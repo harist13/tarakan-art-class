@@ -1,8 +1,24 @@
 @extends('layouts.app')
 
 @section('content')
+@php
+    // Query aktif tanpa nomor halaman, dipakai untuk tombol pindah periode.
+    $filterParams = collect(request()->query())->except('page')->all();
+    $currentMonth = now()->format('Y-m');
+    $isAllPeriods = $month === '';
+@endphp
+
 <div class="d-sm-flex align-items-center justify-content-between mb-4">
-    <h1 class="h3 mb-0 text-gray-800 fw-bold">Laporan Keuangan</h1>
+    <div>
+        <h1 class="h3 mb-0 text-gray-800 fw-bold">Laporan Keuangan</h1>
+        <div class="small text-muted mt-1">
+            <i class="bi bi-calendar3 me-1"></i>
+            Menampilkan periode <span class="fw-semibold">{{ $periodLabel }}</span>
+            @unless($isAllPeriods)
+                — transaksi di luar bulan ini tidak ikut terhitung.
+            @endunless
+        </div>
+    </div>
     <div class="d-flex gap-2">
         @include('partials.export-buttons', ['route' => 'export.financials'])
         <a href="{{ route('financials.create') }}" class="btn btn-sm btn-primary shadow-sm"><i class="bi bi-plus-lg"></i> Catat Transaksi</a>
@@ -38,13 +54,25 @@
                 <span class="input-group-text bg-transparent border-end-0"><i class="bi bi-search text-muted"></i></span>
                 <input type="text" name="search" value="{{ $search }}" class="form-control border-start-0 ps-0 py-2" placeholder="Cari kategori...">
             </div>
-            <input type="month" name="month" value="{{ $month }}" class="form-control form-control-sm" style="width:160px;">
+            <input type="month" name="month" value="{{ $month }}" class="form-control form-control-sm" style="width:160px;"
+                   title="Kosongkan untuk menampilkan semua periode">
+            @if($isAllPeriods)
+                <a href="{{ route('financials.index', array_merge($filterParams, ['month' => $currentMonth])) }}"
+                   class="btn btn-sm btn-outline-primary text-nowrap" title="Kembali ke bulan berjalan">
+                    <i class="bi bi-calendar-event"></i> Bulan Ini
+                </a>
+            @else
+                <a href="{{ route('financials.index', array_merge($filterParams, ['month' => ''])) }}"
+                   class="btn btn-sm btn-outline-primary text-nowrap" title="Tampilkan seluruh periode">
+                    <i class="bi bi-calendar-range"></i> Semua Bulan
+                </a>
+            @endif
             <select name="type" class="form-select form-select-sm" style="width:150px;">
                 <option value="">Semua</option>
                 <option value="income" @selected($type === 'income')>Pemasukan</option>
                 <option value="expense" @selected($type === 'expense')>Pengeluaran</option>
             </select>
-            @if($search !== '' || $type !== '')
+            @if($search !== '' || $type !== '' || $month !== $currentMonth)
                 <a href="{{ route('financials.index') }}" class="btn btn-sm btn-outline-secondary" title="Reset filter"><i class="bi bi-x-lg"></i></a>
             @endif
         </form>
@@ -60,19 +88,38 @@
                         <tr>
                             <td>{{ $trx->transaction_date->format('d M Y') }}</td>
                             <td><span class="badge bg-{{ $trx->type === 'income' ? 'success' : 'warning' }}">{{ $trx->type === 'income' ? 'Masuk' : 'Keluar' }}</span></td>
-                            <td>{{ $trx->category }}</td>
+                            <td>
+                                {{ $trx->category }}
+                                @if($trx->payment_id)
+                                    <span class="badge bg-light text-secondary border ms-1" title="Tercatat otomatis dari invoice lunas"><i class="bi bi-lightning-charge-fill"></i> Otomatis</span>
+                                @endif
+                            </td>
                             <td class="small">{{ $trx->description ?: '-' }}</td>
                             <td class="fw-bold">Rp {{ number_format($trx->amount, 0, ',', '.') }}</td>
                             <td class="text-end">
-                                <a href="{{ route('financials.edit', $trx) }}" class="btn btn-sm btn-info text-white"><i class="bi bi-pencil"></i></a>
-                                <form action="{{ route('financials.destroy', $trx) }}" method="POST" class="d-inline" onsubmit="return confirm('Hapus transaksi ini?')">
-                                    @csrf @method('DELETE')
-                                    <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
-                                </form>
+                                @if($trx->payment_id)
+                                    <a href="{{ route('payments.index', ['search' => $trx->payment?->invoice_number]) }}"
+                                       class="btn btn-sm btn-outline-secondary" title="Kelola dari menu Pembayaran">
+                                        <i class="bi bi-receipt-cutoff"></i> Invoice
+                                    </a>
+                                @else
+                                    <a href="{{ route('financials.edit', $trx) }}" class="btn btn-sm btn-info text-white"><i class="bi bi-pencil"></i></a>
+                                    <form action="{{ route('financials.destroy', $trx) }}" method="POST" class="d-inline" onsubmit="return confirm('Hapus transaksi ini?')">
+                                        @csrf @method('DELETE')
+                                        <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                @endif
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="6" class="text-center text-muted">Belum ada transaksi pada periode ini.</td></tr>
+                        <tr><td colspan="6" class="text-center text-muted py-4">
+                            @if($isAllPeriods)
+                                Belum ada transaksi yang cocok dengan filter.
+                            @else
+                                Belum ada transaksi pada periode {{ $periodLabel }}.
+                                <a href="{{ route('financials.index', array_merge($filterParams, ['month' => ''])) }}">Lihat semua bulan</a>.
+                            @endif
+                        </td></tr>
                     @endforelse
                 </tbody>
             </table>

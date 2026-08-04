@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\ActivityLog;
 use App\Models\Transaction;
+use Carbon\Carbon;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -13,13 +15,14 @@ class FinancialController extends Controller
     public function index(Request $request)
     {
         $type = $request->string('type')->toString();
-        $month = $request->string('month')->toString() ?: now()->format('Y-m');
+        $month = self::resolveMonth($request);
         $search = $request->string('search')->toString();
 
-        [$year, $mon] = array_pad(explode('-', $month), 2, null);
+        [$year, $mon] = $month !== '' ? explode('-', $month) : [null, null];
+        $periodLabel = self::periodLabel($month);
 
         $query = Transaction::query()
-            ->with('recorder')
+            ->with(['recorder', 'payment'])
             ->when($year && $mon, fn ($q) => $q->whereYear('transaction_date', $year)->whereMonth('transaction_date', $mon))
             ->when(in_array($type, ['income', 'expense'], true), fn ($q) => $q->where('type', $type))
             ->when($search, fn ($q) => $q->where(function ($sub) use ($search) {
@@ -33,7 +36,7 @@ class FinancialController extends Controller
         $totalExpense = (clone $query)->where('type', 'expense')->sum('amount');
         $balance = $totalIncome - $totalExpense;
 
-        return view('financials.index', compact('transactions', 'totalIncome', 'totalExpense', 'balance', 'type', 'month', 'search'));
+        return view('financials.index', compact('transactions', 'totalIncome', 'totalExpense', 'balance', 'type', 'month', 'search', 'periodLabel'));
     }
 
     public function create()
@@ -56,11 +59,19 @@ class FinancialController extends Controller
 
     public function edit(Transaction $financial)
     {
+        if ($guard = $this->guardAutoTransaction($financial)) {
+            return $guard;
+        }
+
         return view('financials.edit', ['transaction' => $financial]);
     }
 
     public function update(Request $request, Transaction $financial)
     {
+        if ($guard = $this->guardAutoTransaction($financial)) {
+            return $guard;
+        }
+
         $data = $this->validateData($request);
 
         DB::transaction(function () use ($financial, $data) {
@@ -73,12 +84,56 @@ class FinancialController extends Controller
 
     public function destroy(Transaction $financial)
     {
+        if ($guard = $this->guardAutoTransaction($financial)) {
+            return $guard;
+        }
+
         DB::transaction(function () use ($financial) {
             ActivityLog::record('deleted', $financial, "Menghapus transaksi {$financial->category}");
             $financial->delete();
         });
 
         return redirect()->route('financials.index')->with('success', 'Transaksi berhasil dihapus.');
+    }
+
+    /**
+     * Aturan filter periode (dipakai bersama oleh halaman & export):
+     * - parameter "month" tidak dikirim (kunjungan pertama) → default bulan berjalan;
+     * - dikirim tapi kosong (filter dibersihkan / tombol "Semua Bulan") → semua periode;
+     * - format selain YYYY-MM diperlakukan sebagai semua periode.
+     */
+    public static function resolveMonth(Request $request): string
+    {
+        if (! $request->has('month')) {
+            return now()->format('Y-m');
+        }
+
+        $month = trim($request->string('month')->toString());
+
+        return preg_match('/^\d{4}-\d{2}$/', $month) === 1 ? $month : '';
+    }
+
+    public static function periodLabel(string $month): string
+    {
+        if ($month === '') {
+            return 'Semua Periode';
+        }
+
+        return Carbon::createFromFormat('Y-m-d', $month.'-01')->translatedFormat('F Y');
+    }
+
+    /**
+     * Transaksi hasil sinkronisasi pembayaran tidak boleh diubah/dihapus di sini,
+     * supaya nominalnya selalu sama dengan invoice di menu Pembayaran.
+     */
+    private function guardAutoTransaction(Transaction $transaction): ?RedirectResponse
+    {
+        if (! $transaction->payment_id) {
+            return null;
+        }
+
+        return redirect()->route('financials.index')
+            ->with('error', 'Transaksi ini otomatis dari pembayaran lunas. Ubah atau void invoicenya di menu Pembayaran.');
     }
 
     private function validateData(Request $request): array

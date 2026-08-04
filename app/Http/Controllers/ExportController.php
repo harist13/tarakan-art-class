@@ -81,10 +81,11 @@ class ExportController extends Controller
     public function financials(Request $request)
     {
         $type = $request->string('type')->toString();
-        $month = $request->string('month')->toString() ?: now()->format('Y-m');
+        // Aturan periode disamakan dengan halaman Laporan Keuangan (termasuk "Semua Bulan").
+        $month = FinancialController::resolveMonth($request);
         $search = $request->string('search')->toString();
 
-        [$year, $mon] = array_pad(explode('-', $month), 2, null);
+        [$year, $mon] = $month !== '' ? explode('-', $month) : [null, null];
 
         $transactions = Transaction::query()
             ->when($year && $mon, fn ($q) => $q->whereYear('transaction_date', $year)->whereMonth('transaction_date', $mon))
@@ -114,7 +115,9 @@ class ExportController extends Controller
             'Saldo' => 'Rp '.number_format($income - $expense, 0, ',', '.'),
         ];
 
-        return $this->respond($request, 'Laporan Keuangan '.$month, $headers, $rows, 'laporan-keuangan-'.$month, $meta);
+        $period = FinancialController::periodLabel($month);
+
+        return $this->respond($request, 'Laporan Keuangan '.$period, $headers, $rows, 'laporan-keuangan-'.($month ?: 'semua-periode'), $meta);
     }
 
     /** Export absensi (F5). Menghormati filter class_id & date. */
