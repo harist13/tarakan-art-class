@@ -19,7 +19,10 @@ class InventoryController extends Controller
         $items = InventoryItem::query()
             ->when($search, fn ($q) => $q->where('item_name', 'like', "%{$search}%")
                 ->orWhere('item_code', 'like', "%{$search}%"))
-            ->orderBy('item_name')
+            // Barang yang baru ditambahkan tampil paling atas; id menurun jadi pemecah
+            // kalau ada beberapa barang yang dibuat pada detik yang sama.
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
             ->paginate(10)
             ->withQueryString();
 

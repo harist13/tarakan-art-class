@@ -59,7 +59,10 @@ class ClassRoomController extends Controller
             ->when($status === 'tersedia', fn ($q) => $q->where('classes.status', '!=', 'closed')->where($notPast)
                 ->whereHas('tutor', fn ($t) => $t->where('status', 'active'))
                 ->whereRaw("{$enrolledSql} < classes.capacity", ['active']))
-            ->orderBy('class_name')
+            // Kelas yang baru dibuat tampil paling atas; id menurun jadi pemecah
+            // kalau ada beberapa kelas yang dibuat pada detik yang sama.
+            ->orderByDesc('classes.created_at')
+            ->orderByDesc('classes.id')
             ->paginate(10)
             ->withQueryString();
 
@@ -75,7 +78,9 @@ class ClassRoomController extends Controller
             }))
             ->when(in_array($tutorStatus, ['active', 'inactive'], true), fn ($q) => $q->where('status', $tutorStatus))
             ->when($tutorClassId, fn ($q) => $q->whereHas('classes', fn ($c) => $c->where('id', $tutorClassId)))
-            ->orderBy('name')
+            // Tutor yang baru ditambahkan tampil paling atas, sama seperti daftar kelas.
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
             ->get();
 
         // Daftar semua kelas untuk dropdown filter "kelas yang diampu".

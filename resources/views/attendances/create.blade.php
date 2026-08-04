@@ -7,17 +7,18 @@
 </div>
 
 <div class="card">
-    <div class="card-header">Pilih Kelas & Tanggal</div>
+    <div class="card-header">Pilih Kelas</div>
     <div class="card-body">
-        <form method="GET" action="{{ route('attendances.create') }}" class="row g-3">
-            <div class="col-md-8">
-                <label class="form-label">Kelas</label>
-                <select name="class_id" class="form-select" onchange="this.form.submit()" required>
+        <form method="GET" action="{{ route('attendances.create') }}">
+            <div style="max-width:420px;">
+                <label class="form-label" for="class_id">Kelas</label>
+                <select name="class_id" id="class_id" class="form-select" onchange="this.form.submit()" required>
                     <option value="">— Pilih Kelas —</option>
                     @foreach($classes as $class)
                         <option value="{{ $class->id }}" @selected($selectedClass && $selectedClass->id === $class->id)>{{ $class->class_name }} ({{ $class->class_code }})</option>
                     @endforeach
                 </select>
+                <div class="form-text">Daftar murid muncul otomatis setelah kelas dipilih.</div>
             </div>
         </form>
     </div>
@@ -25,7 +26,10 @@
 
 @if($selectedClass)
     <div class="card">
-        <div class="card-header">Daftar Murid — {{ $selectedClass->class_name }}</div>
+        <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <span>Daftar Murid — {{ $selectedClass->class_name }}</span>
+            <span class="badge bg-primary-subtle text-primary">{{ $students->count() }} murid bisa diabsen</span>
+        </div>
         <div class="card-body">
             {{-- Murid dengan pembayaran belum lunas tidak bisa diabsen; ditampilkan agar admin tahu penyebabnya. --}}
             @if($blockedStudents->isNotEmpty())
@@ -66,7 +70,9 @@
                                         <input type="hidden" name="records[{{ $i }}][student_id]" value="{{ $student->id }}">
                                     </td>
                                     <td>
-                                        <select name="records[{{ $i }}][status]" class="form-select form-select-sm">
+                                        {{-- data-no-search: hanya 3 opsi, kotak pencarian tidak perlu
+                                             dan select native tidak terpotong overflow tabel. --}}
+                                        <select name="records[{{ $i }}][status]" class="form-select form-select-sm" data-no-search>
                                             <option value="present">Hadir</option>
                                             <option value="absent">Absen</option>
                                             <option value="permit">Izin</option>

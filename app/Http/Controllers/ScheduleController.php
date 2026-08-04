@@ -200,12 +200,13 @@ class ScheduleController extends Controller
                 'reason' => $holiday->name ?: 'Kelas ditiadakan',
                 'holiday' => true,
             ];
-            // Tint latar seharian.
+            // Oranye — sengaja dibedakan dari biru kelas reguler & amber replacement pending.
+            // Tint latar seharian (FullCalendar merender background event dgn opacity rendah).
             $events[] = [
                 'start' => $date,
                 'allDay' => true,
                 'display' => 'background',
-                'color' => '#38BDF8',
+                'color' => '#FB923C',
                 'extendedProps' => $props,
             ];
             // Chip berlabel (bisa diklik, tampil juga di listMonth).
@@ -213,7 +214,7 @@ class ScheduleController extends Controller
                 'title' => '🏖️ Libur'.($holiday->name ? ': '.$holiday->name : ''),
                 'start' => $date,
                 'allDay' => true,
-                'color' => '#0EA5E9',
+                'color' => '#EA580C',
                 'extendedProps' => $props,
             ];
         }

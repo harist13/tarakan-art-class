@@ -35,7 +35,11 @@ class FinancialController extends Controller
         $transactions = (clone $scope)
             ->with(['recorder', 'payment', 'inventoryItem'])
             ->when(in_array($type, ['income', 'expense'], true), fn ($q) => $q->where('type', $type))
+            // Tanggal transaksi cuma menyimpan tanggal (tanpa jam), jadi transaksi di hari
+            // yang sama urutannya tidak menentu. id menurun dipakai sebagai pemecah supaya
+            // catatan terbaru — manual maupun otomatis dari invoice/inventaris — selalu di atas.
             ->orderByDesc('transaction_date')
+            ->orderByDesc('id')
             ->paginate(15)
             ->withQueryString();
 

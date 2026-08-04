@@ -258,6 +258,21 @@
         box-shadow: 0 12px 32px var(--shadow-md);
     }
 
+    /* Kartu yang di-hover harus menang lapisan atas kartu sesudahnya, supaya
+       dropdown di dalamnya tidak tertimpa. (transform membuat stacking context) */
+    .card:hover, .card:focus-within {
+        z-index: 5;
+    }
+
+    /* Saat ada dropdown terbuka di dalam kartu, matikan efek angkat: transform
+       mengurung dropdown di dalam stacking context kartu sehingga bertabrakan
+       dengan kartu berikutnya. */
+    .card:has(.ts-wrapper.focus),
+    .card:has(.dropdown-menu.show) {
+        transform: none !important;
+        z-index: 20;
+    }
+
     .card-header {
         background-color: var(--surface);
         border-bottom: 1px solid var(--border);
@@ -380,14 +395,32 @@
     }
     .ts-control, .ts-control input, .ts-control .item { color: var(--text) !important; }
     .ts-control input::placeholder { color: var(--text-muted) !important; }
+    .ts-wrapper { position: relative; }
+    /* Kontrol yang sedang aktif ikut diangkat agar dropdown-nya di atas elemen lain. */
+    .ts-wrapper.focus { z-index: 1055; }
     .ts-dropdown {
         background-color: var(--surface);
         border: 1px solid var(--border);
         color: var(--text);
-        box-shadow: 0 6px 24px var(--shadow-md);
+        box-shadow: 0 12px 32px var(--shadow-md);
+        border-radius: 0.65rem;
+        margin-top: 0.35rem;
+        padding: 0;
+        overflow: hidden;
+        z-index: 1056;
     }
-    .ts-dropdown .option { color: var(--text); padding: 0.55rem 0.85rem; font-size: 0.95rem; line-height: 1.3; }
+    .ts-dropdown .ts-dropdown-content { max-height: 240px; padding: 0.25rem; }
+    .ts-dropdown .option {
+        color: var(--text);
+        padding: 0.5rem 0.75rem;
+        font-size: 0.95rem;
+        line-height: 1.3;
+        border-radius: 0.4rem;
+    }
     .ts-dropdown .option.active { background-color: var(--surface-2); color: var(--primary-color); }
+    .ts-dropdown .option.selected { font-weight: 700; }
+    /* Dropdown di dalam tabel tidak boleh terpotong overflow-x milik .table-responsive. */
+    .table-responsive:has(.ts-wrapper.focus) { overflow: visible; }
     /* Kotak pencarian di dalam dropdown (plugin dropdown_input) */
     .ts-dropdown .dropdown-input-wrap { padding: 0.4rem; border-bottom: 1px solid var(--border); }
     .ts-dropdown .dropdown-input {

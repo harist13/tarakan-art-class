@@ -13,17 +13,17 @@
     <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-3">
         <span class="fw-bold text-nowrap">Rekap Kehadiran</span>
         <form method="GET" data-live class="d-flex flex-wrap align-items-center gap-2">
-            <div class="input-group input-group-sm" style="width:170px;">
+            <div class="input-group input-group-sm" style="width:190px;">
                 <span class="input-group-text bg-transparent border-end-0"><i class="bi bi-search text-muted"></i></span>
                 <input type="text" name="search" value="{{ $search }}" class="form-control border-start-0 ps-0 py-2" placeholder="Cari murid...">
             </div>
-            <select name="class_id" class="form-select form-select-sm" style="width:170px;">
+            <select name="class_id" class="form-select form-select-sm" style="width:190px;" aria-label="Filter kelas">
                 <option value="">Semua Kelas</option>
                 @foreach($classes as $class)
                     <option value="{{ $class->id }}" @selected($classId == $class->id)>{{ $class->class_name }}</option>
                 @endforeach
             </select>
-            <input type="date" name="date" value="{{ $date }}" class="form-control form-control-sm" style="width:170px;">
+            <input type="date" name="date" value="{{ $date }}" class="form-control form-control-sm py-2" style="width:170px;" aria-label="Filter tanggal">
             @if($search !== '' || $classId || $date !== '')
                 <a href="{{ route('attendances.index') }}" class="btn btn-sm btn-outline-secondary" title="Reset filter"><i class="bi bi-x-lg"></i></a>
             @endif

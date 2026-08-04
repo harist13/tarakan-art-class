@@ -42,7 +42,7 @@
             <span><span class="d-inline-block rounded-circle me-1" style="width:12px;height:12px;background:#F59E0B;"></span>Repl. Pending</span>
             <span><span class="d-inline-block rounded-circle me-1" style="width:12px;height:12px;background:#10B981;"></span>Repl. Approved</span>
             <span><span class="d-inline-block rounded-circle me-1" style="width:12px;height:12px;background:#EF4444;"></span>Repl. Rejected</span>
-            <span><span class="d-inline-block rounded-circle me-1" style="width:12px;height:12px;background:#0EA5E9;"></span>Hari Libur</span>
+            <span><span class="d-inline-block rounded-circle me-1" style="width:12px;height:12px;background:#EA580C;"></span>Hari Libur</span>
             <span><span class="d-inline-block rounded-circle me-1" style="width:12px;height:12px;background:#6366F1;"></span>Acara</span>
             <div class="form-check form-switch ms-2">
                 <input class="form-check-input" type="checkbox" id="onlyAvailable" checked>

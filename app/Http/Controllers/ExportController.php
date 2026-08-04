@@ -100,6 +100,7 @@ class ExportController extends Controller
         $transactions = (clone $scope)
             ->when(in_array($type, ['income', 'expense'], true), fn ($q) => $q->where('type', $type))
             ->orderByDesc('transaction_date')
+            ->orderByDesc('id')
             ->get();
 
         $headers = ['Tanggal', 'Tipe', 'Kategori', 'Jumlah (Rp)', 'Deskripsi'];
