@@ -135,29 +135,33 @@
                         <legend class="tac-legend">Data anak</legend>
 
                         <div class="row g-3 mt-0">
-                            <div class="col-sm-8">
+                            <div class="col-12">
                                 <label for="child_name" class="tac-label">
                                     Nama anak <span class="tac-text-coral" aria-hidden="true">*</span>
                                 </label>
                                 <input type="text" id="child_name" name="child_name" required maxlength="100"
                                        value="{{ old('child_name') }}" placeholder="Nama lengkap anak" class="tac-input">
                             </div>
+                            <div class="col-sm-8">
+                                <label for="date_of_birth" class="tac-label">
+                                    Tanggal lahir <span class="tac-text-coral" aria-hidden="true">*</span>
+                                </label>
+                                <input type="date" id="date_of_birth" name="date_of_birth" required max="{{ now()->toDateString() }}"
+                                       value="{{ old('date_of_birth') }}" class="tac-input">
+                            </div>
                             <div class="col-sm-4">
-                                <label for="child_age" class="tac-label">Usia</label>
+                                <label for="child_age" class="tac-label">
+                                    Usia <span class="fw-normal tac-muted-soft">(opsional)</span>
+                                </label>
                                 <input type="number" id="child_age" name="child_age" min="2" max="17"
                                        value="{{ old('child_age') }}" placeholder="7" class="tac-input">
                             </div>
                             <div class="col-sm-6">
-                                <label for="date_of_birth" class="tac-label">
-                                    Tanggal lahir <span class="fw-normal tac-muted-soft">(opsional)</span>
+                                <label for="class_type" class="tac-label">
+                                    Tipe kelas <span class="tac-text-coral" aria-hidden="true">*</span>
                                 </label>
-                                <input type="date" id="date_of_birth" name="date_of_birth" max="{{ now()->toDateString() }}"
-                                       value="{{ old('date_of_birth') }}" class="tac-input">
-                            </div>
-                            <div class="col-sm-6">
-                                <label for="class_type" class="tac-label">Tipe kelas</label>
-                                <select id="class_type" name="class_type" class="tac-input">
-                                    <option value="">Belum tahu — bantu pilihkan</option>
+                                <select id="class_type" name="class_type" required class="tac-input">
+                                    <option value="">— Pilih tipe kelas —</option>
                                     @foreach(\App\Models\Lead::CLASS_TYPES as $value => $label)
                                         <option value="{{ $value }}" @selected(old('class_type', $selectedType) === $value)>
                                             {{ $label }}
@@ -165,16 +169,19 @@
                                     @endforeach
                                 </select>
                             </div>
-                            <div class="col-12">
-                                <label for="program" class="tac-label">Kelas yang diminati</label>
-                                <select id="program" name="program" class="tac-input">
-                                    <option value="">Belum tahu — bantu pilihkan</option>
+                            <div class="col-sm-6">
+                                <label for="program" class="tac-label">
+                                    Kelas yang diminati <span class="tac-text-coral" aria-hidden="true">*</span>
+                                </label>
+                                <select id="program" name="program" required class="tac-input">
+                                    <option value="">— Pilih kelas —</option>
                                     @foreach($classOptions as $option)
-                                        <option value="{{ $option['value'] }}" @selected(old('program', $selected) === $option['value'])>
+                                        <option value="{{ $option['value'] }}" @selected(old('program', $selected) === $option['value']) data-category="{{ $option['category'] }}">
                                             {{ $option['label'] }}
                                         </option>
                                     @endforeach
                                 </select>
+                                <p class="tac-muted-soft mt-2 mb-0" style="font-size: 0.75rem;" data-class-hint hidden></p>
                             </div>
                         </div>
                     </fieldset>
@@ -199,16 +206,16 @@
                             </div>
                             <div class="col-12">
                                 <label for="parent_email" class="tac-label">
-                                    Email <span class="fw-normal tac-muted-soft">(opsional)</span>
+                                    Email <span class="tac-text-coral" aria-hidden="true">*</span>
                                 </label>
-                                <input type="email" id="parent_email" name="parent_email" maxlength="150"
+                                <input type="email" id="parent_email" name="parent_email" required maxlength="150"
                                        value="{{ old('parent_email') }}" placeholder="nama@email.com" class="tac-input">
                             </div>
                             <div class="col-12">
                                 <label for="address" class="tac-label">
-                                    Alamat <span class="fw-normal tac-muted-soft">(opsional)</span>
+                                    Alamat <span class="tac-text-coral" aria-hidden="true">*</span>
                                 </label>
-                                <textarea id="address" name="address" rows="2" maxlength="500" class="tac-input"
+                                <textarea id="address" name="address" rows="2" required maxlength="500" class="tac-input"
                                           placeholder="Nama jalan, nomor rumah, kelurahan">{{ old('address') }}</textarea>
                             </div>
                             <div class="col-12">
@@ -252,19 +259,82 @@
         return select.options[select.selectedIndex].text.trim();
     }
 
+    // Tipe kelas → menyaring daftar "Kelas yang diminati". Opsi disimpan sekali
+    // di awal, lalu select dibangun ulang tiap tipe berubah (option[hidden]
+    // tidak konsisten di semua browser, terutama di ponsel).
+    var typeSelect = form.elements['class_type'];
+    var programSelect = form.elements['program'];
+    var hint = form.querySelector('[data-class-hint]');
+
+    if (typeSelect && programSelect) {
+        var placeholder = programSelect.options[0].text;
+        var allClasses = Array.prototype.slice.call(programSelect.options, 1).map(function (option) {
+            return {
+                value: option.value,
+                label: option.text.trim(),
+                // Kelas tanpa kategori (mis. Holiday Class) cocok untuk semua tipe.
+                category: option.dataset.category || ''
+            };
+        });
+
+        function renderClasses() {
+            var type = typeSelect.value;
+            var previous = programSelect.value;
+            var matches = allClasses.filter(function (item) {
+                return !type || !item.category || item.category === type;
+            });
+
+            programSelect.innerHTML = '';
+            programSelect.add(new Option(placeholder, ''));
+            matches.forEach(function (item) {
+                programSelect.add(new Option(item.label, item.value));
+            });
+
+            // Pertahankan pilihan lama bila masih relevan dengan tipe baru.
+            programSelect.value = matches.some(function (item) { return item.value === previous; })
+                ? previous
+                : '';
+
+            // Tipe kelas yang belum punya jadwal tidak boleh membuat form buntu:
+            // pilihan kelas dilonggarkan, sisi server memakai aturan yang sama.
+            var empty = type && matches.length === 0;
+            programSelect.required = !empty;
+
+            if (hint) {
+                hint.hidden = !empty;
+                hint.textContent = empty
+                    ? 'Belum ada jadwal kelas ' + selectedLabel('class_type').toLowerCase() + '. Kirim saja formnya, admin akan mengabari begitu kelas dibuka.'
+                    : '';
+            }
+        }
+
+        // Kebalikannya: memilih kelas ikut mengisi tipe kelas yang belum diisi,
+        // supaya data yang masuk ke admin tidak saling bertentangan.
+        programSelect.addEventListener('change', function () {
+            if (typeSelect.value || !programSelect.value) return;
+
+            var picked = allClasses.filter(function (item) { return item.value === programSelect.value; })[0];
+            if (picked && picked.category) typeSelect.value = picked.category;
+        });
+
+        typeSelect.addEventListener('change', renderClasses);
+        renderClasses();
+    }
+
     // Tanggal lahir → usia, supaya orang tua tidak perlu menghitung sendiri.
     var birthField = form.elements['date_of_birth'];
     if (birthField) {
         birthField.addEventListener('change', function () {
-            if (!birthField.value) return;
+            // Dipecah manual: new Date('2018-05-17') dibaca sebagai UTC, bisa
+            // meleset sehari saat dibandingkan dengan tanggal lokal.
+            var parts = birthField.value.split('-');
+            if (parts.length !== 3) return;
 
-            var born = new Date(birthField.value);
-            if (isNaN(born.getTime())) return;
-
+            var year = +parts[0], month = +parts[1], day = +parts[2];
             var today = new Date();
-            var age = today.getFullYear() - born.getFullYear();
-            var beforeBirthday = today.getMonth() < born.getMonth()
-                || (today.getMonth() === born.getMonth() && today.getDate() < born.getDate());
+            var age = today.getFullYear() - year;
+            var beforeBirthday = today.getMonth() + 1 < month
+                || (today.getMonth() + 1 === month && today.getDate() < day);
             if (beforeBirthday) age--;
 
             if (age >= 0 && age < 120) form.elements['child_age'].value = age;

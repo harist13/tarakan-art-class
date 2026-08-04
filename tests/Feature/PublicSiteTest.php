@@ -92,10 +92,13 @@ class PublicSiteTest extends TestCase
 
         $response = $this->post(route('public.contact.store'), [
             'child_name' => 'Alya Putri',
+            'date_of_birth' => '2018-05-17',
             'child_age' => 7,
+            'class_type' => 'coloring',
             'parent_name' => 'Bu Rina',
             'parent_phone' => '0812 3456 7890',
             'parent_email' => 'rina@example.com',
+            'address' => 'Jl. Mulawarman No. 3, Tarakan',
             'program' => 'coloring',
             'message' => 'Anak saya belum pernah ikut kelas seni.',
         ]);
@@ -110,6 +113,27 @@ class PublicSiteTest extends TestCase
         ]);
 
         Mail::assertSent(NewLeadNotification::class);
+    }
+
+    public function test_form_kontak_menerima_pendaftaran_tanpa_usia(): void
+    {
+        Mail::fake();
+
+        $this->post(route('public.contact.store'), [
+            'child_name' => 'Alya Putri',
+            'date_of_birth' => '2018-05-17',
+            'class_type' => 'coloring',
+            'parent_name' => 'Bu Rina',
+            'parent_phone' => '0812 3456 7890',
+            'parent_email' => 'rina@example.com',
+            'address' => 'Jl. Mulawarman No. 3, Tarakan',
+            'program' => 'coloring',
+        ])->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('leads', [
+            'child_name' => 'Alya Putri',
+            'child_age' => null,
+        ]);
     }
 
     public function test_email_notifikasi_lead_bisa_dirender(): void
@@ -139,10 +163,13 @@ class PublicSiteTest extends TestCase
         $this->post(route('public.contact.store'), [
             'child_name' => 'Alya Putri',
             'date_of_birth' => '2018-05-17',
+            'child_age' => 7,
             'class_type' => 'coloring',
             'parent_name' => 'Bu Rina',
             'parent_phone' => '081234567890',
+            'parent_email' => 'rina@example.com',
             'address' => 'Jl. Mulawarman No. 3, Tarakan',
+            'program' => 'coloring',
         ])->assertSessionHasNoErrors();
 
         $this->assertDatabaseHas('leads', [
@@ -186,8 +213,13 @@ class PublicSiteTest extends TestCase
 
         $this->post(route('public.contact.store'), [
             'child_name' => 'Alya Putri',
+            'date_of_birth' => '2018-05-17',
+            'child_age' => 7,
+            'class_type' => $class->class_category,
             'parent_name' => 'Bu Rina',
             'parent_phone' => '081234567890',
+            'parent_email' => 'rina@example.com',
+            'address' => 'Jl. Mulawarman No. 3, Tarakan',
             'program' => $class->class_name,
         ])->assertSessionHasNoErrors();
 
@@ -198,18 +230,50 @@ class PublicSiteTest extends TestCase
     {
         $class = $this->makeClass(Carbon::today()->addDay());
 
-        // ?kelas=coloring (slug program) → opsi kelas 'Coloring Sore' terpilih.
+        // ?kelas=coloring (slug program) → opsi kelas 'Coloring Sore' terpilih,
+        // berikut tipe kelasnya yang ikut terisi.
         $this->get(route('public.contact', ['kelas' => $class->class_category]))
             ->assertOk()
-            ->assertSee('value="'.$class->class_name.'" selected', false);
+            ->assertSee('value="'.$class->class_name.'" selected', false)
+            ->assertSee('value="'.$class->class_category.'" selected', false);
     }
 
     public function test_form_kontak_menolak_data_tidak_lengkap(): void
     {
+        // Semua isian wajib kecuali usia anak & pesan.
         $this->post(route('public.contact.store'), ['child_name' => 'Alya'])
-            ->assertSessionHasErrors(['parent_name', 'parent_phone']);
+            ->assertSessionHasErrors([
+                'date_of_birth', 'class_type',
+                'parent_name', 'parent_phone', 'parent_email', 'address',
+            ])
+            ->assertSessionDoesntHaveErrors(['child_age', 'message']);
 
         $this->assertDatabaseCount('leads', 0);
+    }
+
+    public function test_kelas_yang_diminati_tidak_wajib_bila_tipe_kelas_belum_ada_jadwalnya(): void
+    {
+        Mail::fake();
+
+        // Hanya ada kelas coloring di database, calon murid memilih tipe drawing.
+        $this->makeClass(Carbon::today()->addDay());
+
+        $payload = [
+            'child_name' => 'Alya Putri',
+            'date_of_birth' => '2018-05-17',
+            'child_age' => 7,
+            'parent_name' => 'Bu Rina',
+            'parent_phone' => '081234567890',
+            'parent_email' => 'rina@example.com',
+            'address' => 'Jl. Mulawarman No. 3, Tarakan',
+        ];
+
+        $this->post(route('public.contact.store'), $payload + ['class_type' => 'drawing'])
+            ->assertSessionHasNoErrors();
+
+        // Sebaliknya, tipe yang jadwalnya ada tetap mewajibkan pilihan kelas.
+        $this->post(route('public.contact.store'), $payload + ['class_type' => 'coloring'])
+            ->assertSessionHasErrors('program');
     }
 
     public function test_honeypot_memblokir_kiriman_bot(): void

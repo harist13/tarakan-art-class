@@ -9,6 +9,7 @@ class ReplacementRequest extends Model
 {
     protected $fillable = [
         'student_id',
+        'origin_class_id',
         'class_id',
         'replacement_date',
         'replacement_time',
@@ -26,9 +27,16 @@ class ReplacementRequest extends Model
         return $this->belongsTo(Student::class);
     }
 
+    /** Kelas baru (slot pengganti yang dituju). */
     public function classRoom(): BelongsTo
     {
         return $this->belongsTo(ClassRoom::class, 'class_id');
+    }
+
+    /** Kelas asal — jadwal yang ditinggalkan murid. */
+    public function originClass(): BelongsTo
+    {
+        return $this->belongsTo(ClassRoom::class, 'origin_class_id');
     }
 
     public function approver(): BelongsTo

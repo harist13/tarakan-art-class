@@ -2,9 +2,12 @@
 
 namespace App\Models;
 
+use App\Observers\InventoryItemObserver;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+#[ObservedBy(InventoryItemObserver::class)]
 class InventoryItem extends Model
 {
     protected $fillable = [
@@ -41,5 +44,13 @@ class InventoryItem extends Model
     public function movements(): HasMany
     {
         return $this->hasMany(StockMovement::class);
+    }
+
+    /**
+     * Pengeluaran otomatis di Laporan Keuangan (dibuat oleh InventoryItemObserver).
+     */
+    public function transactions(): HasMany
+    {
+        return $this->hasMany(Transaction::class);
     }
 }

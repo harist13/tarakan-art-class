@@ -14,6 +14,7 @@ class Transaction extends Model
         'transaction_date',
         'description',
         'payment_id',
+        'inventory_item_id',
         'recorded_by',
     ];
 
@@ -25,6 +26,11 @@ class Transaction extends Model
     public function payment(): BelongsTo
     {
         return $this->belongsTo(Payment::class);
+    }
+
+    public function inventoryItem(): BelongsTo
+    {
+        return $this->belongsTo(InventoryItem::class);
     }
 
     public function recorder(): BelongsTo

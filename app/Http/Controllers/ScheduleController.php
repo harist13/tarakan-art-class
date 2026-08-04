@@ -8,6 +8,7 @@ use App\Models\ClassRoom;
 use App\Models\Holiday;
 use App\Models\ReplacementRequest;
 use App\Models\Student;
+use App\Rules\StudentPaymentSettled;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -20,11 +21,14 @@ class ScheduleController extends Controller
         $search = $request->string('search')->toString();
 
         $requests = ReplacementRequest::query()
-            ->with(['student', 'classRoom', 'approver'])
+            ->with(['student', 'classRoom', 'originClass', 'approver'])
+            // Request milik murid yang belum lunas disembunyikan dari modul akademik.
+            ->whereHas('student', fn ($s) => $s->paid())
             ->when(in_array($status, ['pending', 'approved', 'rejected'], true), fn ($q) => $q->where('request_status', $status))
             ->when($search, fn ($q) => $q->where(function ($sub) use ($search) {
                 $sub->whereHas('student', fn ($s) => $s->where('name', 'like', "%{$search}%"))
-                    ->orWhereHas('classRoom', fn ($c) => $c->where('class_name', 'like', "%{$search}%"));
+                    ->orWhereHas('classRoom', fn ($c) => $c->where('class_name', 'like', "%{$search}%"))
+                    ->orWhereHas('originClass', fn ($c) => $c->where('class_name', 'like', "%{$search}%"));
             }))
             ->orderByDesc('id')
             ->paginate(10)
@@ -45,12 +49,18 @@ class ScheduleController extends Controller
         $calendarEvents = CalendarEvent::orderBy('date')->orderBy('start_time')->get();
 
         // Ringkasan untuk scorecard di atas halaman.
-        $pendingCount = ReplacementRequest::where('request_status', 'pending')->count();
+        $pendingCount = ReplacementRequest::where('request_status', 'pending')
+            ->whereHas('student', fn ($s) => $s->paid())
+            ->count();
         $availableSlots = $slots->filter->isAvailable()->count();
+
+        // Jumlah request yang ditahan karena muridnya belum lunas, sekadar catatan
+        // agar admin tidak mengira datanya hilang.
+        $hiddenCount = ReplacementRequest::whereHas('student', fn ($s) => $s->unpaid())->count();
 
         return view('schedules.index', compact(
             'requests', 'status', 'search', 'slots', 'holidays', 'calendarEvents',
-            'pendingCount', 'availableSlots'
+            'pendingCount', 'availableSlots', 'hiddenCount'
         ));
     }
 
@@ -161,7 +171,11 @@ class ScheduleController extends Controller
 
         // Replacement class (warna sesuai status).
         $statusColors = ['pending' => '#F59E0B', 'approved' => '#10B981', 'rejected' => '#EF4444'];
-        foreach (ReplacementRequest::with(['student', 'classRoom'])->get() as $req) {
+        $replacements = ReplacementRequest::with(['student', 'classRoom', 'originClass'])
+            ->whereHas('student', fn ($s) => $s->paid())
+            ->get();
+
+        foreach ($replacements as $req) {
             $events[] = [
                 'title' => 'Replacement: '.($req->student->name ?? '-'),
                 'start' => $this->combineDateTime($req->replacement_date, $req->replacement_time),
@@ -170,7 +184,8 @@ class ScheduleController extends Controller
                 'extendedProps' => [
                     'type' => 'Replacement Class',
                     'status' => ucfirst($req->request_status),
-                    'class' => $req->classRoom->class_name ?? '-',
+                    'originClass' => $req->originClass->class_name ?? '-',
+                    'newClass' => $req->classRoom->class_name ?? '-',
                     'reason' => $req->reason ?: '-',
                 ],
             ];
@@ -219,8 +234,9 @@ class ScheduleController extends Controller
             ];
         }
 
-        // Murid aktif untuk mode "Cari kelas pengganti" (filter slot per level murid).
+        // Murid aktif & lunas untuk mode "Cari kelas pengganti" (filter slot per level murid).
         $students = Student::where('status', 'active')
+            ->paid()
             ->orderBy('name')
             ->get(['id', 'name', 'student_id', 'class_type']);
 
@@ -239,11 +255,22 @@ class ScheduleController extends Controller
 
     public function create()
     {
-        $students = Student::where('status', 'active')->orderBy('name')->get();
+        // Hanya murid lunas yang bisa diajukan replacement class.
+        $students = $this->studentsWithActiveClass(Student::where('status', 'active')->paid());
         $classes = ClassRoom::with('tutor')->withCount(['students as enrolled_count' => fn ($q) => $q->where('student_class.status', 'active')])
             ->orderBy('class_name')->get();
 
         return view('schedules.create', compact('students', 'classes'));
+    }
+
+    /**
+     * Murid + kelas aktifnya, dipakai form untuk mengisi otomatis "kelas asal".
+     */
+    private function studentsWithActiveClass($query)
+    {
+        return $query->with(['classes' => fn ($q) => $q->wherePivot('status', 'active')])
+            ->orderBy('name')
+            ->get();
     }
 
     public function store(Request $request)
@@ -263,7 +290,10 @@ class ScheduleController extends Controller
 
     public function edit(ReplacementRequest $schedule)
     {
-        $students = Student::orderBy('name')->get();
+        // Murid lunas + murid yang sudah terlanjur dipilih di request ini.
+        $students = $this->studentsWithActiveClass(
+            Student::query()->where(fn ($q) => $q->paid()->orWhere('id', $schedule->student_id))
+        );
         $classes = ClassRoom::with('tutor')->withCount(['students as enrolled_count' => fn ($q) => $q->where('student_class.status', 'active')])
             ->orderBy('class_name')->get();
 
@@ -314,11 +344,15 @@ class ScheduleController extends Controller
      *
      * Slot tujuan harus AVAILABLE (tidak penuh & tidak ditutup). Saat mengedit,
      * kelas yang sudah dipilih sebelumnya tetap diizinkan meski kini penuh/ditutup.
+     * Tipe kelas boleh berbeda — murid diizinkan pindah lintas tipe.
+     *
      */
     private function validateReplacement(Request $request, ?ReplacementRequest $current = null): array
     {
         return $request->validate([
-            'student_id' => ['required', 'exists:students,id'],
+            'student_id' => ['required', 'exists:students,id', new StudentPaymentSettled],
+            // Kelas asal: jadwal yang ditinggalkan. Opsional karena data lama belum punya.
+            'origin_class_id' => ['nullable', 'exists:classes,id', 'different:class_id'],
             'class_id' => [
                 'required',
                 'exists:classes,id',
@@ -344,15 +378,10 @@ class ScheduleController extends Controller
                             default => 'tidak tersedia',
                         };
                         $fail("Kelas \"{$class->class_name}\" {$reason} sehingga tidak bisa dijadikan slot pengganti. Silakan pilih slot lain yang tersedia.");
-
-                        return;
                     }
 
-                    // Level harus cocok dengan tipe kelas murid.
-                    $student = Student::find($request->input('student_id'));
-                    if ($student && ! $class->matchesLevel($student->class_type)) {
-                        $fail("Kelas \"{$class->class_name}\" ({$class->class_category}) tidak cocok dengan tipe kelas murid ({$student->class_type}). Pilih slot yang sesuai.");
-                    }
+                    // Catatan: beda tipe kelas TIDAK ditolak — murid boleh pindah lintas
+                    // tipe. Ketidakcocokan hanya ditandai di UI sebagai peringatan.
                 },
             ],
             'replacement_date' => ['required', 'date'],
@@ -361,7 +390,8 @@ class ScheduleController extends Controller
         ], [
             // Pesan Indonesia agar admin langsung paham apa yang kurang.
             'student_id.required' => 'Murid belum dipilih.',
-            'class_id.required' => 'Kelas tujuan belum dipilih. Jika daftar kelas kosong, berarti tidak ada slot yang cocok & tersedia untuk murid tersebut.',
+            'origin_class_id.different' => 'Kelas asal dan kelas baru tidak boleh sama.',
+            'class_id.required' => 'Kelas tujuan belum dipilih. Jika daftar kelas kosong, berarti tidak ada slot yang tersedia saat ini.',
             'replacement_date.required' => 'Tanggal pengganti belum diisi.',
             'replacement_time.required' => 'Jam pengganti belum diisi.',
         ]);

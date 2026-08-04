@@ -31,12 +31,13 @@ class ExportController extends Controller
             ->orderByDesc('id')
             ->get();
 
-        $headers = ['Student ID', 'Nama', 'Tgl Lahir', 'Orang Tua', 'Telepon', 'Kelas', 'Tipe Kelas', 'Status', 'Tgl Gabung'];
+        $headers = ['Student ID', 'Nama', 'Tgl Lahir', 'Usia', 'Orang Tua', 'Telepon', 'Kelas', 'Tipe Kelas', 'Status', 'Tgl Gabung'];
 
         $rows = $students->map(fn ($s) => [
             $s->student_id,
             $s->name,
             optional($s->date_of_birth)->format('d/m/Y'),
+            $s->age !== null ? $s->age.' th' : '-',
             $s->parent_name,
             $s->phone_number,
             $s->classes->pluck('class_name')->implode(', ') ?: '-',
@@ -87,13 +88,17 @@ class ExportController extends Controller
 
         [$year, $mon] = $month !== '' ? explode('-', $month) : [null, null];
 
-        $transactions = Transaction::query()
+        // Sama seperti halamannya: ringkasan dihitung dari periode + pencarian saja,
+        // filter tipe hanya menyaring baris yang diekspor.
+        $scope = Transaction::query()
             ->when($year && $mon, fn ($q) => $q->whereYear('transaction_date', $year)->whereMonth('transaction_date', $mon))
-            ->when(in_array($type, ['income', 'expense'], true), fn ($q) => $q->where('type', $type))
             ->when($search, fn ($q) => $q->where(function ($sub) use ($search) {
                 $sub->where('category', 'like', "%{$search}%")
                     ->orWhere('description', 'like', "%{$search}%");
-            }))
+            }));
+
+        $transactions = (clone $scope)
+            ->when(in_array($type, ['income', 'expense'], true), fn ($q) => $q->where('type', $type))
             ->orderByDesc('transaction_date')
             ->get();
 
@@ -107,8 +112,8 @@ class ExportController extends Controller
             $t->description ?: '-',
         ]);
 
-        $income = $transactions->where('type', 'income')->sum('amount');
-        $expense = $transactions->where('type', 'expense')->sum('amount');
+        $income = (float) (clone $scope)->where('type', 'income')->sum('amount');
+        $expense = (float) (clone $scope)->where('type', 'expense')->sum('amount');
         $meta = [
             'Total Pemasukan' => 'Rp '.number_format($income, 0, ',', '.'),
             'Total Pengeluaran' => 'Rp '.number_format($expense, 0, ',', '.'),
@@ -129,6 +134,8 @@ class ExportController extends Controller
 
         $attendances = Attendance::query()
             ->with(['student', 'classRoom'])
+            // Sama seperti halaman absensi: murid yang belum lunas tidak ikut diekspor.
+            ->whereHas('student', fn ($s) => $s->paid())
             ->when($classId, fn ($q) => $q->where('class_id', $classId))
             ->when($date, fn ($q) => $q->whereDate('attendance_date', $date))
             ->when($search, fn ($q) => $q->whereHas('student', fn ($s) => $s->where('name', 'like', "%{$search}%")

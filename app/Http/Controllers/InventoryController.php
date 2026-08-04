@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\ActivityLog;
 use App\Models\InventoryItem;
 use App\Models\StockMovement;
+use App\Observers\StockMovementObserver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -44,12 +45,20 @@ class InventoryController extends Controller
             'remaining_stock' => ['required', 'integer', 'min:0'],
         ]);
 
-        DB::transaction(function () use ($data) {
+        // Belanjanya otomatis dicatat sebagai pengeluaran oleh InventoryItemObserver.
+        $item = DB::transaction(function () use ($data) {
             $item = InventoryItem::create($data);
             ActivityLog::record('created', $item, "Menambah barang {$item->item_name}");
+
+            return $item;
         });
 
-        return redirect()->route('inventory.index')->with('success', 'Barang berhasil ditambahkan.');
+        $message = 'Barang berhasil ditambahkan.';
+        if ($expense = $item->transactions()->sum('amount')) {
+            $message .= ' Pengeluaran Rp '.number_format($expense, 0, ',', '.').' tercatat di Laporan Keuangan.';
+        }
+
+        return redirect()->route('inventory.index')->with('success', $message);
     }
 
     public function edit(InventoryItem $inventory)
@@ -89,13 +98,18 @@ class InventoryController extends Controller
             'inventory_item_id' => ['required', 'exists:inventory_items,id'],
             'type' => ['required', Rule::in(['in', 'out'])],
             'quantity' => ['required', 'integer', 'min:1'],
+            'is_purchase' => ['nullable', 'boolean'],
+            'is_sale' => ['nullable', 'boolean'],
             'movement_date' => ['required', 'date'],
         ]);
 
         $data['recorded_by'] = auth()->id();
+        // Pembelian hanya mungkin pada stok masuk, penjualan hanya pada stok keluar.
+        $data['is_purchase'] = $data['type'] === 'in' && $request->boolean('is_purchase');
+        $data['is_sale'] = $data['type'] === 'out' && $request->boolean('is_sale');
 
         try {
-            DB::transaction(function () use ($data) {
+            $movement = DB::transaction(function () use ($data) {
                 // Kunci baris item agar cek stok & penyesuaian stok aman dari race condition.
                 $item = InventoryItem::lockForUpdate()->findOrFail($data['inventory_item_id']);
 
@@ -103,14 +117,25 @@ class InventoryController extends Controller
                     throw new \RuntimeException('Stok tidak mencukupi untuk pengeluaran barang.');
                 }
 
-                // Event "created" pada StockMovement otomatis menyesuaikan remaining_stock item.
-                StockMovement::create($data);
+                // Event "created" pada StockMovement menyesuaikan remaining_stock item,
+                // sekaligus mencatat pengeluaran bila ditandai sebagai pembelian.
+                $movement = StockMovement::create($data);
                 ActivityLog::record('created', $item, "Stok {$data['type']} {$item->item_name} ({$data['quantity']})");
+
+                return $movement;
             });
         } catch (\RuntimeException $e) {
             return back()->with('error', $e->getMessage())->withInput();
         }
 
-        return redirect()->route('inventory.index')->with('success', 'Pergerakan stok berhasil dicatat.');
+        $message = 'Pergerakan stok berhasil dicatat.';
+        if ($expense = StockMovementObserver::purchaseAmount($movement)) {
+            $message .= ' Pengeluaran Rp '.number_format($expense, 0, ',', '.').' tercatat di Laporan Keuangan.';
+        }
+        if ($income = StockMovementObserver::saleAmount($movement)) {
+            $message .= ' Pemasukan Rp '.number_format($income, 0, ',', '.').' tercatat di Laporan Keuangan.';
+        }
+
+        return redirect()->route('inventory.index')->with('success', $message);
     }
 }

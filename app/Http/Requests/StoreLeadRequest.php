@@ -26,20 +26,46 @@ class StoreLeadRequest extends FormRequest
             ClassRoom::query()->distinct()->pluck('class_name')->all(),
         );
 
+        // Semua isian wajib kecuali usia anak & pesan. Usia opsional karena sudah
+        // terwakili tanggal lahir (dan terisi otomatis darinya di form).
+        // Pengecualian lain: "kelas yang diminati" dilonggarkan bila tipe kelas
+        // terpilih memang belum punya jadwal — sama seperti perilaku dropdown di form.
         return [
             'child_name' => ['required', 'string', 'max:100'],
             'child_age' => ['nullable', 'integer', 'min:2', 'max:17'],
-            'date_of_birth' => ['nullable', 'date', 'before:today'],
-            'class_type' => ['nullable', Rule::in(array_keys(Lead::CLASS_TYPES))],
+            'date_of_birth' => ['required', 'date', 'before:today'],
+            'class_type' => ['required', Rule::in(array_keys(Lead::CLASS_TYPES))],
             'parent_name' => ['required', 'string', 'max:100'],
             'parent_phone' => ['required', 'string', 'max:25', 'regex:/^[0-9+\-\s()]+$/'],
-            'parent_email' => ['nullable', 'email', 'max:150'],
-            'address' => ['nullable', 'string', 'max:500'],
-            'program' => ['nullable', Rule::in($allowedPrograms)],
+            'parent_email' => ['required', 'email', 'max:150'],
+            'address' => ['required', 'string', 'max:500'],
+            'program' => ['nullable', Rule::requiredIf(fn () => $this->classExistsForSelectedType()), Rule::in($allowedPrograms)],
             'message' => ['nullable', 'string', 'max:1000'],
             // Honeypot: harus tetap kosong. Bot cenderung mengisi semua field.
             'website' => ['prohibited'],
         ];
+    }
+
+    /**
+     * Adakah kelas yang cocok dengan tipe kelas yang dipilih? Kelas tanpa
+     * kategori (mis. Holiday Class) dianggap cocok untuk semua tipe.
+     */
+    private function classExistsForSelectedType(): bool
+    {
+        $type = $this->input('class_type');
+
+        if (! is_string($type) || $type === '') {
+            return false; // Biar aturan class_type yang menegur lebih dulu.
+        }
+
+        $categories = ClassRoom::query()->distinct()->pluck('class_category');
+
+        // Database masih kosong → dropdown memakai daftar program di config.
+        if ($categories->isEmpty()) {
+            $categories = collect(config('site.programs', []))->pluck('category');
+        }
+
+        return $categories->contains(fn ($category) => ! $category || $category === $type);
     }
 
     /**

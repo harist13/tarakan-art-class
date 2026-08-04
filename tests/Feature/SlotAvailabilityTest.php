@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\CalendarEvent;
 use App\Models\ClassRoom;
 use App\Models\Holiday;
+use App\Models\Payment;
 use App\Models\Student;
 use App\Models\Tutor;
 use App\Models\User;
@@ -14,7 +15,8 @@ use Tests\TestCase;
 
 /**
  * QA: Aturan ketersediaan slot (F4) — available = tidak ditutup manual, belum penuh,
- * belum lewat, bukan hari libur, tutor aktif, dan (per murid) level cocok.
+ * belum lewat, bukan hari libur, dan tutor aktif. Kecocokan tipe kelas hanya penanda:
+ * murid boleh mengambil replacement lintas tipe.
  */
 class SlotAvailabilityTest extends TestCase
 {
@@ -36,6 +38,28 @@ class SlotAvailabilityTest extends TestCase
         $user->assignRole('admin');
 
         return $user;
+    }
+
+    /**
+     * Murid siap pakai untuk modul akademik: sudah punya invoice lunas, karena
+     * murid yang belum lunas terkunci dari replacement class.
+     */
+    private function makeStudent(array $overrides = []): Student
+    {
+        $student = Student::create(array_merge([
+            'name' => 'Murid Uji', 'date_of_birth' => '2018-01-01', 'parent_name' => 'Wali',
+            'phone_number' => '0812', 'class_type' => 'drawing', 'status' => 'active',
+        ], $overrides));
+
+        Payment::create([
+            'student_id' => $student->id,
+            'payment_date' => now()->toDateString(),
+            'payment_amount' => 100000,
+            'payment_method' => 'cash',
+            'payment_status' => 'paid',
+        ]);
+
+        return $student;
     }
 
     private function makeClass(array $overrides = [], string $tutorStatus = 'active'): ClassRoom
@@ -91,7 +115,7 @@ class SlotAvailabilityTest extends TestCase
         $this->assertSame('Hari libur', $class->availability()['text']);
     }
 
-    public function test_level_harus_cocok_dengan_tipe_kelas_murid(): void
+    public function test_kecocokan_level_hanya_penanda_bukan_syarat(): void
     {
         $class = $this->makeClass(['class_category' => 'drawing']);
         $coloring = Student::create([
@@ -103,9 +127,52 @@ class SlotAvailabilityTest extends TestCase
             'phone_number' => '0813', 'class_type' => 'drawing', 'status' => 'active',
         ]);
 
+        // Penanda "pas untuk murid" tetap membedakan tipe...
         $this->assertFalse($class->isAvailableFor($coloring));
         $this->assertTrue($class->isAvailableFor($drawing));
+        // ...tapi slotnya sendiri tetap available untuk siapa pun.
+        $this->assertTrue($class->isAvailable());
     }
+
+    public function test_replacement_lintas_tipe_kelas_diterima(): void
+    {
+        $this->actingAs($this->makeUser());
+        $origin = $this->makeClass(['class_name' => 'Kelas Coloring', 'class_category' => 'coloring']);
+        $target = $this->makeClass(['class_name' => 'Kelas Drawing', 'class_category' => 'drawing']);
+        $student = $this->makeStudent(['name' => 'Dina', 'parent_name' => 'Eka', 'class_type' => 'coloring']);
+
+        $this->post(route('schedules.store'), [
+            'student_id' => $student->id,
+            'origin_class_id' => $origin->id,
+            'class_id' => $target->id, // beda tipe dari murid — harus tetap diterima
+            'replacement_date' => now()->addDays(3)->toDateString(),
+            'replacement_time' => '09:00',
+            'reason' => 'Sakit',
+        ])->assertRedirect(route('schedules.index'))->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('replacement_requests', [
+            'student_id' => $student->id,
+            'origin_class_id' => $origin->id,
+            'class_id' => $target->id,
+            'request_status' => 'pending',
+        ]);
+    }
+
+    public function test_kelas_asal_tidak_boleh_sama_dengan_kelas_baru(): void
+    {
+        $this->actingAs($this->makeUser());
+        $class = $this->makeClass();
+        $student = $this->makeStudent(['name' => 'Eko', 'parent_name' => 'Fani']);
+
+        $this->post(route('schedules.store'), [
+            'student_id' => $student->id,
+            'origin_class_id' => $class->id,
+            'class_id' => $class->id,
+            'replacement_date' => now()->addDays(3)->toDateString(),
+            'replacement_time' => '09:00',
+        ])->assertSessionHasErrors('origin_class_id');
+    }
+
 
     public function test_halaman_jadwal_menampilkan_ringkasan_dan_legenda(): void
     {
@@ -179,10 +246,7 @@ class SlotAvailabilityTest extends TestCase
     public function test_pesan_validasi_kelas_kosong_berbahasa_indonesia(): void
     {
         $this->actingAs($this->makeUser());
-        $student = Student::create([
-            'name' => 'Citra', 'date_of_birth' => '2018-01-01', 'parent_name' => 'Ani',
-            'phone_number' => '0812', 'class_type' => 'drawing', 'status' => 'active',
-        ]);
+        $student = $this->makeStudent(['name' => 'Citra', 'parent_name' => 'Ani']);
 
         // Kirim tanpa class_id — meniru kondisi dropdown kosong karena tak ada slot cocok.
         $response = $this->post(route('schedules.store'), [
@@ -203,10 +267,7 @@ class SlotAvailabilityTest extends TestCase
     {
         $this->actingAs($this->makeUser());
         $class = $this->makeClass(['class_category' => 'drawing']);
-        $student = Student::create([
-            'name' => 'Budi', 'date_of_birth' => '2018-01-01', 'parent_name' => 'Ani',
-            'phone_number' => '0812', 'class_type' => 'drawing', 'status' => 'active',
-        ]);
+        $student = $this->makeStudent(['name' => 'Budi', 'parent_name' => 'Ani']);
 
         $this->get(route('schedules.create', ['student_id' => $student->id, 'class_id' => $class->id]))
             ->assertOk()

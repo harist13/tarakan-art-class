@@ -31,8 +31,15 @@ class DashboardController extends Controller
             ->sum('amount');
 
         $unpaidCount = Payment::where('payment_status', 'unpaid')->count();
-        $pendingReplacements = ReplacementRequest::where('request_status', 'pending')->count();
-        $todayAttendance = Attendance::whereDate('attendance_date', today())->count();
+
+        // Angka akademik mengikuti aturan yang sama dengan halamannya:
+        // murid yang pembayarannya belum lunas tidak ikut dihitung.
+        $pendingReplacements = ReplacementRequest::where('request_status', 'pending')
+            ->whereHas('student', fn ($s) => $s->paid())
+            ->count();
+        $todayAttendance = Attendance::whereDate('attendance_date', today())
+            ->whereHas('student', fn ($s) => $s->paid())
+            ->count();
 
         // Grafik pertumbuhan murid 6 bulan terakhir (kumulatif murid aktif,
         // konsisten dengan scorecard "Total Murid" yang membedakan aktif/nonaktif).

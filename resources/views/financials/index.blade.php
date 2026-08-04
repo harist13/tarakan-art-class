@@ -13,10 +13,14 @@
         <h1 class="h3 mb-0 text-gray-800 fw-bold">Laporan Keuangan</h1>
         <div class="small text-muted mt-1">
             <i class="bi bi-calendar3 me-1"></i>
-            Menampilkan periode <span class="fw-semibold">{{ $periodLabel }}</span>
-            @unless($isAllPeriods)
-                — transaksi di luar bulan ini tidak ikut terhitung.
-            @endunless
+            @if($isAllPeriods)
+                Menampilkan <span class="fw-semibold">seluruh periode</span> — seluruh bulan ikut terhitung.
+            @else
+                Menampilkan periode <span class="fw-semibold">{{ $periodLabel }}</span> — transaksi di luar bulan ini tidak ikut terhitung.
+            @endif
+            @if(in_array($type, ['income', 'expense'], true))
+                <span class="d-block">Filter tipe hanya menyaring tabel; ringkasan di bawah tetap menghitung pemasukan &amp; pengeluaran periode ini.</span>
+            @endif
         </div>
     </div>
     <div class="d-flex gap-2">
@@ -72,7 +76,7 @@
                 <option value="income" @selected($type === 'income')>Pemasukan</option>
                 <option value="expense" @selected($type === 'expense')>Pengeluaran</option>
             </select>
-            @if($search !== '' || $type !== '' || $month !== $currentMonth)
+            @if($search !== '' || $type !== '' || ! $isAllPeriods)
                 <a href="{{ route('financials.index') }}" class="btn btn-sm btn-outline-secondary" title="Reset filter"><i class="bi bi-x-lg"></i></a>
             @endif
         </form>
@@ -91,7 +95,9 @@
                             <td>
                                 {{ $trx->category }}
                                 @if($trx->payment_id)
-                                    <span class="badge bg-light text-secondary border ms-1" title="Tercatat otomatis dari invoice lunas"><i class="bi bi-lightning-charge-fill"></i> Otomatis</span>
+                                    <span class="badge bg-light text-secondary border ms-1" title="Tercatat otomatis dari invoice lunas"><i class="bi bi-lightning-charge-fill"></i> Dari Invoice</span>
+                                @elseif($trx->inventory_item_id)
+                                    <span class="badge bg-light text-secondary border ms-1" title="Tercatat otomatis saat barang ditambahkan"><i class="bi bi-lightning-charge-fill"></i> Dari Inventaris</span>
                                 @endif
                             </td>
                             <td class="small">{{ $trx->description ?: '-' }}</td>
@@ -103,6 +109,12 @@
                                         <i class="bi bi-receipt-cutoff"></i> Invoice
                                     </a>
                                 @else
+                                    @if($trx->inventory_item_id)
+                                        <a href="{{ route('inventory.index', ['search' => $trx->inventoryItem?->item_code]) }}"
+                                           class="btn btn-sm btn-outline-secondary" title="Lihat barangnya di Inventaris">
+                                            <i class="bi bi-box-seam"></i>
+                                        </a>
+                                    @endif
                                     <a href="{{ route('financials.edit', $trx) }}" class="btn btn-sm btn-info text-white"><i class="bi bi-pencil"></i></a>
                                     <form action="{{ route('financials.destroy', $trx) }}" method="POST" class="d-inline" onsubmit="return confirm('Hapus transaksi ini?')">
                                         @csrf @method('DELETE')

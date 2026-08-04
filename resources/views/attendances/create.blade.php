@@ -27,8 +27,27 @@
     <div class="card">
         <div class="card-header">Daftar Murid — {{ $selectedClass->class_name }}</div>
         <div class="card-body">
-            @if($selectedClass->students->isEmpty())
-                <p class="text-muted mb-0">Belum ada murid aktif di kelas ini.</p>
+            {{-- Murid dengan pembayaran belum lunas tidak bisa diabsen; ditampilkan agar admin tahu penyebabnya. --}}
+            @if($blockedStudents->isNotEmpty())
+                <div class="alert alert-warning">
+                    <div class="fw-bold mb-1"><i class="bi bi-exclamation-triangle-fill me-1"></i>{{ $blockedStudents->count() }} murid tidak bisa diabsen — belum berstatus lunas</div>
+                    <ul class="small mb-2 ps-3">
+                        @foreach($blockedStudents as $blocked)
+                            <li>{{ $blocked->name }} ({{ $blocked->student_id }}) — {{ $blocked->paymentBlockReason() }}</li>
+                        @endforeach
+                    </ul>
+                    <div class="small mb-0">Buat atau lunasi invoice-nya di <a href="{{ route('payments.index') }}" class="alert-link">menu Pembayaran</a>, lalu mereka otomatis muncul kembali di sini.</div>
+                </div>
+            @endif
+
+            @if($students->isEmpty())
+                <p class="text-muted mb-0">
+                    @if($blockedStudents->isNotEmpty())
+                        Tidak ada murid lunas di kelas ini, jadi belum ada yang bisa diabsen.
+                    @else
+                        Belum ada murid aktif di kelas ini.
+                    @endif
+                </p>
             @else
             <form action="{{ route('attendances.store') }}" method="POST">
                 @csrf
@@ -41,7 +60,7 @@
                     <table class="table align-middle">
                         <thead><tr><th>Murid</th><th style="width:220px;">Status</th><th>Catatan</th></tr></thead>
                         <tbody>
-                            @foreach($selectedClass->students as $i => $student)
+                            @foreach($students->values() as $i => $student)
                                 <tr>
                                     <td class="fw-bold">{{ $student->name }} <span class="text-muted small">({{ $student->student_id }})</span>
                                         <input type="hidden" name="records[{{ $i }}][student_id]" value="{{ $student->id }}">

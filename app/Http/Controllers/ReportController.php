@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\ActivityLog;
 use App\Models\Student;
 use App\Models\StudentReport;
+use App\Rules\StudentPaymentSettled;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -17,18 +18,25 @@ class ReportController extends Controller
 
         $reports = StudentReport::query()
             ->with(['student', 'creator'])
+            // Raport murid yang belum lunas disembunyikan sampai pembayarannya beres.
+            ->whereHas('student', fn ($s) => $s->paid())
             ->when($search, fn ($q) => $q->where('credential_key', 'like', "%{$search}%")
                 ->orWhereHas('student', fn ($s) => $s->where('name', 'like', "%{$search}%")))
             ->orderByDesc('id')
             ->paginate(10)
             ->withQueryString();
 
-        return view('reports.index', compact('reports', 'search'));
+        // Jumlah raport yang ditahan karena muridnya belum lunas, sekadar catatan
+        // agar admin tidak mengira datanya hilang.
+        $hiddenCount = StudentReport::whereHas('student', fn ($s) => $s->unpaid())->count();
+
+        return view('reports.index', compact('reports', 'search', 'hiddenCount'));
     }
 
     public function create()
     {
-        $students = Student::where('status', 'active')->orderBy('name')->get();
+        // Hanya murid lunas yang bisa dibuatkan raport.
+        $students = Student::where('status', 'active')->paid()->orderBy('name')->get();
 
         return view('reports.create', compact('students'));
     }
@@ -70,7 +78,12 @@ class ReportController extends Controller
 
     public function edit(StudentReport $report)
     {
-        $students = Student::orderBy('name')->get();
+        // Murid lunas + murid yang sudah terlanjur dipilih di raport ini,
+        // agar pilihan lamanya tidak hilang dari dropdown saat mengedit.
+        $students = Student::query()
+            ->where(fn ($q) => $q->paid()->orWhere('id', $report->student_id))
+            ->orderBy('name')
+            ->get();
 
         return view('reports.edit', compact('report', 'students'));
     }
@@ -144,13 +157,20 @@ class ReportController extends Controller
             return back()->withErrors(['credential_key' => 'Credential key tidak ditemukan.'])->onlyInput('credential_key');
         }
 
+        // Raport ditahan selama pembayaran murid belum lunas.
+        if (! $report->student || ! $report->student->isPaid()) {
+            return back()->withErrors([
+                'credential_key' => 'Raport belum dapat dibuka karena pembayaran murid belum lunas. Silakan hubungi admin.',
+            ])->onlyInput('credential_key');
+        }
+
         return view('reports.guest', compact('report'));
     }
 
     private function validateData(Request $request): array
     {
         return $request->validate([
-            'student_id' => ['required', 'exists:students,id'],
+            'student_id' => ['required', 'exists:students,id', new StudentPaymentSettled],
             'period_start' => ['required', 'date'],
             'period_end' => ['required', 'date', 'after_or_equal:period_start'],
             'activity_notes' => ['required', 'string'],

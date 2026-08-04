@@ -151,6 +151,9 @@ class ClassRoom extends Model
 
     /**
      * Kategori kelas cocok dengan tipe kelas murid (mis. murid coloring → slot coloring).
+     *
+     * Bersifat informatif: murid boleh mengambil replacement lintas tipe, jadi hasil
+     * false hanya dipakai untuk menandai "beda tipe" di UI, bukan untuk menolak.
      */
     public function matchesLevel(?string $studentType): bool
     {
@@ -159,8 +162,8 @@ class ClassRoom extends Model
 
     /**
      * Slot bisa diisi (mis. untuk replacement) bila: dibuka manual, masih ada kursi,
-     * belum lewat, dan tutornya tersedia. Level cocok dinilai relatif ke murid
-     * lewat isAvailableFor().
+     * belum lewat, dan tutornya tersedia. Ini satu-satunya syarat untuk replacement —
+     * kecocokan tipe kelas dinilai terpisah lewat isAvailableFor(), sekadar penanda.
      */
     public function isAvailable(): bool
     {
@@ -172,7 +175,8 @@ class ClassRoom extends Model
     }
 
     /**
-     * Available untuk murid tertentu: available umum + kategori cocok dengan tipe murid.
+     * "Pas" untuk murid tertentu: available umum + kategori cocok dengan tipe murid.
+     * Dipakai untuk menyorot slot yang paling sesuai, bukan sebagai syarat replacement.
      */
     public function isAvailableFor(Student $student): bool
     {

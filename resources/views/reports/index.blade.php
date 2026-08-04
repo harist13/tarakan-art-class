@@ -15,6 +15,7 @@
         </form>
     </div>
     <div class="card-body">
+        @include('partials.unpaid-hidden-note', ['label' => 'raport'])
         <div class="table-responsive">
             <table class="table table-hover align-middle">
                 <thead>

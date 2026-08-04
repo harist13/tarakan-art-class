@@ -62,7 +62,7 @@
     <div class="card-body">
         {{-- Banner mode "cari kelas pengganti": tampil saat seorang murid dipilih. --}}
         <div id="replacementBanner" class="alert alert-primary d-none align-items-center justify-content-between flex-wrap gap-2" role="alert">
-            <span><i class="bi bi-funnel-fill me-1"></i>Menampilkan slot <strong id="rbCategory"></strong> yang tersedia untuk <strong id="rbName"></strong> (<span id="rbCount">0</span> slot). Klik slot untuk mengajukan replacement.</span>
+            <span><i class="bi bi-funnel-fill me-1"></i>Menampilkan <strong id="rbCount">0</strong> slot tersedia untuk <strong id="rbName"></strong> (tipe <strong id="rbCategory"></strong>). Slot beda tipe juga bisa dipilih. Klik slot untuk mengajukan replacement.</span>
             <button type="button" id="rbClear" class="btn btn-sm btn-outline-primary"><i class="bi bi-x-lg me-1"></i>Keluar mode</button>
         </div>
         <div id="calendar"></div>
@@ -107,10 +107,16 @@ document.addEventListener('DOMContentLoaded', function () {
         return { id: opt.value, name: opt.dataset.name, cat: opt.dataset.category };
     }
 
-    // Slot cocok untuk murid: kelas reguler, available, & kategori sama.
+    // Slot yang bisa dipakai murid: kelas reguler & masih available.
+    // Tipe kelas boleh berbeda — murid diizinkan replacement lintas tipe.
     function matchesStudent(ev, stu) {
         const p = ev.extendedProps || {};
-        return p.type === 'Kelas Reguler' && p.available === true && p.cat === stu.cat;
+        return p.type === 'Kelas Reguler' && p.available === true;
+    }
+
+    /** Slot setipe dengan murid — dipakai sebagai penanda, bukan penyaring. */
+    function sameType(ev, stu) {
+        return (ev.extendedProps || {}).cat === stu.cat;
     }
 
     const calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
@@ -145,7 +151,8 @@ document.addEventListener('DOMContentLoaded', function () {
             if (p.tutor)       rows += `<p class="mb-1"><strong>Tutor:</strong> ${p.tutor}</p>`;
             if (p.occupancy)   rows += `<p class="mb-1"><strong>Terisi:</strong> ${p.occupancy}</p>`;
             if (p.availability) rows += `<p class="mb-1"><strong>Ketersediaan:</strong> ${p.availability}</p>`;
-            if (p.class)       rows += `<p class="mb-1"><strong>Kelas Asal:</strong> ${p.class}</p>`;
+            if (p.originClass) rows += `<p class="mb-1"><strong>Kelas Asal (sebelumnya):</strong> ${p.originClass}</p>`;
+            if (p.newClass)    rows += `<p class="mb-1"><strong>Kelas Baru (sekarang):</strong> ${p.newClass}</p>`;
             if (p.status)   rows += `<p class="mb-1"><strong>Status:</strong> ${p.status}</p>`;
             if (p.reason)   rows += `<p class="mb-1"><strong>Alasan:</strong> ${p.reason}</p>`;
             if (p.note && p.note !== '-') rows += `<p class="mb-1"><strong>Catatan:</strong> ${p.note}</p>`;
@@ -154,6 +161,11 @@ document.addEventListener('DOMContentLoaded', function () {
             const link = document.getElementById('eventModalLink');
             const stu = currentStudent();
             if (stu && matchesStudent(info.event, stu)) {
+                // Beda tipe tidak menghalangi, tapi perlu disadari admin sebelum mengajukan.
+                if (!sameType(info.event, stu)) {
+                    document.getElementById('eventModalBody').insertAdjacentHTML('beforeend',
+                        '<div class="alert alert-warning small mt-2 mb-0"><i class="bi bi-exclamation-triangle me-1"></i>Slot ini bertipe <strong>' + p.category + '</strong>, sedangkan murid bertipe <strong>' + stu.cat + '</strong>. Tetap bisa diajukan.</div>');
+                }
                 // Mode cari pengganti: langsung ajukan replacement untuk murid & slot ini.
                 const start = info.event.start;
                 const params = new URLSearchParams({

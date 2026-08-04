@@ -21,19 +21,26 @@ class FinancialController extends Controller
         [$year, $mon] = $month !== '' ? explode('-', $month) : [null, null];
         $periodLabel = self::periodLabel($month);
 
-        $query = Transaction::query()
-            ->with(['recorder', 'payment'])
+        // Cakupan ringkasan: periode + pencarian, TANPA filter tipe. Kalau filter tipe
+        // ikut dipakai di sini, kartu lawannya jadi 0 dan Saldo salah — mis. saat memilih
+        // "Pemasukan", saldo akan sama dengan total pemasukan seolah tidak ada pengeluaran.
+        $scope = Transaction::query()
             ->when($year && $mon, fn ($q) => $q->whereYear('transaction_date', $year)->whereMonth('transaction_date', $mon))
-            ->when(in_array($type, ['income', 'expense'], true), fn ($q) => $q->where('type', $type))
             ->when($search, fn ($q) => $q->where(function ($sub) use ($search) {
                 $sub->where('category', 'like', "%{$search}%")
                     ->orWhere('description', 'like', "%{$search}%");
             }));
 
-        $transactions = (clone $query)->orderByDesc('transaction_date')->paginate(15)->withQueryString();
+        // Filter tipe hanya menyaring isi tabel, bukan ringkasannya.
+        $transactions = (clone $scope)
+            ->with(['recorder', 'payment', 'inventoryItem'])
+            ->when(in_array($type, ['income', 'expense'], true), fn ($q) => $q->where('type', $type))
+            ->orderByDesc('transaction_date')
+            ->paginate(15)
+            ->withQueryString();
 
-        $totalIncome = (clone $query)->where('type', 'income')->sum('amount');
-        $totalExpense = (clone $query)->where('type', 'expense')->sum('amount');
+        $totalIncome = (float) (clone $scope)->where('type', 'income')->sum('amount');
+        $totalExpense = (float) (clone $scope)->where('type', 'expense')->sum('amount');
         $balance = $totalIncome - $totalExpense;
 
         return view('financials.index', compact('transactions', 'totalIncome', 'totalExpense', 'balance', 'type', 'month', 'search', 'periodLabel'));
@@ -98,16 +105,11 @@ class FinancialController extends Controller
 
     /**
      * Aturan filter periode (dipakai bersama oleh halaman & export):
-     * - parameter "month" tidak dikirim (kunjungan pertama) → default bulan berjalan;
-     * - dikirim tapi kosong (filter dibersihkan / tombol "Semua Bulan") → semua periode;
-     * - format selain YYYY-MM diperlakukan sebagai semua periode.
+     * - "month" diisi YYYY-MM → hanya bulan itu;
+     * - tidak dikirim, kosong, atau formatnya tidak valid → seluruh periode (default).
      */
     public static function resolveMonth(Request $request): string
     {
-        if (! $request->has('month')) {
-            return now()->format('Y-m');
-        }
-
         $month = trim($request->string('month')->toString());
 
         return preg_match('/^\d{4}-\d{2}$/', $month) === 1 ? $month : '';

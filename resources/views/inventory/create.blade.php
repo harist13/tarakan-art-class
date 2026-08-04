@@ -19,6 +19,14 @@
                 <div class="col-md-6 mb-3"><label class="form-label">Harga Jual (Rp)</label>
                     <input type="number" step="500" min="0" name="selling_price" class="form-control" value="{{ old('selling_price') }}" required></div>
             </div>
+            <div class="alert alert-info py-2 small d-flex align-items-start gap-2">
+                <i class="bi bi-info-circle-fill mt-1"></i>
+                <span>
+                    Belanja barang ini otomatis tercatat sebagai <strong>pengeluaran</strong> di menu Laporan Keuangan
+                    sebesar <strong>stok awal &times; harga beli</strong>. Isi stok awal 0 atau harga beli 0 bila barang
+                    tidak dibeli (mis. hibah) agar tidak ikut dicatat.
+                </span>
+            </div>
             <button type="submit" class="btn btn-primary"><i class="bi bi-save me-1"></i> Simpan (Kode otomatis)</button>
         </form>
     </div>

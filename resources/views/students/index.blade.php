@@ -39,13 +39,19 @@
         <div class="table-responsive">
             <table class="table table-hover align-middle">
                 <thead>
-                    <tr><th>ID Murid</th><th>Nama Murid</th><th>Kelas</th><th>Nama Wali</th><th>No HP</th><th>Status</th><th class="text-end">Aksi</th></tr>
+                    <tr><th>ID Murid</th><th>Nama Murid</th><th>Usia</th><th>Kelas</th><th>Nama Wali</th><th>No HP</th><th>Status</th><th class="text-end">Aksi</th></tr>
                 </thead>
                 <tbody>
                     @forelse($students as $student)
                         <tr>
                             <td class="fw-bold">{{ $student->student_id }}</td>
                             <td>{{ $student->name }}</td>
+                            <td>
+                                {{ $student->age !== null ? $student->age.' th' : '-' }}
+                                @if($student->has_manual_age)
+                                    <i class="bi bi-pencil-fill text-muted small" title="Usia diisi manual (hitungan dari tanggal lahir: {{ $student->calculated_age }} th)"></i>
+                                @endif
+                            </td>
                             <td>
                                 @forelse($student->classes as $class)
                                     <span class="badge bg-light text-dark border">{{ $class->class_name }}</span>
@@ -55,7 +61,16 @@
                             </td>
                             <td>{{ $student->parent_name }}</td>
                             <td>{{ $student->phone_number }}</td>
-                            <td><span class="badge bg-{{ $student->status === 'active' ? 'success' : 'secondary' }}">{{ ucfirst($student->status) }}</span></td>
+                            <td>
+                                <span class="badge bg-{{ $student->status === 'active' ? 'success' : 'secondary' }}">{{ ucfirst($student->status) }}</span>
+                                {{-- Murid belum lunas tidak muncul di absensi, raport, & replacement. --}}
+                                @if(! $student->isPaid())
+                                    <span class="badge bg-warning text-dark d-block mt-1"
+                                          title="Murid {{ $student->paymentBlockReason() }} — tidak muncul di absensi, raport, & replacement class.">
+                                        <i class="bi bi-exclamation-triangle-fill me-1"></i>{{ $student->paymentBadgeLabel() }}
+                                    </span>
+                                @endif
+                            </td>
                             <td class="text-end">
                                 <a href="{{ route('students.edit', $student) }}" class="btn btn-sm btn-info text-white"><i class="bi bi-pencil"></i></a>
                                 @if(auth()->user()->isSuperAdmin())
@@ -67,7 +82,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="7" class="text-center text-muted">Tidak ada data murid.</td></tr>
+                        <tr><td colspan="8" class="text-center text-muted">Tidak ada data murid.</td></tr>
                     @endforelse
                 </tbody>
             </table>

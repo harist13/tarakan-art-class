@@ -7,6 +7,13 @@
                 <option value="{{ $student->id }}" @selected(old('student_id', $report->student_id ?? '') == $student->id)>{{ $student->name }} ({{ $student->student_id }})</option>
             @endforeach
         </select>
+        @error('student_id')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+        <small class="text-muted d-block mt-1">
+            <i class="bi bi-cash-coin me-1"></i>Hanya murid dengan pembayaran lunas yang bisa dipilih.
+            @if($students->isEmpty())
+                <span class="text-danger">Belum ada murid lunas — lunasi invoice di <a href="{{ route('payments.index') }}">menu Pembayaran</a>.</span>
+            @endif
+        </small>
     </div>
     <div class="col-md-3 mb-3">
         <label class="form-label">Periode Mulai</label>

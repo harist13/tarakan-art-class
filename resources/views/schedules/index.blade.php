@@ -95,16 +95,28 @@
         </form>
     </div>
     <div class="card-body">
+        @include('partials.unpaid-hidden-note', ['label' => 'request replacement'])
         <div class="table-responsive">
             <table class="table table-hover align-middle">
                 <thead class="text-muted small text-uppercase">
-                    <tr><th>Murid</th><th>Kelas Asal</th><th>Jadwal Baru</th><th>Alasan</th><th>Status</th><th class="text-end">Aksi</th></tr>
+                    <tr><th>Murid</th><th>Kelas Asal</th><th>Kelas Baru</th><th>Jadwal Baru</th><th>Alasan</th><th>Status</th><th class="text-end">Aksi</th></tr>
                 </thead>
                 <tbody>
                     @forelse($requests as $req)
                         <tr>
                             <td class="fw-bold">{{ $req->student->name ?? '-' }}</td>
-                            <td>{{ $req->classRoom->class_name ?? '-' }}</td>
+                            <td>
+                                @if($req->originClass)
+                                    {{ $req->originClass->class_name }}
+                                    <br><small class="text-muted">{{ $req->originClass->schedule_date->format('d M Y') }} · {{ \Illuminate\Support\Str::of($req->originClass->schedule_time)->substr(0,5) }}</small>
+                                @else
+                                    <span class="text-muted">—</span>
+                                @endif
+                            </td>
+                            <td>
+                                <i class="bi bi-arrow-right-short text-success"></i>{{ $req->classRoom->class_name ?? '-' }}
+                                @if($req->classRoom)<br><small class="text-muted">{{ ucfirst($req->classRoom->class_category) }}</small>@endif
+                            </td>
                             <td class="text-nowrap">
                                 <i class="bi bi-calendar3 text-muted me-1"></i>{{ $req->replacement_date->format('d M Y') }}
                                 <br><small class="text-muted"><i class="bi bi-clock me-1"></i>{{ \Illuminate\Support\Str::of($req->replacement_time)->substr(0,5) }}</small>
@@ -136,7 +148,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="6" class="text-center text-muted py-4">
+                        <tr><td colspan="7" class="text-center text-muted py-4">
                             <i class="bi bi-inbox fs-3 d-block mb-2 opacity-50"></i>
                             {{ ($search !== '' || $status !== '') ? 'Tidak ada request yang cocok dengan filter.' : 'Belum ada request replacement.' }}
                         </td></tr>

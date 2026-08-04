@@ -2,9 +2,12 @@
 
 namespace App\Models;
 
+use App\Observers\StockMovementObserver;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+#[ObservedBy(StockMovementObserver::class)]
 class StockMovement extends Model
 {
     protected $table = 'inventory_stock_movements';
@@ -13,6 +16,8 @@ class StockMovement extends Model
         'inventory_item_id',
         'type',
         'quantity',
+        'is_purchase',
+        'is_sale',
         'movement_date',
         'recorded_by',
     ];
@@ -20,6 +25,8 @@ class StockMovement extends Model
     protected $casts = [
         'movement_date' => 'date',
         'quantity' => 'integer',
+        'is_purchase' => 'boolean',
+        'is_sale' => 'boolean',
     ];
 
     protected static function booted(): void

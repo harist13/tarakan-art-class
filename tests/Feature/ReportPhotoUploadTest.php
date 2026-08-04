@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\ClassRoom;
+use App\Models\Payment;
 use App\Models\Student;
 use App\Models\StudentReport;
 use App\Models\Tutor;
@@ -42,11 +43,22 @@ class ReportPhotoUploadTest extends TestCase
             'class_fee' => 100000,
         ]);
 
-        return Student::create([
+        $student = Student::create([
             'name' => 'Murid Uji', 'date_of_birth' => '2018-01-01', 'parent_name' => 'Wali',
             'phone_number' => '0812', 'class_type' => 'drawing', 'status' => 'active',
             'join_date' => now()->toDateString(),
         ]);
+
+        // Raport hanya boleh dibuat untuk murid yang pembayarannya sudah lunas.
+        Payment::create([
+            'student_id' => $student->id,
+            'payment_date' => now()->toDateString(),
+            'payment_amount' => 100000,
+            'payment_method' => 'cash',
+            'payment_status' => 'paid',
+        ]);
+
+        return $student;
     }
 
     public function test_report_stores_uploaded_photo(): void

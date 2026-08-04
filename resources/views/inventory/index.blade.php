@@ -82,23 +82,45 @@
                 <div class="modal-header"><h5 class="modal-title">Catat Pergerakan Stok</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
                 <div class="modal-body">
                     <div class="mb-3"><label class="form-label">Barang</label>
-                        <select name="inventory_item_id" class="form-select" required>
+                        <select name="inventory_item_id" id="movementItem" class="form-select" required>
                             <option value="">— Pilih Barang —</option>
                             @foreach($items as $item)
-                                <option value="{{ $item->id }}">{{ $item->item_name }} (stok: {{ $item->remaining_stock }})</option>
+                                <option value="{{ $item->id }}" data-price="{{ $item->purchase_price }}" data-selling="{{ $item->selling_price }}">{{ $item->item_name }} (stok: {{ $item->remaining_stock }})</option>
                             @endforeach
                         </select>
                     </div>
                     <div class="row">
                         <div class="col-6 mb-3"><label class="form-label">Tipe</label>
-                            <select name="type" class="form-select"><option value="in">Stock In (masuk)</option><option value="out">Stock Out (keluar/jual)</option></select>
+                            <select name="type" id="movementType" class="form-select"><option value="in">Stock In (masuk)</option><option value="out">Stock Out (keluar/jual)</option></select>
                         </div>
                         <div class="col-6 mb-3"><label class="form-label">Jumlah</label>
-                            <input type="number" min="1" name="quantity" class="form-control" required>
+                            <input type="number" min="1" name="quantity" id="movementQty" class="form-control" required>
                         </div>
                     </div>
                     <div class="mb-3"><label class="form-label">Tanggal</label>
                         <input type="date" name="movement_date" class="form-control" value="{{ now()->format('Y-m-d') }}" required>
+                    </div>
+                    {{-- Hanya relevan untuk stok masuk: retur/koreksi stok tidak mengeluarkan uang. --}}
+                    <div class="alert alert-light border py-2 mb-0" id="purchaseBox">
+                        <div class="form-check mb-0">
+                            <input class="form-check-input" type="checkbox" name="is_purchase" value="1" id="isPurchase" checked>
+                            <label class="form-check-label small" for="isPurchase">
+                                Ini pembelian (restok) — catat sebagai <strong>pengeluaran</strong> di Laporan Keuangan
+                                <span class="d-block text-muted" id="purchaseHint">Perkiraan: —</span>
+                                <span class="d-block text-muted">Hapus centang bila stok masuk dari retur atau koreksi hitung stok.</span>
+                            </label>
+                        </div>
+                    </div>
+                    {{-- Hanya relevan untuk stok keluar: barang rusak/hilang/dipakai sendiri tidak menghasilkan uang. --}}
+                    <div class="alert alert-light border py-2 mb-0" id="saleBox">
+                        <div class="form-check mb-0">
+                            <input class="form-check-input" type="checkbox" name="is_sale" value="1" id="isSale" checked>
+                            <label class="form-check-label small" for="isSale">
+                                Ini penjualan — catat sebagai <strong>pemasukan</strong> di Laporan Keuangan
+                                <span class="d-block text-muted" id="saleHint">Perkiraan: —</span>
+                                <span class="d-block text-muted">Hapus centang bila barang rusak, hilang, atau dipakai sendiri untuk kegiatan kelas.</span>
+                            </label>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer"><button type="submit" class="btn btn-primary">Simpan</button></div>
@@ -107,3 +129,48 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+    // Stok masuk memunculkan opsi "ini pembelian" (harga beli), stok keluar
+    // memunculkan opsi "ini penjualan" (harga jual), lengkap dengan perkiraan
+    // nilainya sebelum disimpan.
+    (function () {
+        const type = document.getElementById('movementType');
+        const item = document.getElementById('movementItem');
+        const qty = document.getElementById('movementQty');
+        const purchaseBox = document.getElementById('purchaseBox');
+        const saleBox = document.getElementById('saleBox');
+        const purchaseHint = document.getElementById('purchaseHint');
+        const saleHint = document.getElementById('saleHint');
+
+        if (!type || !purchaseBox || !saleBox) return;
+
+        const rupiah = (n) => 'Rp ' + Math.round(n).toLocaleString('id-ID');
+
+        function hitung(price, jumlah) {
+            return (price > 0 && jumlah > 0)
+                ? 'Perkiraan: ' + jumlah + ' x ' + rupiah(price) + ' = ' + rupiah(price * jumlah)
+                : 'Perkiraan: — (pilih barang & isi jumlah)';
+        }
+
+        function sync() {
+            const isIn = type.value === 'in';
+            purchaseBox.classList.toggle('d-none', !isIn);
+            saleBox.classList.toggle('d-none', isIn);
+
+            const option = item.options[item.selectedIndex];
+            const jumlah = parseInt(qty.value, 10) || 0;
+
+            purchaseHint.textContent = hitung(parseFloat(option ? option.dataset.price : 0) || 0, jumlah);
+            saleHint.textContent = hitung(parseFloat(option ? option.dataset.selling : 0) || 0, jumlah);
+        }
+
+        [type, item, qty].forEach((el) => {
+            el.addEventListener('change', sync);
+            el.addEventListener('input', sync);
+        });
+        sync();
+    })();
+</script>
+@endpush
