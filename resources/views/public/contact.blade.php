@@ -131,102 +131,93 @@
                         <input type="text" id="website" name="website" tabindex="-1" autocomplete="off">
                     </div>
 
-                    <fieldset class="border-0 p-0 m-0">
-                        <legend class="tac-legend">Data anak</legend>
-
-                        <div class="row g-3 mt-0">
-                            <div class="col-12">
-                                <label for="child_name" class="tac-label">
-                                    Nama anak <span class="tac-text-coral" aria-hidden="true">*</span>
-                                </label>
-                                <input type="text" id="child_name" name="child_name" required maxlength="100"
-                                       value="{{ old('child_name') }}" placeholder="Nama lengkap anak" class="tac-input">
-                            </div>
-                            <div class="col-sm-8">
-                                <label for="date_of_birth" class="tac-label">
-                                    Tanggal lahir <span class="tac-text-coral" aria-hidden="true">*</span>
-                                </label>
-                                <input type="date" id="date_of_birth" name="date_of_birth" required max="{{ now()->toDateString() }}"
-                                       value="{{ old('date_of_birth') }}" class="tac-input">
-                            </div>
-                            <div class="col-sm-4">
-                                <label for="child_age" class="tac-label">
-                                    Usia <span class="fw-normal tac-muted-soft">(opsional)</span>
-                                </label>
-                                <input type="number" id="child_age" name="child_age" min="2" max="17"
-                                       value="{{ old('child_age') }}" placeholder="7" class="tac-input">
-                            </div>
-                            <div class="col-sm-6">
-                                <label for="class_type" class="tac-label">
-                                    Tipe kelas <span class="tac-text-coral" aria-hidden="true">*</span>
-                                </label>
-                                <select id="class_type" name="class_type" required class="tac-input">
-                                    <option value="">— Pilih tipe kelas —</option>
-                                    @foreach(\App\Models\Lead::CLASS_TYPES as $value => $label)
-                                        <option value="{{ $value }}" @selected(old('class_type', $selectedType) === $value)>
-                                            {{ $label }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div class="col-sm-6">
-                                <label for="program" class="tac-label">
-                                    Kelas yang diminati <span class="tac-text-coral" aria-hidden="true">*</span>
-                                </label>
-                                <select id="program" name="program" required class="tac-input">
-                                    <option value="">— Pilih kelas —</option>
-                                    @foreach($classOptions as $option)
-                                        <option value="{{ $option['value'] }}" @selected(old('program', $selected) === $option['value']) data-category="{{ $option['category'] }}">
-                                            {{ $option['label'] }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                <p class="tac-muted-soft mt-2 mb-0" style="font-size: 0.75rem;" data-class-hint hidden></p>
-                            </div>
+                    {{-- Urutan & lebar kolom mengikuti form Data Murid & Wali di panel admin,
+                         supaya isian yang sama tampil di posisi yang sama di kedua halaman. --}}
+                    <div class="row g-3 mt-0">
+                        <div class="col-md-6">
+                            <label for="child_name" class="tac-label">
+                                Nama anak <span class="tac-text-coral" aria-hidden="true">*</span>
+                            </label>
+                            <input type="text" id="child_name" name="child_name" required maxlength="100"
+                                   value="{{ old('child_name') }}" placeholder="Nama lengkap anak" class="tac-input">
                         </div>
-                    </fieldset>
-
-                    <fieldset class="tac-dashed-top border-0 p-0 m-0 mt-4 pt-4">
-                        <legend class="tac-legend">Data orang tua / wali</legend>
-
-                        <div class="row g-3 mt-0">
-                            <div class="col-sm-6">
-                                <label for="parent_name" class="tac-label">
-                                    Nama orang tua <span class="tac-text-coral" aria-hidden="true">*</span>
-                                </label>
-                                <input type="text" id="parent_name" name="parent_name" required maxlength="100"
-                                       value="{{ old('parent_name') }}" placeholder="Nama Anda" class="tac-input">
-                            </div>
-                            <div class="col-sm-6">
-                                <label for="parent_phone" class="tac-label">
-                                    Nomor WhatsApp <span class="tac-text-coral" aria-hidden="true">*</span>
-                                </label>
-                                <input type="tel" id="parent_phone" name="parent_phone" required maxlength="25"
-                                       value="{{ old('parent_phone') }}" placeholder="0812 3456 7890" class="tac-input">
-                            </div>
-                            <div class="col-12">
-                                <label for="parent_email" class="tac-label">
-                                    Email <span class="tac-text-coral" aria-hidden="true">*</span>
-                                </label>
-                                <input type="email" id="parent_email" name="parent_email" required maxlength="150"
-                                       value="{{ old('parent_email') }}" placeholder="nama@email.com" class="tac-input">
-                            </div>
-                            <div class="col-12">
-                                <label for="address" class="tac-label">
-                                    Alamat <span class="tac-text-coral" aria-hidden="true">*</span>
-                                </label>
-                                <textarea id="address" name="address" rows="2" required maxlength="500" class="tac-input"
-                                          placeholder="Nama jalan, nomor rumah, kelurahan">{{ old('address') }}</textarea>
-                            </div>
-                            <div class="col-12">
-                                <label for="message" class="tac-label">
-                                    Pesan <span class="fw-normal tac-muted-soft">(opsional)</span>
-                                </label>
-                                <textarea id="message" name="message" rows="4" maxlength="1000" class="tac-input"
-                                          placeholder="Misalnya: anak saya belum pernah ikut kelas seni, apakah bisa coba dulu?">{{ old('message') }}</textarea>
-                            </div>
+                        <div class="col-md-6">
+                            <label for="date_of_birth" class="tac-label">
+                                Tanggal lahir <span class="tac-text-coral" aria-hidden="true">*</span>
+                            </label>
+                            <input type="date" id="date_of_birth" name="date_of_birth" required max="{{ now()->toDateString() }}"
+                                   value="{{ old('date_of_birth') }}" class="tac-input">
                         </div>
-                    </fieldset>
+                        <div class="col-md-6">
+                            <label for="child_age" class="tac-label">
+                                Usia <span class="fw-normal tac-muted-soft">(opsional)</span>
+                            </label>
+                            <input type="number" id="child_age" name="child_age" min="2" max="17"
+                                   value="{{ old('child_age') }}" placeholder="7" class="tac-input">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="parent_name" class="tac-label">
+                                Nama orang tua / wali <span class="tac-text-coral" aria-hidden="true">*</span>
+                            </label>
+                            <input type="text" id="parent_name" name="parent_name" required maxlength="100"
+                                   value="{{ old('parent_name') }}" placeholder="Nama Anda" class="tac-input">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="parent_phone" class="tac-label">
+                                Nomor WhatsApp <span class="tac-text-coral" aria-hidden="true">*</span>
+                            </label>
+                            <input type="tel" id="parent_phone" name="parent_phone" required maxlength="25"
+                                   value="{{ old('parent_phone') }}" placeholder="0812 3456 7890" class="tac-input">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="parent_email" class="tac-label">
+                                Email <span class="tac-text-coral" aria-hidden="true">*</span>
+                            </label>
+                            <input type="email" id="parent_email" name="parent_email" required maxlength="150"
+                                   value="{{ old('parent_email') }}" placeholder="nama@email.com" class="tac-input">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="class_type" class="tac-label">
+                                Tipe kelas <span class="tac-text-coral" aria-hidden="true">*</span>
+                            </label>
+                            <select id="class_type" name="class_type" required class="tac-input">
+                                <option value="">— Pilih tipe kelas —</option>
+                                @foreach(\App\Models\Lead::CLASS_TYPES as $value => $label)
+                                    <option value="{{ $value }}" @selected(old('class_type', $selectedType) === $value)>
+                                        {{ $label }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="program" class="tac-label">
+                                Kelas yang diminati <span class="tac-text-coral" aria-hidden="true">*</span>
+                            </label>
+                            <select id="program" name="program" required class="tac-input">
+                                <option value="">— Pilih kelas —</option>
+                                @foreach($classOptions as $option)
+                                    <option value="{{ $option['value'] }}" @selected(old('program', $selected) === $option['value']) data-category="{{ $option['category'] }}">
+                                        {{ $option['label'] }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            <p class="tac-muted-soft mt-2 mb-0" style="font-size: 0.75rem;" data-class-hint hidden></p>
+                        </div>
+                        <div class="col-12">
+                            <label for="address" class="tac-label">
+                                Alamat <span class="tac-text-coral" aria-hidden="true">*</span>
+                            </label>
+                            <textarea id="address" name="address" rows="2" required maxlength="500" class="tac-input"
+                                      placeholder="Nama jalan, nomor rumah, kelurahan">{{ old('address') }}</textarea>
+                        </div>
+                        <div class="col-12">
+                            <label for="message" class="tac-label">
+                                Pesan <span class="fw-normal tac-muted-soft">(opsional)</span>
+                            </label>
+                            <textarea id="message" name="message" rows="4" maxlength="1000" class="tac-input"
+                                      placeholder="Misalnya: anak saya belum pernah ikut kelas seni, apakah bisa coba dulu?">{{ old('message') }}</textarea>
+                        </div>
+                    </div>
 
                     <div class="tac-dashed-top d-flex flex-column flex-sm-row align-items-sm-center gap-3 mt-4 pt-4">
                         <x-site.btn type="submit" variant="coral" size="lg">Kirim pendaftaran</x-site.btn>

@@ -29,7 +29,7 @@
     <x-site.heading
         align="left"
         title="Jadwal umum per program"
-        subtitle="Jadwal rutin tiap minggu. Slot pasti per angkatan dikonfirmasi admin saat pendaftaran." />
+        subtitle="Hari & jam disusun otomatis dari slot yang terdaftar di sistem kami. Slot pasti per angkatan dikonfirmasi admin saat pendaftaran." />
 
     <div class="table-responsive mt-4">
         <table class="tac-table w-100 mb-0" style="min-width: 38rem;">
@@ -43,11 +43,19 @@
                 </tr>
             </thead>
             <tbody>
-                @foreach(config('site.programs') as $program)
+                @foreach($programs as $program)
                     <tr>
                         <th scope="row" class="tac-display fw-bold">{{ $program['name'] }}</th>
                         <td class="tac-muted">{{ $program['age'] }}</td>
-                        <td class="tac-muted">{{ $program['schedule_hint'] }}</td>
+                        <td class="tac-muted">
+                            {{ $program['schedule'] }}
+                            {{-- Tanpa slot di sistem, yang tampil adalah jadwal rutin perkiraan. --}}
+                            @unless($program['is_live'])
+                                <span class="d-block tac-muted-soft" style="font-size: 0.75rem;">
+                                    Perkiraan — belum ada slot terjadwal, tanyakan admin.
+                                </span>
+                            @endunless
+                        </td>
                         <td class="tac-muted">{{ $program['duration'] }}</td>
                     </tr>
                 @endforeach

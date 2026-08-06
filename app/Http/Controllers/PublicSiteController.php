@@ -83,6 +83,7 @@ class PublicSiteController extends Controller
             ->get();
 
         return view('public.schedule', [
+            'programs' => $this->programsWithWeeklySchedule($classes),
             'days' => $classes->groupBy(fn (ClassRoom $c) => $c->schedule_date->toDateString()),
             'holidays' => Holiday::whereBetween('date', [$today, $until])->orderBy('date')->get(),
             'announcements' => CalendarEvent::where('date', '>=', $today)->orderBy('date')->limit(6)->get(),
@@ -176,6 +177,50 @@ class PublicSiteController extends Controller
                 : null;
 
             return $program + ['next_class' => $next];
+        });
+    }
+
+    /**
+     * Baris tabel "Jadwal umum per program" pada halaman Jadwal.
+     *
+     * Kolom jadwal & durasi disusun dari slot yang benar-benar ada di Class
+     * Management, bukan teks statis: hari + jam yang berulang dikelompokkan
+     * menjadi satu baris per program. Program yang belum punya slot dalam
+     * rentang tampilan jatuh kembali ke `schedule_hint` di config, dan usia
+     * tetap dari config karena tidak ada kolomnya di tabel `classes`.
+     *
+     * @param  Collection<int, ClassRoom>  $classes  slot pada rentang tampilan (sudah di-fetch)
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function programsWithWeeklySchedule(Collection $classes): Collection
+    {
+        $dayNames = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+
+        // Kelas yang ditutup tidak ikut diiklankan sebagai jadwal rutin.
+        $byCategory = $classes->where('status', 'open')->groupBy('class_category');
+
+        return collect(config('site.programs', []))->map(function (array $program) use ($byCategory, $dayNames) {
+            $slots = $program['category'] ? ($byCategory[$program['category']] ?? collect()) : collect();
+
+            // Dikelompokkan per jam supaya hasilnya sepadat config: "Selasa & Kamis, 15.00 WITA".
+            $schedule = $slots
+                ->groupBy(fn (ClassRoom $c) => substr($c->schedule_time, 0, 5))
+                ->sortKeys()
+                ->map(function (Collection $group, string $time) use ($dayNames) {
+                    $days = $group
+                        ->map(fn (ClassRoom $c) => (int) $c->schedule_date->dayOfWeek)
+                        ->unique()->sort()
+                        ->map(fn (int $dow) => $dayNames[$dow])
+                        ->implode(' & ');
+
+                    return $days.', '.str_replace(':', '.', $time).' WITA';
+                })
+                ->implode(' · ');
+
+            return $program + [
+                'schedule' => $schedule ?: $program['schedule_hint'],
+                'is_live' => $schedule !== '',
+            ];
         });
     }
 
