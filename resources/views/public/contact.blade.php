@@ -336,15 +336,17 @@
         var age = value('child_age');
         var birthDate = value('date_of_birth');
 
+        // Urutan baris mengikuti urutan field pada form pendaftaran, supaya admin
+        // membaca pesan WhatsApp dengan susunan yang sama seperti yang diisi orang tua.
         var lines = [
             ['Nama anak', value('child_name')],
-            ['Usia', age ? age + ' tahun' : ''],
             ['Tanggal lahir', birthDate ? birthDate.split('-').reverse().join('/') : ''],
-            ['Tipe kelas', selectedLabel('class_type')],
-            ['Kelas yang diminati', selectedLabel('program')],
-            ['Nama orang tua', value('parent_name')],
+            ['Usia', age ? age + ' tahun' : ''],
+            ['Nama orang tua / wali', value('parent_name')],
             ['Nomor WhatsApp', value('parent_phone')],
             ['Email', value('parent_email')],
+            ['Tipe kelas', selectedLabel('class_type')],
+            ['Kelas yang diminati', selectedLabel('program')],
             ['Alamat', value('address')],
             ['Pesan', value('message')]
         ].filter(function (row) {

@@ -303,13 +303,13 @@ class PublicSiteController extends Controller
     {
         $lines = array_filter([
             'Nama anak: '.$lead->child_name,
-            $lead->child_age ? 'Usia: '.$lead->child_age.' tahun' : null,
             $lead->date_of_birth ? 'Tanggal lahir: '.$lead->date_of_birth->format('d/m/Y') : null,
-            $lead->classTypeName() ? 'Tipe kelas: '.$lead->classTypeName() : null,
-            $lead->programName() ? 'Kelas yang diminati: '.$lead->programName() : null,
-            'Nama orang tua: '.$lead->parent_name,
+            $lead->child_age ? 'Usia: '.$lead->child_age.' tahun' : null,
+            'Nama orang tua / wali: '.$lead->parent_name,
             'Nomor WhatsApp: '.$lead->parent_phone,
             $lead->parent_email ? 'Email: '.$lead->parent_email : null,
+            $lead->classTypeName() ? 'Tipe kelas: '.$lead->classTypeName() : null,
+            $lead->programName() ? 'Kelas yang diminati: '.$lead->programName() : null,
             $lead->address ? 'Alamat: '.$lead->address : null,
             $lead->message ? 'Pesan: '.$lead->message : null,
         ]);
