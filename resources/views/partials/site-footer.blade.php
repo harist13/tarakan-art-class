@@ -75,11 +75,6 @@
             </p>
             <p class="mb-0 d-flex align-items-center gap-2 tac-muted-invert" style="font-size: 0.8rem;">
                 <a class="text-decoration-none tac-muted-invert" href="{{ route('login') }}">Login Admin</a>
-                <span aria-hidden="true">&middot;</span>
-                <span>
-                    Dibangun oleh
-                    <a class="text-decoration-none fw-semibold tac-text-paper" href="{{ $credit['url'] }}" target="_blank" rel="noopener">{{ $credit['label'] }}</a>
-                </span>
             </p>
         </div>
     </div>

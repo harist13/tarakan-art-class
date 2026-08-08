@@ -9,7 +9,6 @@
     $contact = config('site.contact');
     $waText = 'Halo '.config('site.name').', saya ingin menanyakan kelas untuk anak saya.';
     $waUrl = 'https://wa.me/'.$contact['whatsapp'].'?text='.rawurlencode($waText);
-    $mapsQuery = urlencode($contact['maps_query']);
 @endphp
 
 <x-site.section tone="paper-2">
@@ -68,11 +67,11 @@
             <div class="tac-card overflow-hidden mt-4">
                 <iframe
                     title="Peta lokasi {{ config('site.name') }}"
-                    src="https://www.google.com/maps?q={{ $mapsQuery }}&output=embed"
+                    src="{{ $contact['maps_embed'] }}"
                     class="w-100 border-0 d-block"
                     style="height: 16rem;"
                     loading="lazy"
-                    referrerpolicy="no-referrer-when-downgrade"
+                    referrerpolicy="strict-origin-when-cross-origin"
                     allowfullscreen></iframe>
             </div>
         </aside>
@@ -152,7 +151,7 @@
                             <label for="child_age" class="tac-label">
                                 Usia <span class="fw-normal tac-muted-soft">(opsional)</span>
                             </label>
-                            <input type="number" id="child_age" name="child_age" min="2" max="17"
+                            <input type="number" id="child_age" name="child_age" min="1" max="99"
                                    value="{{ old('child_age') }}" placeholder="7" class="tac-input">
                         </div>
                         <div class="col-md-6">
@@ -328,7 +327,9 @@
                 || (today.getMonth() + 1 === month && today.getDate() < day);
             if (beforeBirthday) age--;
 
-            if (age >= 0 && age < 120) form.elements['child_age'].value = age;
+            // Di luar rentang input usia (mis. bayi < 1 tahun) field dibiarkan
+            // kosong — usia opsional, jadi lebih baik kosong daripada invalid.
+            if (age >= 1 && age <= 99) form.elements['child_age'].value = age;
         });
     }
 

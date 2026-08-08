@@ -32,7 +32,7 @@ class StoreLeadRequest extends FormRequest
         // terpilih memang belum punya jadwal — sama seperti perilaku dropdown di form.
         return [
             'child_name' => ['required', 'string', 'max:100'],
-            'child_age' => ['nullable', 'integer', 'min:2', 'max:17'],
+            'child_age' => ['nullable', 'integer', 'min:1', 'max:99'],
             'date_of_birth' => ['required', 'date', 'before:today'],
             'class_type' => ['required', Rule::in(array_keys(Lead::CLASS_TYPES))],
             'parent_name' => ['required', 'string', 'max:100'],
