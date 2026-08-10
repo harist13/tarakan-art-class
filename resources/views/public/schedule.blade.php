@@ -16,7 +16,7 @@
     $categoryLabels = collect(config('site.programs'))->pluck('name', 'category');
 @endphp
 
-<x-site.section tone="paper-2">
+<x-site.section tone="paper-2" :paint="true">
     <x-site.heading
         level="h1"
         eyebrow="Jadwal"
@@ -76,11 +76,11 @@
             @foreach($days as $date => $classes)
                 @php $carbonDate = $classes->first()->schedule_date; @endphp
                 <div class="tac-card overflow-hidden">
-                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 tac-bg-paper px-4 py-3"
-                         style="border-bottom: 2px solid rgba(36, 27, 54, 0.1);">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 tac-bg-paper-2 px-4 py-3"
+                         style="border-bottom: 1px solid var(--tac-line);">
                         <h3 class="fs-6 mb-0">{{ $tanggalID($carbonDate) }}</h3>
                         @if(in_array($date, $holidayDates, true))
-                            <span class="tac-badge tac-bg-sun fw-bold" style="border: 2px solid var(--tac-ink);">Hari libur</span>
+                            <span class="tac-badge tac-bg-sun fw-bold">Hari libur</span>
                         @endif
                     </div>
 

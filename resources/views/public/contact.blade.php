@@ -11,7 +11,7 @@
     $waUrl = 'https://wa.me/'.$contact['whatsapp'].'?text='.rawurlencode($waText);
 @endphp
 
-<x-site.section tone="paper-2">
+<x-site.section tone="paper-2" :paint="true">
     <x-site.heading
         level="h1"
         eyebrow="Kontak & Pendaftaran"
@@ -107,8 +107,8 @@
                 </p>
 
                 @if($errors->any())
-                    <div class="rounded-3 px-4 py-3 mt-4 small" role="alert"
-                         style="border: 2px solid var(--tac-coral); background-color: rgba(255, 107, 94, 0.1);">
+                    <div class="px-4 py-3 mt-4 small" role="alert"
+                         style="border: 1px solid var(--tac-coral-light); border-radius: 1.1rem; background-color: rgba(242, 108, 90, 0.08);">
                         <p class="tac-display fw-bold mb-1">Ada yang perlu diperbaiki:</p>
                         <ul class="mb-0 ps-3 tac-muted">
                             @foreach($errors->all() as $error)

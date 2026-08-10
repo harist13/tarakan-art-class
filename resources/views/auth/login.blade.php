@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login — Tarakan Art Class</title>
+
+    {{-- Favicon logo resmi, disamakan dengan website publik. --}}
+    <link rel="icon" href="{{ asset('images/logo-32.png') }}?v=3" type="image/png" sizes="32x32">
+    <link rel="icon" href="{{ asset('images/logo-192.png') }}?v=3" type="image/png" sizes="192x192">
+    <link rel="apple-touch-icon" href="{{ asset('images/logo-180.png') }}?v=3">
+
     <script>
         (function () {
             var t = localStorage.getItem('tac-theme') || 'light';
@@ -115,19 +121,23 @@
         /* Brand */
         .brand-section { text-align: center; margin-bottom: 2rem; }
 
+        /* Kotak dibuat putih, bukan bergradasi biru seperti sebelumnya: berkas
+           logonya JPEG dengan latar putih, jadi gradasi apa pun di belakangnya
+           tetap akan tertutup kotak putih gambar. overflow disembunyikan supaya
+           gambar persegi ikut membulat mengikuti sudut kotaknya. */
         .brand-icon {
             display: inline-flex;
             align-items: center;
             justify-content: center;
             width: 70px;
             height: 70px;
-            background: linear-gradient(135deg, var(--grad-from), var(--grad-to));
-            color: #fff;
+            background: #fff;
             border-radius: 1rem;
-            font-size: 2rem;
             margin-bottom: 1rem;
+            overflow: hidden;
             box-shadow: 0 8px 20px rgba(37, 99, 235, 0.35);
         }
+        .brand-icon img { width: 100%; height: 100%; object-fit: cover; }
 
         .brand-title { font-weight: 900; font-size: 1.6rem; color: var(--title-color); letter-spacing: -0.5px; }
         .brand-subtitle { color: var(--subtitle-color); font-size: 0.9rem; font-weight: 400; margin-top: 0.25rem; }
@@ -234,7 +244,8 @@
             <!-- Brand -->
             <div class="brand-section">
                 <div class="brand-icon">
-                    <i class="bi bi-palette-fill"></i>
+                    <img src="{{ asset('images/ogo.jpg') }}" alt="Logo Tarakan Art Class"
+                         width="70" height="70" decoding="async">
                 </div>
                 <h1 class="brand-title">Tarakan Art Class</h1>
                 <p class="brand-subtitle">Masuk ke Dashboard Administrasi</p>

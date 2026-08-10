@@ -9,8 +9,8 @@
 @endphp
 
 <x-site.section tone="ink">
-    <div class="position-relative overflow-hidden rounded-4 text-center px-3 px-sm-5 py-5"
-         style="border: 2px solid rgba(253, 250, 243, 0.25); background-color: rgba(253, 250, 243, 0.05);">
+    <div class="position-relative overflow-hidden text-center px-3 px-sm-5 py-5"
+         style="border: 1px solid rgba(255, 251, 243, 0.14); border-radius: 2rem; background-color: rgba(255, 251, 243, 0.06);">
         <span class="tac-deco tac-float" style="top: -0.5rem; left: -0.5rem;" aria-hidden="true">🖍️</span>
         <span class="tac-deco tac-float-slow" style="bottom: -1rem; right: -0.5rem;" aria-hidden="true">🎨</span>
 

@@ -16,10 +16,14 @@
     <meta name="description" content="{{ $metaDescription }}">
     <link rel="canonical" href="{{ url()->current() }}">
 
-    {{-- Favicon: palet & kuas lukis --}}
-    <link rel="icon" href="{{ asset('favicon.ico') }}?v=2" sizes="any">
-    <link rel="icon" href="{{ asset('images/favicon.svg') }}" type="image/svg+xml">
-    <link rel="apple-touch-icon" href="{{ asset('images/favicon.png') }}">
+    {{-- Favicon dari logo resmi. Dipakai berkas PNG hasil ubahan images/ogo.jpg,
+         bukan JPEG-nya langsung: dukungan JPEG sebagai favicon tidak merata
+         antar peramban, dan penyusutan 225px → 16px oleh peramban hasilnya
+         lebih kotor daripada penyusutan yang disiapkan lebih dulu.
+         ?v= dinaikkan supaya favicon lama tidak nyangkut di singgahan. --}}
+    <link rel="icon" href="{{ asset('images/logo-32.png') }}?v=3" type="image/png" sizes="32x32">
+    <link rel="icon" href="{{ asset('images/logo-192.png') }}?v=3" type="image/png" sizes="192x192">
+    <link rel="apple-touch-icon" href="{{ asset('images/logo-180.png') }}?v=3">
 
     {{-- Open Graph / Twitter --}}
     <meta property="og:type" content="website">
@@ -39,7 +43,7 @@
     {{-- Font sistem desain --}}
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     {{-- Tema "kotak krayon" — override Bootstrap, khusus website publik --}}
     <link href="{{ asset('css/site.css') }}?v={{ filemtime(public_path('css/site.css')) }}" rel="stylesheet">

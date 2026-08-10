@@ -1,18 +1,59 @@
 /*
- | Sistem desain website publik — tema "kotak krayon".
+ | Sistem desain website publik — tema "kertas krem".
  | Dimuat setelah Bootstrap 5 sebagai override; hanya dipakai oleh
  | layouts/public.blade.php, tidak menyentuh tampilan sistem admin.
+ |
+ | Bahasa visual: latar krem hangat, kartu putih tanpa garis tegas,
+ | bayangan lembut yang menyebar, sudut membulat penuh (pill) pada
+ | tombol, dan aksen warna pastel. Kedalaman datang dari bayangan,
+ | bukan dari garis — itu pembeda utamanya dari gaya "kotak krayon".
  */
 
 :root {
-    --tac-ink: #241b36;
-    --tac-paper: #fdfaf3;
-    --tac-paper-2: #f6efe2;
-    --tac-coral: #ff6b5e;
-    --tac-sun: #fdbb2d;
-    --tac-sky: #3fa7e0;
-    --tac-leaf: #5bbe7a;
-    --tac-grape: #8b6fd1;
+    /* Krem — latar halaman & permukaan naik. */
+    --tac-paper: #fffbf3;
+    --tac-paper-light: #fffdf8;
+    --tac-paper-2: #fcf2e4;
+
+    /* Tinta — teks utama & teks sekunder. */
+    --tac-ink: #2c2a33;
+    --tac-ink-soft: #6b6670;
+
+    /* Aksen: tiap warna punya versi terang (latar lembut) dan
+       gelap (teks/ikon di atas latar terang) agar kontras terjaga. */
+    --tac-coral: #f26c5a;
+    --tac-coral-light: #f9a99b;
+    --tac-coral-dark: #c8442f;
+
+    --tac-sun: #ffc24b;
+    --tac-sun-light: #ffe1a0;
+    --tac-sun-dark: #d9971c;
+
+    --tac-sky: #5ea3de;
+    --tac-sky-light: #b9d9f3;
+    --tac-sky-dark: #2f72b5;
+
+    --tac-leaf: #7fb894;
+    --tac-leaf-light: #cbe3d2;
+    --tac-leaf-dark: #3f7c57;
+
+    --tac-grape: #9a86d6;
+    --tac-grape-light: #ded6f4;
+    --tac-grape-dark: #5f4ca8;
+
+    /* Garis tipis sebagai pembatas halus, bukan bingkai tebal. */
+    --tac-line: rgba(44, 42, 51, 0.08);
+    --tac-line-strong: rgba(44, 42, 51, 0.14);
+
+    /* Bayangan lembut — arah ke bawah, radius besar, opasitas rendah. */
+    --tac-shadow-soft: 0 12px 30px -12px rgba(44, 42, 51, 0.18);
+    --tac-shadow-pill: 0 6px 16px -6px rgba(44, 42, 51, 0.22);
+    --tac-shadow-lift: 0 20px 44px -16px rgba(44, 42, 51, 0.26);
+    /* Bayangan berlapis untuk panel besar — terasa lebih tebal tapi tetap lembut. */
+    --tac-shadow-deep:
+        0 2px 4px -1px rgba(44, 42, 51, 0.06),
+        0 14px 26px -10px rgba(44, 42, 51, 0.16),
+        0 34px 60px -24px rgba(44, 42, 51, 0.3);
 
     --tac-font-display: 'Baloo 2', ui-rounded, 'Segoe UI', system-ui, sans-serif;
     --tac-font-body: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
@@ -22,10 +63,10 @@
     --bs-body-color: var(--tac-ink);
     --bs-body-bg: var(--tac-paper);
     --bs-primary: var(--tac-coral);
-    --bs-link-color: var(--tac-coral);
-    --bs-link-hover-color: #e0554a;
-    --bs-border-color: rgba(36, 27, 54, 0.15);
-    --bs-focus-ring-color: rgba(63, 167, 224, 0.4);
+    --bs-link-color: var(--tac-coral-dark);
+    --bs-link-hover-color: var(--tac-coral);
+    --bs-border-color: var(--tac-line-strong);
+    --bs-focus-ring-color: rgba(94, 163, 222, 0.4);
 }
 
 body {
@@ -38,8 +79,11 @@ body {
 h1, h2, h3, h4, h5, h6, .tac-display {
     font-family: var(--tac-font-display);
     font-weight: 800;
+    letter-spacing: -0.01em;
     color: var(--tac-ink);
 }
+
+h1, .display-4 { line-height: 1.05; }
 
 html { scroll-behavior: smooth; }
 @media (prefers-reduced-motion: reduce) {
@@ -53,7 +97,7 @@ html { scroll-behavior: smooth; }
 :where(a, button, input, select, textarea, summary):focus-visible {
     outline: 3px solid var(--tac-sky);
     outline-offset: 2px;
-    border-radius: 6px;
+    border-radius: 8px;
     box-shadow: none;
 }
 
@@ -67,25 +111,26 @@ html { scroll-behavior: smooth; }
 .tac-bg-leaf     { background-color: var(--tac-leaf) !important; }
 .tac-bg-grape    { background-color: var(--tac-grape) !important; }
 
-.tac-bg-coral-soft { background-color: rgba(255, 107, 94, 0.18) !important; }
-.tac-bg-sun-soft   { background-color: rgba(253, 187, 45, 0.22) !important; }
-.tac-bg-sky-soft   { background-color: rgba(63, 167, 224, 0.18) !important; }
-.tac-bg-leaf-soft  { background-color: rgba(91, 190, 122, 0.22) !important; }
-.tac-bg-grape-soft { background-color: rgba(139, 111, 209, 0.18) !important; }
+/* Versi lembut: dipakai sebagai latar chip, placeholder, dan badge. */
+.tac-bg-coral-soft { background-color: var(--tac-coral-light) !important; }
+.tac-bg-sun-soft   { background-color: var(--tac-sun-light) !important; }
+.tac-bg-sky-soft   { background-color: var(--tac-sky-light) !important; }
+.tac-bg-leaf-soft  { background-color: var(--tac-leaf-light) !important; }
+.tac-bg-grape-soft { background-color: var(--tac-grape-light) !important; }
 
 .tac-text-ink   { color: var(--tac-ink) !important; }
 .tac-text-paper { color: var(--tac-paper) !important; }
-.tac-text-coral { color: var(--tac-coral) !important; }
+.tac-text-coral { color: var(--tac-coral-dark) !important; }
 .tac-text-sun   { color: var(--tac-sun) !important; }
-.tac-text-leaf  { color: var(--tac-leaf) !important; }
+.tac-text-leaf  { color: var(--tac-leaf-dark) !important; }
 
-.tac-muted        { color: rgba(36, 27, 54, 0.65) !important; }
-.tac-muted-soft   { color: rgba(36, 27, 54, 0.5) !important; }
-.tac-muted-invert { color: rgba(253, 250, 243, 0.75) !important; }
+.tac-muted        { color: var(--tac-ink-soft) !important; }
+.tac-muted-soft   { color: rgba(107, 102, 112, 0.8) !important; }
+.tac-muted-invert { color: rgba(255, 251, 243, 0.72) !important; }
 
 /* ── Section ─────────────────────────────────────────────────── */
-.tac-section { padding-block: 4rem; }
-@media (min-width: 768px) { .tac-section { padding-block: 5rem; } }
+.tac-section { padding-block: 4.5rem; }
+@media (min-width: 768px) { .tac-section { padding-block: 6rem; } }
 
 .tac-eyebrow {
     display: inline-block;
@@ -94,51 +139,84 @@ html { scroll-behavior: smooth; }
     font-weight: 700;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: var(--tac-coral);
-    border: 2px solid rgba(36, 27, 54, 0.18);
+    color: var(--tac-coral-dark);
+    background-color: var(--tac-paper-light);
+    border: 1px solid var(--tac-line);
     border-radius: 999px;
-    padding: 0.2rem 0.85rem;
-    margin-bottom: 0.85rem;
+    padding: 0.3rem 0.9rem;
+    margin-bottom: 0.9rem;
+    box-shadow: var(--tac-shadow-soft);
 }
-.tac-eyebrow-invert { color: var(--tac-sun); border-color: rgba(253, 250, 243, 0.25); }
+.tac-eyebrow-invert {
+    color: var(--tac-sun);
+    background-color: rgba(255, 251, 243, 0.08);
+    border-color: rgba(255, 251, 243, 0.18);
+    box-shadow: none;
+}
 
-/* ── Kartu bergaya kotak krayon ──────────────────────────────── */
+/* ── Kartu ───────────────────────────────────────────────────── */
 .tac-card {
     background-color: #fff;
-    border: 2px solid var(--tac-ink);
-    border-radius: 1.25rem;
-    box-shadow: 6px 6px 0 var(--tac-ink);
-    transition: transform 0.18s ease, box-shadow 0.18s ease;
+    border: 1px solid var(--tac-line);
+    border-radius: 1.5rem;
+    box-shadow: var(--tac-shadow-soft);
+    transition: transform 0.22s ease, box-shadow 0.22s ease;
 }
 .tac-card-hover:hover {
-    transform: translate(-2px, -2px);
-    box-shadow: 9px 9px 0 var(--tac-ink);
+    transform: translateY(-4px);
+    box-shadow: var(--tac-shadow-lift);
 }
-.tac-shadow-sm { box-shadow: 3px 3px 0 var(--tac-ink); }
-.tac-shadow    { box-shadow: 5px 5px 0 var(--tac-ink); }
+.tac-shadow-sm { box-shadow: var(--tac-shadow-pill); }
+.tac-shadow    { box-shadow: var(--tac-shadow-soft); }
 
-.tac-dashed-top { border-top: 2px dashed rgba(36, 27, 54, 0.18); }
-.tac-dashed-box { border: 2px dashed rgba(36, 27, 54, 0.25); border-radius: 1rem; }
+.tac-dashed-top { border-top: 1px dashed var(--tac-line-strong); }
+.tac-dashed-box { border: 2px dashed var(--tac-line-strong); border-radius: 1.25rem; }
 
-/* Ikon kotak berwarna. */
+/* Ikon kotak berwarna — sudut membulat, tanpa garis tegas. */
 .tac-icon {
     display: inline-grid;
     place-items: center;
     width: 3rem;
     height: 3rem;
-    border: 2px solid var(--tac-ink);
-    border-radius: 1rem;
+    border-radius: 1.1rem;
     font-size: 1.35rem;
     line-height: 1;
     flex-shrink: 0;
+    box-shadow: var(--tac-shadow-pill);
 }
-.tac-icon-sm { width: 2.5rem; height: 2.5rem; border-radius: 0.85rem; font-size: 1.1rem; }
+.tac-icon-sm { width: 2.5rem; height: 2.5rem; border-radius: 0.9rem; font-size: 1.1rem; }
+
+/* Varian untuk logo merek berupa berkas gambar (WhatsApp, Instagram): kotaknya
+   dibuat transparan supaya warna asli logo yang tampil. Tiap berkas logo punya
+   sisa ruang kosong yang berbeda di tepinya, jadi skalanya disetel per logo
+   supaya semua tampil sebesar ikon di sebelahnya. */
+.tac-icon-brand {
+    --tac-icon-brand-scale: 1;
+    background-color: transparent;
+    box-shadow: none;
+    overflow: visible;
+}
+/* Gambar dibiarkan seukuran kotaknya lalu diperbesar lewat transform.
+   Memperbesar via width/height membuat baris grid ikut memanjang, sehingga
+   logo yang skalanya besar terdorong turun dan tidak sejajar dengan
+   tetangganya; transform tidak memengaruhi tata letak dan titik tumpunya
+   di tengah, jadi semua logo tetap satu garis. */
+.tac-icon-brand img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    transform: scale(var(--tac-icon-brand-scale));
+}
+/* whatsapp.png: logo mengisi 66,5% kanvas → 1 / 0,665. */
+.tac-icon-wa { --tac-icon-brand-scale: 1.5; }
+/* instagram.png: logo mengisi 95,5% kanvas → 1 / 0,955. */
+.tac-icon-ig { --tac-icon-brand-scale: 1.05; }
 
 /* ── Tombol ──────────────────────────────────────────────────── */
 .tac-btn {
     --tac-btn-bg: var(--tac-ink);
     --tac-btn-color: var(--tac-paper);
-    --tac-btn-border: var(--tac-ink);
+    --tac-btn-border: transparent;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -146,66 +224,80 @@ html { scroll-behavior: smooth; }
     font-family: var(--tac-font-display);
     font-weight: 700;
     text-decoration: none;
-    padding: 0.6rem 1.5rem;
+    padding: 0.65rem 1.6rem;
     border: 2px solid var(--tac-btn-border);
     border-radius: 999px;
     background-color: var(--tac-btn-bg);
     color: var(--tac-btn-color);
-    box-shadow: 3px 3px 0 var(--tac-ink);
-    transition: transform 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
+    box-shadow: var(--tac-shadow-pill);
+    transition: transform 0.12s ease, box-shadow 0.2s ease, background-color 0.2s ease;
     cursor: pointer;
 }
-.tac-btn:hover { transform: translateY(-2px); color: var(--tac-btn-color); }
+.tac-btn:hover { transform: translateY(-2px); box-shadow: var(--tac-shadow-lift); color: var(--tac-btn-color); }
+.tac-btn:active { transform: translateY(0) scale(0.98); }
 .tac-btn:disabled { opacity: 0.6; pointer-events: none; }
 
 .tac-btn-accent { --tac-btn-bg: var(--tac-sun); --tac-btn-color: var(--tac-ink); }
-.tac-btn-coral  { --tac-btn-bg: var(--tac-coral); --tac-btn-color: var(--tac-paper); }
-.tac-btn-ghost  { --tac-btn-bg: transparent; --tac-btn-color: var(--tac-ink); box-shadow: none; }
-.tac-btn-ghost:hover { background-color: rgba(36, 27, 54, 0.06); }
-.tac-btn-light  { --tac-btn-bg: var(--tac-paper); --tac-btn-color: var(--tac-ink); --tac-btn-border: var(--tac-paper); box-shadow: none; }
+.tac-btn-coral  { --tac-btn-bg: var(--tac-coral); --tac-btn-color: #fff; }
 
-.tac-btn-sm { padding: 0.4rem 1.1rem; font-size: 0.875rem; }
-.tac-btn-lg { padding: 0.8rem 1.9rem; font-size: 1.0625rem; }
+/* Ghost = tombol sekunder: permukaan krem terang bergaris tipis. */
+.tac-btn-ghost {
+    --tac-btn-bg: var(--tac-paper-light);
+    --tac-btn-color: var(--tac-ink);
+    --tac-btn-border: var(--tac-line-strong);
+    box-shadow: none;
+}
+.tac-btn-ghost:hover { --tac-btn-bg: #fff; box-shadow: var(--tac-shadow-pill); }
+
+.tac-btn-light  { --tac-btn-bg: var(--tac-paper); --tac-btn-color: var(--tac-ink); }
+
+.tac-btn-sm { padding: 0.45rem 1.15rem; font-size: 0.875rem; }
+.tac-btn-lg { padding: 0.85rem 1.9rem; font-size: 1.0625rem; }
 
 /* ── Navbar ──────────────────────────────────────────────────── */
 .tac-navbar {
-    background-color: rgba(253, 250, 243, 0.92);
-    backdrop-filter: blur(10px);
-    border-bottom: 2px solid rgba(36, 27, 54, 0.1);
+    background-color: rgba(255, 251, 243, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--tac-line);
 }
 .tac-nav-link {
     position: relative;
-    font-weight: 600;
+    font-weight: 500;
     font-size: 0.9375rem;
-    color: rgba(36, 27, 54, 0.75);
-    border-radius: 999px;
-    padding: 0.5rem 0.9rem !important;
-    transition: background-color 0.18s ease, color 0.18s ease;
+    color: var(--tac-ink-soft);
+    padding: 0.5rem 0.25rem !important;
+    transition: color 0.2s ease;
 }
-.tac-nav-link:hover { background-color: rgba(36, 27, 54, 0.06); color: var(--tac-ink); }
+.tac-nav-link:hover { color: var(--tac-ink); }
 
-/* Halaman aktif ditandai coretan krayon coral, bukan latar penuh. */
-.tac-nav-link.active { color: var(--tac-ink); font-weight: 700; }
-.tac-nav-link.active::after {
+/* Garis bawah tumbuh dari kiri saat hover / halaman aktif. */
+.tac-nav-link::after {
     content: '';
     position: absolute;
-    left: 0.9rem;
-    right: 0.9rem;
-    bottom: 0.2rem;
+    left: 0.25rem;
+    right: 100%;
+    bottom: 0.15rem;
     height: 3px;
-    border-radius: 999px;
+    border-radius: 3px;
     background-color: var(--tac-coral);
+    transition: right 0.25s ease;
 }
+.tac-nav-link:hover::after { right: 0.25rem; }
+
+.tac-nav-link.active { color: var(--tac-ink); font-weight: 600; }
+.tac-nav-link.active::after { right: 0.25rem; }
 
 /* Di menu mobile (Bootstrap collapse) garis bawah kurang terbaca —
    pakai latar coral lembut + garis tegak di sisi kiri. */
 @media (max-width: 991.98px) {
+    .tac-nav-link { padding: 0.6rem 0.9rem !important; border-radius: 0.85rem; }
+    .tac-nav-link:hover { background-color: rgba(44, 42, 51, 0.04); }
+    .tac-nav-link::after { content: none; }
     .tac-nav-link.active {
-        background-color: rgba(255, 107, 94, 0.12);
+        background-color: rgba(242, 108, 90, 0.1);
         box-shadow: inset 3px 0 0 var(--tac-coral);
-        border-radius: 0.75rem;
     }
-    .tac-nav-link.active::after { content: none; }
 }
 
 .tac-brand-mark {
@@ -213,59 +305,91 @@ html { scroll-behavior: smooth; }
     place-items: center;
     width: 2.5rem;
     height: 2.5rem;
-    border: 2px solid var(--tac-ink);
     border-radius: 0.9rem;
-    background-color: var(--tac-coral);
-    box-shadow: 3px 3px 0 var(--tac-ink);
+    background-color: var(--tac-ink);
+    box-shadow: var(--tac-shadow-pill);
     font-size: 1.15rem;
 }
+
+/* Kotak logo berisi berkas gambar (images/ogo.jpg). JPEG tidak punya kanal
+   transparan, jadi latar kotak disamakan dengan latar putih berkasnya lalu
+   luapan dipotong — tanpa itu, sudut membulat kotak akan memperlihatkan
+   segitiga putih dari gambar di baliknya.
+   Ditaruh setelah .tac-brand-mark & .tac-icon supaya menang saat dipakai
+   bersama keduanya (kekhususan sama, yang belakangan menang). */
+.tac-logo-mark {
+    background-color: #fff;
+    overflow: hidden;
+    padding: 0;
+}
+.tac-logo-mark img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Huruf nama merek di navbar mewarisi lettering multiwarna pada logo.
+   Dipakai versi -dark tiap aksen, bukan versi dasarnya: di atas krem navbar
+   --tac-coral hanya mencapai rasio kontras 2,6:1, sedangkan --tac-coral-dark
+   4,7:1. Oranye/kuning logo sengaja tidak ikut — --tac-sun-dark pun berhenti
+   di 2,4:1, di bawah ambang 3:1 untuk teks tebal seukuran ini. */
+.tac-brand-c1 { color: var(--tac-sky-dark); }
+.tac-brand-c2 { color: var(--tac-coral-dark); }
+.tac-brand-c3 { color: var(--tac-leaf-dark); }
+.tac-brand-c4 { color: var(--tac-grape-dark); }
 
 /* ── Form ────────────────────────────────────────────────────── */
 .tac-input {
     width: 100%;
-    border: 2px solid rgba(36, 27, 54, 0.2);
-    border-radius: 0.75rem;
+    border: 1.5px solid var(--tac-line-strong);
+    border-radius: 0.9rem;
     background-color: #fff;
     color: var(--tac-ink);
-    padding: 0.6rem 0.9rem;
+    padding: 0.65rem 1rem;
     font-size: 0.9375rem;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
-.tac-input::placeholder { color: rgba(36, 27, 54, 0.35); }
-.tac-input:focus { border-color: var(--tac-ink); outline: none; }
+.tac-input::placeholder { color: rgba(107, 102, 112, 0.6); }
+.tac-input:focus {
+    border-color: var(--tac-sky);
+    box-shadow: 0 0 0 4px rgba(94, 163, 222, 0.18);
+    outline: none;
+}
 
-.tac-label { font-weight: 600; font-size: 0.9375rem; margin-bottom: 0.35rem; display: block; }
+.tac-label { font-weight: 600; font-size: 0.9375rem; margin-bottom: 0.4rem; display: block; }
 
 /* ── Badge ───────────────────────────────────────────────────── */
 .tac-badge {
     display: inline-block;
     border-radius: 999px;
-    padding: 0.25rem 0.7rem;
+    padding: 0.25rem 0.75rem;
     font-size: 0.75rem;
     font-weight: 600;
     line-height: 1.4;
 }
-.tac-badge-outline { border: 2px solid rgba(36, 27, 54, 0.15); color: rgba(36, 27, 54, 0.7); }
+.tac-badge-outline { border: 1px solid var(--tac-line-strong); color: var(--tac-ink-soft); }
 
 /* ── Tabel jadwal ────────────────────────────────────────────── */
 .tac-table { border-collapse: separate; border-spacing: 0; }
 .tac-table thead th {
-    background-color: var(--tac-ink);
-    color: var(--tac-paper);
+    background-color: var(--tac-paper-2);
+    color: var(--tac-ink);
     font-family: var(--tac-font-display);
     font-weight: 700;
-    padding: 0.85rem 1.15rem;
+    padding: 0.9rem 1.15rem;
     white-space: nowrap;
 }
-.tac-table thead th:first-child { border-top-left-radius: 1rem; }
-.tac-table thead th:last-child { border-top-right-radius: 1rem; }
+.tac-table thead th:first-child { border-top-left-radius: 1.25rem; }
+.tac-table thead th:last-child { border-top-right-radius: 1.25rem; }
 .tac-table tbody th,
 .tac-table tbody td {
-    padding: 0.9rem 1.15rem;
-    border-bottom: 2px solid rgba(36, 27, 54, 0.1);
+    padding: 0.95rem 1.15rem;
+    border-bottom: 1px solid var(--tac-line);
     vertical-align: middle;
 }
-.tac-table tbody tr:nth-child(even) { background-color: var(--tac-paper-2); }
-.tac-table tbody tr:nth-child(odd) { background-color: #fff; }
+.tac-table tbody tr { background-color: #fff; }
+.tac-table tbody tr:nth-child(even) { background-color: rgba(252, 242, 228, 0.45); }
 
 /* ── FAQ (details/summary) ───────────────────────────────────── */
 .tac-faq summary { list-style: none; cursor: pointer; }
@@ -273,15 +397,15 @@ html { scroll-behavior: smooth; }
 .tac-faq-toggle {
     display: inline-grid;
     place-items: center;
-    width: 1.75rem;
-    height: 1.75rem;
-    border: 2px solid var(--tac-ink);
+    width: 1.85rem;
+    height: 1.85rem;
+    background-color: var(--tac-paper-2);
     border-radius: 999px;
     font-size: 0.875rem;
     flex-shrink: 0;
-    transition: transform 0.18s ease;
+    transition: transform 0.2s ease, background-color 0.2s ease;
 }
-.tac-faq[open] .tac-faq-toggle { transform: rotate(45deg); }
+.tac-faq[open] .tac-faq-toggle { transform: rotate(45deg); background-color: var(--tac-sun-light); }
 
 /* ── Media ───────────────────────────────────────────────────── */
 .tac-thumb { aspect-ratio: 1 / 1; width: 100%; object-fit: cover; display: block; }
@@ -291,47 +415,208 @@ html { scroll-behavior: smooth; }
 /* ── Animasi ─────────────────────────────────────────────────── */
 @keyframes tac-float {
     0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-12px); }
+    50% { transform: translateY(-10px); }
 }
 .tac-float { animation: tac-float 6s ease-in-out infinite; }
-.tac-float-slow { animation: tac-float 8s ease-in-out infinite; }
+.tac-float-slow { animation: tac-float 7.5s ease-in-out infinite; }
 
-@keyframes tac-pulse-ring {
-    0% { box-shadow: 0 0 0 0 rgba(91, 190, 122, 0.55); }
-    70% { box-shadow: 0 0 0 16px rgba(91, 190, 122, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(91, 190, 122, 0); }
+/* Elemen naik perlahan saat halaman dibuka. Dipakai berjenjang
+   lewat .tac-d1 … .tac-d5 agar isi hero muncul berurutan. */
+@keyframes tac-rise {
+    to { opacity: 1; transform: translateY(0); }
 }
-.tac-wa-pulse { animation: tac-pulse-ring 2.4s infinite; }
+.tac-rise {
+    opacity: 0;
+    transform: translateY(16px);
+    animation: tac-rise 0.7s cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
+}
+.tac-d1 { animation-delay: 0.05s; }
+.tac-d2 { animation-delay: 0.15s; }
+.tac-d3 { animation-delay: 0.25s; }
+.tac-d4 { animation-delay: 0.35s; }
+.tac-d5 { animation-delay: 0.45s; }
+
+/* Angka yang dihitung naik: digit selebar sama supaya teks tidak
+   bergeser tiap kali angkanya berubah. */
+.tac-count { font-variant-numeric: tabular-nums; }
+
+@keyframes tac-ping {
+    75%, 100% { transform: scale(2.2); opacity: 0; }
+}
+.tac-ping { animation: tac-ping 1.6s cubic-bezier(0, 0, 0.2, 1) infinite; }
+
+/* Animasi dimatikan total bila pengguna memintanya lewat OS. */
+@media (prefers-reduced-motion: reduce) {
+    .tac-float, .tac-float-slow, .tac-rise, .tac-ping {
+        animation: none !important;
+        opacity: 1 !important;
+        transform: none !important;
+    }
+}
+
+/* ── Dekorasi hero ───────────────────────────────────────────── */
+
+/* Bulatan warna kabur di latar — memberi kehangatan tanpa gambar. */
+.tac-blob {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(64px);
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* Coretan krayon di bawah kata kunci judul. */
+.tac-scribble { position: relative; display: inline-block; }
+.tac-scribble svg {
+    position: absolute;
+    left: 0;
+    bottom: -0.28em;
+    width: 100%;
+    height: 0.32em;
+    overflow: visible;
+}
+
+/* ── Hero ────────────────────────────────────────────────────── */
+
+/* Jarak atas dipangkas supaya isinya duduk lebih dekat ke navbar dan baris
+   statistik ikut terangkat. Jarak bawah dibiarkan penuh sebagai pemisah
+   section. */
+.tac-hero .tac-section { padding-block: 2.25rem 4.5rem; }
+@media (min-width: 768px) { .tac-hero .tac-section { padding-block: 2.75rem 6rem; } }
+
+/* Isi hero diturunkan sekitar satu tingkat dari ukuran bawaan Bootstrap —
+   cukup untuk meredam kesan "besar" tanpa mengubah hierarkinya. Jarak antar
+   blok (g-5 / mt-4) sengaja dibiarkan supaya tetap lapang. */
+/* Judul hero memakai ukuran .display-4 penuh, hanya ketebalannya diturunkan
+   dari 800 ke 700 — pada ukuran sebesar ini Baloo 2 bobot 800 terbaca terlalu
+   padat. */
+.tac-hero h1 { font-weight: 550; }
+
+.tac-hero-lead {
+    max-width: 32rem;
+    font-size: 1.0625rem;   /* dari .fs-5 = 1.25rem */
+}
+@media (min-width: 992px) { .tac-hero-lead { font-size: 1.125rem; } }
+
+.tac-hero-stats { max-width: 26rem; }
+.tac-hero-stat-value { font-size: 2rem; }   /* dari .fs-1 = 2.5rem */
+@media (min-width: 992px) { .tac-hero-stat-value { font-size: 2.125rem; } }
+
+/* Pil keterangan ikut turun sedikit agar seimbang dengan teks di sekitarnya. */
+.tac-hero .tac-pill-stat {
+    padding: 0.4375rem 0.9375rem;
+    font-size: 0.75rem;
+}
 
 /* Panel ilustrasi alat lukis pada hero. */
 .tac-hero-visual {
     position: relative;
     overflow: hidden;
-    background:
-        radial-gradient(120% 90% at 12% 8%, rgba(253, 187, 45, 0.20) 0%, transparent 55%),
-        radial-gradient(110% 90% at 92% 88%, rgba(63, 167, 224, 0.18) 0%, transparent 55%),
-        #fff;
+    border-radius: 2.25rem;
+    background-color: var(--tac-paper-2);
+    border: 1px solid var(--tac-line);
+    box-shadow: var(--tac-shadow-deep);
 }
-.tac-hero-art { display: block; width: 100%; height: auto; }
+.tac-hero-art { display: block; width: 100%; height: auto; position: relative; z-index: 1; }
+
+/* ── Jejak cat mengikuti kursor ──────────────────────────────── */
+
+/* Dipasang pada section hero tiap halaman. isolation: isolate mengurung efek
+   mix-blend-mode di bawah supaya cat hanya menyatu dengan isi section ini,
+   bukan merembet ke apa pun yang tergambar di belakang halaman. */
+.tac-paint-area {
+    position: relative;
+    isolation: isolate;
+}
+
+/* Isi section tetap diberi z-index eksplisit: keduanya sama-sama diposisikan,
+   dan mengandalkan urutan dokumen jadi rapuh bila markup section berubah. */
+.tac-paint-area > .container { position: relative; z-index: 1; }
+
+.tac-paint-layer {
+    position: absolute;
+    inset: 0;
+    /* Di atas isi section — cat menimpa kartu ilustrasi, kartu program, dan
+       teks, bukan tersembunyi di baliknya. */
+    z-index: 2;
+    /* multiply membuat cat berlaku seperti cat air: warnanya tetap pekat di
+       atas bidang terang (kartu putih, latar krem) tapi tulisan gelap di
+       bawahnya tetap tembus terbaca, bukan tertutup blok warna. */
+    mix-blend-mode: multiply;
+    /* Tetesan di tepi dipotong di batas section, bukan meluber keluar dan
+       memunculkan bilah gulir mendatar. */
+    overflow: hidden;
+    /* Wajib: tanpa ini lapisan menelan semua klik & hover di hero. */
+    pointer-events: none;
+}
+
+.tac-paint-dab {
+    position: absolute;
+    border-radius: 50%;
+    will-change: transform, opacity;
+}
+
+/* Kursor berbentuk kuas — penegas bahwa area ini bisa "dilukisi". Angka 8 24
+   adalah titik tumpunya: ujung bulu kuas, bukan sudut gambar, supaya cat
+   keluar tepat dari ujung kuas. crosshair jadi cadangan bila peramban menolak
+   berkas kursornya. Tautan & tombol tidak ikut terpengaruh: nilai cursor yang
+   diwarisi selalu kalah dari deklarasi langsung pada elemen itu sendiri. */
+.tac-paint-area {
+    cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 40 40'%3E%3Cg transform='rotate(45 20 20)' stroke='%232C2A33' stroke-width='2' stroke-linejoin='round'%3E%3Crect x='16' y='6' width='8' height='16' rx='4' fill='%23F26C5A'/%3E%3Crect x='15' y='21' width='10' height='6' rx='2' fill='%23E3E7F0'/%3E%3Cpath d='M15 27L20 35L25 27Z' fill='%23C8442F'/%3E%3C/g%3E%3C/svg%3E") 8 24, crosshair;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .tac-paint-area { cursor: auto; }
+}
+
+/* Krayon & kuas kecil di sudut hero. Rotasi dipasang di dalam SVG, bukan
+   lewat transform CSS, supaya tidak bentrok dengan animasi mengambang. */
+.tac-hero-deco {
+    position: absolute;
+    z-index: 0;
+    display: none;
+    pointer-events: none;
+    user-select: none;
+    /* Warna dibuat lembut supaya terbaca sebagai dekorasi latar,
+       bukan elemen utama yang bersaing dengan judul hero. */
+    opacity: 0.7;
+}
+/* Kedalaman datang dari bayangan, bukan garis tepi — sejalan dengan
+   bahasa visual tema ini. */
+.tac-hero-deco svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    filter: drop-shadow(0 6px 9px rgba(44, 42, 51, 0.14));
+}
+.tac-hero-deco-crayon { top: 0.5rem; left: 1rem; width: 2.625rem; }
+.tac-hero-deco-brush { bottom: 0.5rem; right: 1rem; width: 2.5rem; }
+@media (min-width: 768px) {
+    .tac-hero-deco { display: block; }
+}
+@media (min-width: 992px) {
+    .tac-hero-deco-crayon { top: 1rem; left: 1.75rem; width: 3.25rem; }
+    .tac-hero-deco-brush { bottom: 1rem; right: 1.75rem; width: 3rem; }
+}
 
 .tac-pill-stat {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
-    background-color: #fff;
-    border: 2px solid var(--tac-ink);
+    background-color: var(--tac-paper-light);
+    border: 1px solid var(--tac-line);
     border-radius: 999px;
-    padding: 0.4rem 0.9rem;
+    padding: 0.5rem 1rem;
     font-size: 0.8125rem;
     font-weight: 600;
     line-height: 1.3;
-    box-shadow: 3px 3px 0 var(--tac-ink);
+    box-shadow: var(--tac-shadow-soft);
 }
 
 .tac-deco {
     position: absolute;
     font-size: 3rem;
-    opacity: 0.55;
+    opacity: 0.5;
     user-select: none;
     pointer-events: none;
 }
@@ -345,16 +630,25 @@ html { scroll-behavior: smooth; }
     display: inline-flex;
     align-items: center;
     gap: 0.6rem;
-    padding: 0.6rem 1rem 0.6rem 0.6rem;
-    border: 2px solid var(--tac-ink);
+    padding: 0.55rem 1.25rem 0.55rem 0.55rem;
     border-radius: 999px;
-    background-color: var(--tac-leaf);
-    color: var(--tac-ink);
+    background-color: var(--tac-leaf-dark);
+    color: #fff;
     text-decoration: none;
-    box-shadow: 5px 5px 0 var(--tac-ink);
-    transition: transform 0.18s ease;
+    box-shadow: var(--tac-shadow-pill);
+    transition: transform 0.12s ease, box-shadow 0.2s ease;
 }
-.tac-wa-float:hover { transform: translateY(-2px); color: var(--tac-ink); }
+/* Logo di dalam lingkaran putih — sama seperti .tac-icon-brand, pembesarannya
+   lewat transform supaya logonya tetap tepat di tengah lingkaran. */
+.tac-wa-float img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    transform: scale(1.2);
+}
+.tac-wa-float:hover { transform: translateY(-2px); box-shadow: var(--tac-shadow-lift); color: #fff; }
+.tac-wa-float:active { transform: translateY(0) scale(0.98); }
 @media (min-width: 576px) { .tac-wa-float { right: 1.5rem; bottom: 1.5rem; } }
 
 /* ── Lain-lain ───────────────────────────────────────────────── */

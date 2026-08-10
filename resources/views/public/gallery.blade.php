@@ -5,7 +5,7 @@
 
 @section('content')
 
-<x-site.section tone="paper-2">
+<x-site.section tone="paper-2" :paint="true">
     <x-site.heading
         level="h1"
         eyebrow="Galeri"
@@ -91,8 +91,8 @@
                 <div class="row row-cols-3 g-3" aria-hidden="true">
                     @foreach(['tac-bg-coral-soft','tac-bg-sun-soft','tac-bg-sky-soft','tac-bg-leaf-soft','tac-bg-grape-soft','tac-bg-sun-soft','tac-bg-sky-soft','tac-bg-coral-soft','tac-bg-leaf-soft'] as $tone)
                         <div class="col">
-                            <div class="{{ $tone }} rounded-3 tac-thumb tac-thumb-placeholder"
-                                 style="border: 2px solid rgba(36, 27, 54, 0.15); font-size: 1.25rem;">🎨</div>
+                            <div class="{{ $tone }} tac-thumb tac-thumb-placeholder"
+                                 style="border-radius: 1.1rem; font-size: 1.25rem;">🎨</div>
                         </div>
                     @endforeach
                 </div>

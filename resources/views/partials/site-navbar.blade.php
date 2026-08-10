@@ -12,22 +12,34 @@
 <nav class="navbar navbar-expand-lg sticky-top tac-navbar py-2" aria-label="Menu utama">
     <div class="container">
 
-        <a class="navbar-brand d-flex align-items-center gap-2 py-2" href="{{ route('public.home') }}">
-            <span class="tac-brand-mark" aria-hidden="true">🎨</span>
-            <span class="tac-display fs-5 fw-bolder mb-0 tac-text-ink">
-                Tarakan<span class="tac-text-coral">Art</span>Class
+        {{-- aria-label dipasang di tautannya karena nama merek di bawah dipecah
+             per huruf agar bisa diwarnai; tanpa ini sebagian pembaca layar
+             mengejanya huruf demi huruf. --}}
+        <a class="navbar-brand d-flex align-items-center gap-2 py-2"
+           href="{{ route('public.home') }}" aria-label="Tarakan Art Class — ke beranda">
+            {{-- Logo resmi. Teks merek sudah ditulis di sebelahnya, jadi gambar
+                 ini murni dekoratif dan disembunyikan dari pembaca layar. --}}
+            <span class="tac-brand-mark tac-logo-mark" aria-hidden="true">
+                <img src="{{ asset('images/ogo.jpg') }}" alt="" width="40" height="40" decoding="async">
+            </span>
+            {{-- Tiap huruf diwarnai bergiliran meniru lettering pada logo.
+                 Perulangannya sengaja ditulis rapat dalam satu baris: baris baru
+                 di antara <span> akan terbaca sebagai spasi, dan nama merek ini
+                 memang ditulis tanpa spasi. --}}
+            <span class="tac-display fs-5 fw-bolder mb-0">
+                @foreach(mb_str_split('TarakanArtClass') as $i => $char)<span class="tac-brand-c{{ $i % 4 + 1 }}">{{ $char }}</span>@endforeach
             </span>
         </a>
 
-        <button class="navbar-toggler border-2 rounded-3" type="button"
+        <button class="navbar-toggler rounded-3" type="button"
                 data-bs-toggle="collapse" data-bs-target="#navPublik"
                 aria-controls="navPublik" aria-expanded="false" aria-label="Buka menu"
-                style="border-color: var(--tac-ink);">
+                style="border-color: var(--tac-line-strong);">
             <span class="navbar-toggler-icon"></span>
         </button>
 
         <div class="collapse navbar-collapse" id="navPublik">
-            <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-1 mt-3 mt-lg-0">
+            <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-4 mt-3 mt-lg-0">
                 @foreach($menu as $item)
                     @php $isActive = request()->routeIs($item['route']); @endphp
                     <li class="nav-item">

@@ -5,7 +5,7 @@
 
 @section('content')
 
-<x-site.section tone="paper-2">
+<x-site.section tone="paper-2" :paint="true">
     <x-site.heading
         level="h1"
         eyebrow="Program & Kelas"

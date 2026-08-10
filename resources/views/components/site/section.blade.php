@@ -2,6 +2,8 @@
     // paper | paper-2 | ink — latar selang-seling antar section
     'tone' => 'paper',
     'id' => null,
+    // Aktifkan jejak cat yang mengikuti kursor (dipakai di section hero).
+    'paint' => false,
 ])
 
 @php
@@ -12,7 +14,12 @@
     ];
 @endphp
 
-<section @if($id) id="{{ $id }}" @endif {{ $attributes->class(['tac-section', $tones[$tone] ?? $tones['paper']]) }}>
+<section @if($id) id="{{ $id }}" @endif
+         {{ $attributes->class(['tac-section', $tones[$tone] ?? $tones['paper'], 'tac-paint-area' => $paint]) }}
+         @if($paint) data-tac-paint @endif>
+    @if($paint)
+        @include('partials.site-paint-trail')
+    @endif
     <div class="container">
         {{ $slot }}
     </div>

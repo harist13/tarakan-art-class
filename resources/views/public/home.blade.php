@@ -6,41 +6,100 @@
 @section('content')
 
 {{-- ─── 1. Hero ────────────────────────────────────────────────── --}}
-<section class="tac-bg-paper-2 position-relative overflow-hidden tac-section">
-    <span class="tac-deco tac-float d-none d-lg-block" style="top: 4rem; left: 2rem;" aria-hidden="true">🖍️</span>
-    <span class="tac-deco tac-float-slow d-none d-lg-block" style="bottom: 4rem; right: 3rem;" aria-hidden="true">✏️</span>
+<section class="tac-hero tac-paint-area position-relative overflow-hidden" data-tac-paint>
 
-    <div class="container position-relative">
+    {{-- Bulatan warna kabur di latar: memberi kehangatan tanpa file gambar. --}}
+    <span class="tac-blob tac-bg-sun-soft" style="top: -6rem; left: -6rem; width: 24rem; height: 24rem; opacity: 0.4;" aria-hidden="true"></span>
+    <span class="tac-blob tac-bg-sky-soft" style="top: 10rem; right: -5rem; width: 24rem; height: 24rem; opacity: 0.4;" aria-hidden="true"></span>
+
+    {{-- Krayon di ujung kiri atas & kuas lukis di ujung kanan bawah. --}}
+    <span class="tac-hero-deco tac-hero-deco-crayon tac-float" aria-hidden="true">
+        {{-- Bentuk krayon klasik: sampul biru terang dengan lubang label lonjong,
+             dua pita biru tua, serta ujung dan tutup pangkal biru sedang. --}}
+        <svg viewBox="0 0 62 106" fill="none">
+            <g transform="translate(50 100) rotate(-20)" stroke-linejoin="round">
+                {{-- ujung runcing, satu warna rata dengan puncak sedikit tumpul --}}
+                <path d="M-15 -22 -3 0H3L15 -22Z" fill="#5FA3D8"/>
+                {{-- pita gelap bawah --}}
+                <rect x="-15" y="-30" width="30" height="8" fill="#4E86B8"/>
+                {{-- sampul --}}
+                <rect x="-15" y="-82" width="30" height="52" fill="#8CC9F0"/>
+                {{-- lubang label --}}
+                <ellipse cx="0" cy="-56" rx="8" ry="18" fill="#FFFFFF"/>
+                {{-- pita gelap atas --}}
+                <rect x="-15" y="-90" width="30" height="8" fill="#4E86B8"/>
+                {{-- tutup pangkal --}}
+                <path d="M-15 -95Q-15 -98 -12 -98H12Q15 -98 15 -95V-90H-15Z" fill="#5FA3D8"/>
+            </g>
+        </svg>
+    </span>
+
+    <span class="tac-hero-deco tac-hero-deco-brush tac-float-slow" aria-hidden="true">
+        <svg viewBox="0 0 60 120" fill="none">
+            <g transform="translate(14 96) rotate(20)"
+               stroke="#6B6670" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                {{-- gagang --}}
+                <rect x="-9" y="-94" width="18" height="58" rx="9" fill="#F58C7A"/>
+                {{-- cincin logam --}}
+                <rect x="-11" y="-40" width="22" height="24" rx="5" fill="#EDF0F6"/>
+                <path d="M-11 -28h22" stroke-width="2" opacity="0.3"/>
+                {{-- bulu kuas --}}
+                <path d="M-11 -18C-12 4 -6 14 0 22C6 14 12 4 11 -18Z" fill="#DD5843"/>
+            </g>
+        </svg>
+    </span>
+
+    {{-- Urutan tampil diatur z-index di CSS, bukan urutan markup ini. --}}
+    @include('partials.site-paint-trail')
+
+    <div class="container position-relative tac-section">
         <div class="row align-items-center g-5">
             <div class="col-lg-6">
-                <p class="d-inline-flex align-items-center gap-2 bg-white tac-shadow-sm rounded-pill px-3 py-2 mb-4 fw-bold"
-                   style="border: 2px solid var(--tac-ink); font-size: 0.8rem;">
-                    <span class="tac-bg-leaf rounded-circle d-inline-block" style="width: 0.5rem; height: 0.5rem;" aria-hidden="true"></span>
+                <p class="tac-rise tac-d1 tac-pill-stat mb-4">
+                    <span class="position-relative d-inline-flex" style="width: 0.6rem; height: 0.6rem;" aria-hidden="true">
+                        <span class="tac-ping tac-bg-leaf position-absolute top-0 start-0 w-100 h-100 rounded-circle opacity-75"></span>
+                        <span class="position-relative w-100 h-100 rounded-circle" style="background-color: var(--tac-leaf-dark);"></span>
+                    </span>
                     Pendaftaran kelas dibuka
                 </p>
 
-                <h1 class="display-4 lh-1 mb-0">
-                    Tempat anak berani mencoret dunianya
+                <h1 class="tac-rise tac-d2 display-4 mb-0">
+                    Tempat anak berani
+                    <span class="tac-scribble tac-text-coral">mencoret<svg viewBox="0 0 300 24" preserveAspectRatio="none" fill="none" aria-hidden="true"><path d="M4 15 C 60 4, 120 4, 160 12 S 250 20, 296 8" stroke="var(--tac-sun)" stroke-width="7" stroke-linecap="round"/></svg></span>
+                    dunianya
                 </h1>
 
-                <p class="fs-5 lh-lg tac-muted mt-4 mb-0" style="max-width: 34rem;">
+                <p class="tac-rise tac-d3 tac-hero-lead lh-lg tac-muted mt-4 mb-0">
                     Kelas menggambar &amp; mewarnai untuk anak usia 3–12 tahun di Tarakan.
                     Kelas kecil, tutor yang sabar, dan ruang aman untuk bereksperimen —
                     tanpa takut salah.
                 </p>
 
-                <div class="d-flex flex-column flex-sm-row gap-3 mt-4">
-                    <x-site.btn :href="route('public.contact')" variant="coral" size="lg">Daftar Sekarang</x-site.btn>
-                    <x-site.btn :href="route('public.programs')" variant="ghost" size="lg">Lihat Program</x-site.btn>
+                <div class="tac-rise tac-d4 d-flex flex-column flex-sm-row gap-3 mt-4">
+                    <x-site.btn :href="route('public.contact')" variant="coral">
+                        Daftar Sekarang
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                             stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M5 12h14M13 6l6 6-6 6"/>
+                        </svg>
+                    </x-site.btn>
+                    <x-site.btn :href="route('public.programs')" variant="ghost">Lihat Program</x-site.btn>
                 </div>
 
-                <dl class="row g-4 mt-4 mb-0" style="max-width: 28rem;">
+                <dl class="tac-rise tac-d5 tac-hero-stats row g-4 mt-4 mb-0">
                     @foreach(collect($stats)->take(3) as $stat)
+                        {{-- Angka dipisah dari imbuhannya ("300" + "+") supaya
+                             imbuhan bisa diberi warna aksen seperti pada desain. --}}
+                        @php preg_match('/^(\d*)(.*)$/u', $stat['value'], $parts); @endphp
                         <div class="col-4">
                             <dt class="visually-hidden">{{ $stat['label'] }}</dt>
                             <dd class="mb-0">
-                                <span class="d-block tac-display fs-2 fw-bolder">{{ $stat['value'] }}</span>
-                                <span class="d-block tac-muted" style="font-size: 0.75rem;">{{ $stat['label'] }}</span>
+                                <span class="d-block tac-display tac-hero-stat-value fw-bolder lh-1">
+                                    {{-- Angka dihitung naik dari 0 oleh JS saat blok terlihat.
+                                         Tanpa JS, nilai akhir tetap tampil apa adanya. --}}
+                                    <span class="tac-count" data-tac-count="{{ $parts[1] }}">{{ $parts[1] }}</span><span class="tac-text-coral">{{ $parts[2] }}</span>
+                                </span>
+                                <span class="d-block tac-muted mt-1" style="font-size: 0.8125rem;">{{ $stat['label'] }}</span>
                             </dd>
                         </div>
                     @endforeach
@@ -49,23 +108,27 @@
 
             {{-- Ilustrasi alat lukis — inline SVG, tanpa request gambar tambahan. --}}
             <div class="col-lg-6">
-                <div class="tac-card tac-hero-visual p-3 p-sm-4 mx-auto" style="max-width: 29rem;">
-                    @include('partials.site-hero-art')
-
-                    <div class="d-flex flex-wrap justify-content-center gap-2 pb-2">
-                        <span class="tac-pill-stat">
-                            <span class="tac-bg-coral rounded-circle" style="width: 0.5rem; height: 0.5rem;" aria-hidden="true"></span>
-                            Maks. 8 anak / kelas
-                        </span>
-                        <span class="tac-pill-stat">
-                            <span class="tac-bg-leaf rounded-circle" style="width: 0.5rem; height: 0.5rem;" aria-hidden="true"></span>
-                            Alat &amp; bahan disediakan
-                        </span>
+                <div class="tac-rise tac-d3 position-relative mx-auto" style="max-width: 26rem;">
+                    <div class="tac-hero-visual p-3 p-sm-4">
+                        @include('partials.site-hero-art')
                     </div>
+
+                    {{-- Pil keterangan mengambang di tepi panel ilustrasi. --}}
+                    {{-- Catatan: jangan tambahkan utilitas translate-* Bootstrap di sini —
+                         transform-nya bentrok dengan animasi mengambang. --}}
+                    <span class="tac-pill-stat tac-float-slow position-absolute start-0 ms-2 ms-sm-4" style="bottom: -0.75rem;">
+                        <span class="tac-bg-coral rounded-circle" style="width: 0.5rem; height: 0.5rem;" aria-hidden="true"></span>
+                        Maks. 8 anak / kelas
+                    </span>
+                    <span class="tac-pill-stat tac-float position-absolute end-0 me-2 me-sm-4" style="top: -1rem;">
+                        <span class="rounded-circle" style="width: 0.5rem; height: 0.5rem; background-color: var(--tac-leaf-dark);" aria-hidden="true"></span>
+                        Alat &amp; bahan disediakan
+                    </span>
                 </div>
             </div>
         </div>
     </div>
+
 </section>
 
 {{-- ─── 2. Program unggulan ────────────────────────────────────── --}}
@@ -194,3 +257,47 @@
 <x-site.cta />
 
 @endsection
+
+@push('scripts')
+<script>
+// Angka statistik hero dihitung naik dari 0 begitu masuk layar.
+(function () {
+    var nodes = document.querySelectorAll('[data-tac-count]');
+    if (!nodes.length) return;
+
+    var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduced || !('IntersectionObserver' in window)) return; // biarkan nilai akhir
+
+    var DURATION = 1400;
+
+    function run(el) {
+        var target = parseInt(el.dataset.tacCount, 10);
+        if (isNaN(target)) return;
+
+        var start = null;
+        el.textContent = '0';
+
+        function step(now) {
+            if (start === null) start = now;
+            var p = Math.min((now - start) / DURATION, 1);
+            // ease-out: cepat di awal, melambat menjelang angka akhir.
+            var eased = 1 - Math.pow(1 - p, 3);
+            el.textContent = Math.round(target * eased).toLocaleString('id-ID');
+            if (p < 1) requestAnimationFrame(step);
+        }
+
+        requestAnimationFrame(step);
+    }
+
+    var observer = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+            if (!entry.isIntersecting) return;
+            observer.unobserve(entry.target);
+            run(entry.target);
+        });
+    }, { threshold: 0.5 });
+
+    nodes.forEach(function (el) { observer.observe(el); });
+})();
+</script>
+@endpush

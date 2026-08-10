@@ -6,7 +6,7 @@
 @section('content')
 
 {{-- ─── Cerita ─────────────────────────────────────────────────── --}}
-<x-site.section tone="paper-2">
+<x-site.section tone="paper-2" :paint="true">
     <div class="row align-items-center g-5">
         <div class="col-lg-6">
             <x-site.heading
@@ -59,7 +59,7 @@
                 <ul class="list-unstyled d-grid gap-3 mb-0">
                     @foreach($about['mission'] as $mission)
                         <li class="d-flex align-items-start gap-3 small lh-lg tac-muted">
-                            <span class="tac-icon tac-icon-sm rounded-circle tac-display fw-bold"
+                            <span class="tac-icon tac-icon-sm tac-bg-sun-soft rounded-circle tac-display fw-bold"
                                   style="width: 1.5rem; height: 1.5rem; font-size: 0.7rem;" aria-hidden="true">
                                 {{ $loop->iteration }}
                             </span>
@@ -148,8 +148,8 @@
     <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-3 mt-3">
         @foreach($facilities as $facility)
             <div class="col">
-                <div class="d-flex align-items-center gap-3 bg-white rounded-3 px-4 py-3 h-100"
-                     style="border: 2px solid rgba(36, 27, 54, 0.15);">
+                <div class="d-flex align-items-center gap-3 bg-white tac-shadow-sm px-4 py-3 h-100"
+                     style="border: 1px solid var(--tac-line); border-radius: 1.1rem;">
                     <span class="fs-4" aria-hidden="true">{{ $facility['icon'] }}</span>
                     <span class="small fw-semibold">{{ $facility['label'] }}</span>
                 </div>
