@@ -31,23 +31,24 @@
             <span class="badge bg-primary-subtle text-primary">{{ $students->count() }} murid bisa diabsen</span>
         </div>
         <div class="card-body">
-            {{-- Murid dengan pembayaran belum lunas tidak bisa diabsen; ditampilkan agar admin tahu penyebabnya. --}}
-            @if($blockedStudents->isNotEmpty())
+            {{-- Murid yang ditangguhkan sistem karena tunggakan lewat masa toleransi.
+                 Kehadiran murid menunggak yang belum ditangguhkan TETAP bisa dicatat. --}}
+            @if($suspendedStudents->isNotEmpty())
                 <div class="alert alert-warning">
-                    <div class="fw-bold mb-1"><i class="bi bi-exclamation-triangle-fill me-1"></i>{{ $blockedStudents->count() }} murid tidak bisa diabsen — belum berstatus lunas</div>
+                    <div class="fw-bold mb-1"><i class="bi bi-pause-circle-fill me-1"></i>{{ $suspendedStudents->count() }} murid sedang ditangguhkan karena tunggakan</div>
                     <ul class="small mb-2 ps-3">
-                        @foreach($blockedStudents as $blocked)
-                            <li>{{ $blocked->name }} ({{ $blocked->student_id }}) — {{ $blocked->paymentBlockReason() }}</li>
+                        @foreach($suspendedStudents as $blocked)
+                            <li>{{ $blocked->name }} ({{ $blocked->student_id }}) — {{ $blocked->suspended_reason ?: $blocked->paymentBlockReason() }}</li>
                         @endforeach
                     </ul>
-                    <div class="small mb-0">Buat atau lunasi invoice-nya di <a href="{{ route('payments.index') }}" class="alert-link">menu Pembayaran</a>, lalu mereka otomatis muncul kembali di sini.</div>
+                    <div class="small mb-0">Lunasi tunggakannya di <a href="{{ route('payments.index') }}" class="alert-link">menu Pembayaran</a> dan mereka langsung masuk daftar lagi. Kalau anaknya tetap datang hari ini, lunasi dulu lalu muat ulang halaman ini agar kehadirannya bisa dicatat.</div>
                 </div>
             @endif
 
             @if($students->isEmpty())
                 <p class="text-muted mb-0">
-                    @if($blockedStudents->isNotEmpty())
-                        Tidak ada murid lunas di kelas ini, jadi belum ada yang bisa diabsen.
+                    @if($suspendedStudents->isNotEmpty())
+                        Semua murid di kelas ini sedang ditangguhkan, jadi belum ada yang bisa diabsen.
                     @else
                         Belum ada murid aktif di kelas ini.
                     @endif
@@ -67,6 +68,13 @@
                             @foreach($students->values() as $i => $student)
                                 <tr>
                                     <td class="fw-bold">{{ $student->name }} <span class="text-muted small">({{ $student->student_id }})</span>
+                                        {{-- Penanda tagihan saja — kehadirannya tetap dicatat seperti biasa. --}}
+                                        @if($student->hasArrears())
+                                            <span class="badge bg-warning text-dark ms-1 fw-normal"
+                                                  title="Murid {{ $student->paymentBlockReason() }}. Kehadiran tetap bisa dicatat; ingatkan orang tuanya.">
+                                                <i class="bi bi-cash-coin me-1"></i>Menunggak {{ $student->arrearsDays() }} hari
+                                            </span>
+                                        @endif
                                         <input type="hidden" name="records[{{ $i }}][student_id]" value="{{ $student->id }}">
                                     </td>
                                     <td>

@@ -8,6 +8,7 @@ use App\Http\Controllers\ExportController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\ClassRoomController;
+use App\Http\Controllers\HolidayClassController;
 use App\Http\Controllers\ScheduleController;
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\PaymentController;
@@ -76,6 +77,10 @@ Route::middleware('auth')->group(function () {
     Route::patch('classes/{class}/toggle-status', [ClassRoomController::class, 'toggleStatus'])->name('classes.toggle-status');
     Route::resource('classes', ClassRoomController::class)
         ->parameters(['classes' => 'class'])->except('show');
+
+    // ─── Holiday Class (kelas musiman saat libur sekolah) ──────
+    Route::resource('holiday-classes', HolidayClassController::class)
+        ->parameters(['holiday-classes' => 'holidayClass'])->except('show');
 
     // ─── Scheduler / Replacement Class (F4) ────────────────────
     Route::get('schedules/calendar', [ScheduleController::class, 'calendar'])->name('schedules.calendar');

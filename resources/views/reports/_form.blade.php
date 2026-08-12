@@ -9,9 +9,10 @@
         </select>
         @error('student_id')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
         <small class="text-muted d-block mt-1">
-            <i class="bi bi-cash-coin me-1"></i>Hanya murid dengan pembayaran lunas yang bisa dipilih.
+            <i class="bi bi-info-circle me-1"></i>Semua murid aktif bisa dipilih, termasuk yang menunggak — raportnya tetap boleh disusun.
+            Yang tertahan saat menunggak adalah orang tua membukanya lewat credential key.
             @if($students->isEmpty())
-                <span class="text-danger">Belum ada murid lunas — lunasi invoice di <a href="{{ route('payments.index') }}">menu Pembayaran</a>.</span>
+                <span class="text-danger d-block">Belum ada murid aktif — tambahkan lewat <a href="{{ route('students.index') }}">Data Murid &amp; Wali</a>.</span>
             @endif
         </small>
     </div>

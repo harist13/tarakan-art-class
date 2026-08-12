@@ -13,9 +13,15 @@
         </select>
         <small class="text-muted">Jumlah invoice terisi otomatis dari biaya kelas murid.</small>
     </div>
-    <div class="col-md-6 mb-3">
-        <label class="form-label">Tanggal Pembayaran</label>
+    <div class="col-md-3 mb-3">
+        <label class="form-label">Tanggal Invoice</label>
         <input type="date" name="payment_date" class="form-control" value="{{ old('payment_date', isset($payment) ? $payment->payment_date->format('Y-m-d') : now()->format('Y-m-d')) }}" required>
+    </div>
+    <div class="col-md-3 mb-3">
+        <label class="form-label">Jatuh Tempo</label>
+        <input type="date" name="due_date" class="form-control"
+               value="{{ old('due_date', isset($payment) && $payment->due_date ? $payment->due_date->format('Y-m-d') : \App\Models\Payment::defaultDueDate()) }}">
+        <small class="text-muted">Tunggakan baru dihitung setelah tanggal ini lewat.</small>
     </div>
     <div class="col-md-6 mb-3">
         <label class="form-label">Jumlah Invoice (Rp)</label>
@@ -50,6 +56,11 @@
     <i class="bi bi-info-circle me-1"></i>
     Invoice <strong>Paid</strong> otomatis tercatat sebagai pemasukan di Laporan Keuangan &amp; Dashboard.
     Integrasi gateway otomatis (Midtrans/Xendit) <strong>belum aktif</strong> — pembayaran QRIS/VA dikonfirmasi manual oleh Admin.
+    <br>
+    Invoice <strong>Unpaid</strong> yang belum jatuh tempo tidak menghalangi apa pun. Setelah lewat jatuh tempo, murid ditandai
+    menunggak (kelas pengganti &amp; akses raport orang tua ditahan), dan setelah lewat
+    <strong>{{ config('academic.payment.grace_days') }} hari</strong> masa toleransi murid ditangguhkan otomatis dari daftar kelas.
+    Absensi tidak pernah ikut terkunci.
 </div>
 
 @push('scripts')

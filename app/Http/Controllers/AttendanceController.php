@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\ActivityLog;
 use App\Models\Attendance;
 use App\Models\ClassRoom;
-use App\Rules\StudentPaymentSettled;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -19,9 +18,9 @@ class AttendanceController extends Controller
         $search = $request->string('search')->toString();
 
         $attendances = Attendance::query()
-            ->with(['student', 'classRoom'])
-            // Murid yang pembayarannya belum lunas disembunyikan dari modul akademik.
-            ->whereHas('student', fn ($s) => $s->paid())
+            ->with(['student.payments', 'classRoom'])
+            // Absensi tidak digerbang tagihan: kehadiran yang sudah terjadi harus
+            // tetap terlihat & terekap. Murid menunggak hanya ditandai di kolomnya.
             ->when($classId, fn ($q) => $q->where('class_id', $classId))
             ->when($date, fn ($q) => $q->whereDate('attendance_date', $date))
             ->when($search, fn ($q) => $q->whereHas('student', fn ($s) => $s->where('name', 'like', "%{$search}%")
@@ -32,11 +31,7 @@ class AttendanceController extends Controller
 
         $classes = ClassRoom::orderBy('class_name')->get();
 
-        // Jumlah baris yang ditahan karena muridnya belum lunas, sekadar catatan
-        // agar admin tidak mengira datanya hilang.
-        $hiddenCount = Attendance::whereHas('student', fn ($s) => $s->unpaid())->count();
-
-        return view('attendances.index', compact('attendances', 'classes', 'classId', 'date', 'search', 'hiddenCount'));
+        return view('attendances.index', compact('attendances', 'classes', 'classId', 'date', 'search'));
     }
 
     public function create(Request $request)
@@ -44,7 +39,7 @@ class AttendanceController extends Controller
         $classes = ClassRoom::orderBy('class_name')->get();
         $selectedClass = null;
         $students = collect();
-        $blockedStudents = collect();
+        $suspendedStudents = collect();
 
         if ($request->filled('class_id')) {
             $selectedClass = ClassRoom::find($request->integer('class_id'));
@@ -56,13 +51,15 @@ class AttendanceController extends Controller
                     ->orderBy('name')
                     ->get();
 
-                // Hanya murid lunas yang boleh diabsen; sisanya ditampilkan
-                // sebagai catatan agar admin tahu kenapa mereka tidak ada di daftar.
-                [$students, $blockedStudents] = $enrolled->partition->isPaid();
+                // Semua murid aktif di kelas ini bisa diabsen, termasuk yang
+                // menunggak (ditandai di daftar). Yang keluar dari daftar hanya
+                // murid yang sudah ditangguhkan — mereka memang tidak ikut kelas
+                // lagi sampai tunggakannya dilunasi.
+                [$suspendedStudents, $students] = $enrolled->partition->isSuspended();
             }
         }
 
-        return view('attendances.create', compact('classes', 'selectedClass', 'students', 'blockedStudents'));
+        return view('attendances.create', compact('classes', 'selectedClass', 'students', 'suspendedStudents'));
     }
 
     public function store(Request $request)
@@ -71,7 +68,8 @@ class AttendanceController extends Controller
             'class_id' => ['required', 'exists:classes,id'],
             'attendance_date' => ['required', 'date'],
             'records' => ['required', 'array'],
-            'records.*.student_id' => ['required', 'exists:students,id', new StudentPaymentSettled],
+            // Tanpa gerbang pembayaran — lihat catatan di App\Rules\StudentPaymentSettled.
+            'records.*.student_id' => ['required', 'exists:students,id'],
             'records.*.status' => ['required', Rule::in(['present', 'absent', 'permit'])],
             'records.*.notes' => ['nullable', 'string'],
         ]);

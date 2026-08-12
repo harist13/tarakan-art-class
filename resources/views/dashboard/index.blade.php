@@ -56,8 +56,15 @@
                 <div class="row align-items-center">
                     <div class="col">
                         <div class="text-warning text-uppercase mb-1" style="font-size:0.7rem; font-weight:800; letter-spacing:.5px;">Perlu Perhatian</div>
-                        <div class="h4 mb-0 fw-bold text-gray-800">{{ $unpaidCount }} <span class="small text-muted fw-normal">tagihan belum lunas</span></div>
-                        <div class="small text-muted mt-1">{{ $pendingReplacements }} replacement pending</div>
+                        {{-- Yang benar-benar perlu ditagih adalah murid yang lewat jatuh tempo,
+                             bukan seluruh invoice unpaid (yang bulan berjalan ikut terhitung). --}}
+                        <div class="h4 mb-0 fw-bold text-gray-800">{{ $studentsInArrears }} <span class="small text-muted fw-normal">murid menunggak</span></div>
+                        <div class="small text-muted mt-1">
+                            {{ $unpaidCount }} tagihan belum lunas · {{ $pendingReplacements }} replacement pending
+                            @if($suspendedStudents > 0)
+                                <span class="text-danger d-block">{{ $suspendedStudents }} murid ditangguhkan dari kelas</span>
+                            @endif
+                        </div>
                     </div>
                     <div class="col-auto"><i class="bi bi-exclamation-triangle-fill fs-1" style="color:#E2E8F0;"></i></div>
                 </div>

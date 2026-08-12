@@ -24,7 +24,9 @@
       "Bash(rm -f resources/views/partials/site-theme.blade.php)",
       "Bash(git checkout *)",
       "PowerShell(php artisan test --filter=PublicSiteTest)",
-      "PowerShell(php artisan test --filter=SlotAvailabilityTest)"
+      "PowerShell(php artisan test --filter=SlotAvailabilityTest)",
+      "Bash(php artisan *)",
+      "Bash(php artisan tinker '--execute= *)"
     ],
     "additionalDirectories": [
       "C:\\Users\\LENOVO\\AppData\\Local\\Temp\\claude\\c--laragon-www-tarakan-art-class\\7b704970-429c-4686-b28c-0dc23945c341\\scratchpad"

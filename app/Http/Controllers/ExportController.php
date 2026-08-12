@@ -135,8 +135,7 @@ class ExportController extends Controller
 
         $attendances = Attendance::query()
             ->with(['student', 'classRoom'])
-            // Sama seperti halaman absensi: murid yang belum lunas tidak ikut diekspor.
-            ->whereHas('student', fn ($s) => $s->paid())
+            // Sama seperti halaman absensi: rekap kehadiran tidak disaring tagihan.
             ->when($classId, fn ($q) => $q->where('class_id', $classId))
             ->when($date, fn ($q) => $q->whereDate('attendance_date', $date))
             ->when($search, fn ($q) => $q->whereHas('student', fn ($s) => $s->where('name', 'like', "%{$search}%")

@@ -185,8 +185,27 @@
             <div class="tac-card h-100 p-4">
                 <span class="tac-icon tac-bg-coral tac-text-paper" aria-hidden="true">📢</span>
                 <h2 class="fs-4 mt-4 mb-3">Pengumuman</h2>
-                @if($announcements->isNotEmpty())
+                @if($holidayClasses->isNotEmpty() || $announcements->isNotEmpty())
                     <ul class="list-unstyled mb-0">
+                        {{-- Sesi liburan lebih dulu: sifatnya penawaran, bukan sekadar agenda. --}}
+                        @foreach($holidayClasses as $holidayClass)
+                            <li class="pb-3 mb-3"
+                                @style(['border-bottom: 2px dashed rgba(36, 27, 54, 0.12)' => ! $loop->last || $announcements->isNotEmpty()])>
+                                <p class="small fw-semibold mb-1">
+                                    <span class="tac-badge tac-bg-leaf-soft">Holiday Class</span>
+                                    {{ $holidayClass->class_name }}
+                                </p>
+                                <p class="tac-muted-soft mb-0" style="font-size: 0.75rem;">
+                                    {{ $tanggalID($holidayClass->schedule) }} &middot;
+                                    {{ $holidayClass->schedule->format('H.i') }} WITA
+                                </p>
+                                <p class="lh-lg tac-muted mt-1 mb-0" style="font-size: 0.75rem;">
+                                    Kapasitas {{ $holidayClass->capacity }} anak &middot;
+                                    Rp {{ number_format($holidayClass->price, 0, ',', '.') }} / sesi
+                                </p>
+                            </li>
+                        @endforeach
+
                         @foreach($announcements as $event)
                             <li class="pb-3 mb-3" @style(['border-bottom: 2px dashed rgba(36, 27, 54, 0.12)' => ! $loop->last])>
                                 <p class="small fw-semibold mb-1">{{ $event->title }}</p>

@@ -32,14 +32,14 @@ class DashboardController extends Controller
 
         $unpaidCount = Payment::where('payment_status', 'unpaid')->count();
 
-        // Angka akademik mengikuti aturan yang sama dengan halamannya:
-        // murid yang pembayarannya belum lunas tidak ikut dihitung.
-        $pendingReplacements = ReplacementRequest::where('request_status', 'pending')
-            ->whereHas('student', fn ($s) => $s->paid())
-            ->count();
-        $todayAttendance = Attendance::whereDate('attendance_date', today())
-            ->whereHas('student', fn ($s) => $s->paid())
-            ->count();
+        // Angka akademik menghitung semua murid — data akademik tidak lagi
+        // disaring status tagihan. Tunggakan punya scorecard-nya sendiri.
+        $pendingReplacements = ReplacementRequest::where('request_status', 'pending')->count();
+        $todayAttendance = Attendance::whereDate('attendance_date', today())->count();
+
+        // Murid yang punya invoice lewat jatuh tempo, plus yang sudah ditangguhkan.
+        $studentsInArrears = Student::inArrears()->count();
+        $suspendedStudents = Student::whereNotNull('suspended_at')->count();
 
         // Grafik pertumbuhan murid 6 bulan terakhir (kumulatif murid aktif,
         // konsisten dengan scorecard "Total Murid" yang membedakan aktif/nonaktif).
@@ -70,6 +70,8 @@ class DashboardController extends Controller
             'monthIncome',
             'monthExpense',
             'unpaidCount',
+            'studentsInArrears',
+            'suspendedStudents',
             'pendingReplacements',
             'todayAttendance',
             'growthLabels',

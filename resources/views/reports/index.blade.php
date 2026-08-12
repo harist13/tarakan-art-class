@@ -15,7 +15,11 @@
         </form>
     </div>
     <div class="card-body">
-        @include('partials.unpaid-hidden-note', ['label' => 'raport'])
+        @include('partials.arrears-note', [
+            'count' => $withheldCount,
+            'label' => 'raport',
+            'effect' => 'Orang tuanya belum bisa membukanya lewat credential key sampai tunggakan itu lunas.',
+        ])
         <div class="table-responsive">
             <table class="table table-hover align-middle">
                 <thead>

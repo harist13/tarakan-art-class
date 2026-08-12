@@ -102,6 +102,10 @@ return [
         [
             'slug' => 'holiday',
             'category' => null,
+            // Data live-nya bukan dari tabel `classes` (tidak punya kategori), melainkan
+            // dari modul Holiday Class. Nilai di bawah cuma cadangan saat belum ada
+            // sesi yang dijadwalkan admin — lihat PublicSiteController::withHolidaySession().
+            'source' => 'holiday_classes',
             'name' => 'Holiday Class',
             'age' => '4 – 12 tahun',
             'duration' => '2 jam / sesi',

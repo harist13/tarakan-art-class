@@ -74,6 +74,15 @@ class StudentController extends Controller
         $classId = $data['class_id'];
         unset($data['class_id']);
 
+        // Pindah/tambah kelas ditahan selama menunggak — itu keputusan yang bisa
+        // ditunda tanpa merusak catatan apa pun. Perubahan data lain tetap boleh.
+        $movingClass = ! $student->classes()->where('classes.id', $classId)->exists();
+        if ($movingClass && $student->hasArrears()) {
+            return back()->withInput()->withErrors([
+                'class_id' => "Kelas belum bisa diubah: murid {$student->paymentBlockReason()}. Lunasi dulu di menu Pembayaran.",
+            ]);
+        }
+
         DB::transaction(function () use ($student, $data, $classId) {
             $student->update($data);
             $this->syncClasses($student, [$classId]);

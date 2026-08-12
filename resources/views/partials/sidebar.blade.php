@@ -28,6 +28,9 @@
         <li class="{{ request()->is('classes*') ? 'active' : '' }}">
             <a href="{{ route('classes.index') }}"><i class="bi bi-easel2-fill"></i> Manajemen Kelas</a>
         </li>
+        <li class="{{ request()->is('holiday-classes*') ? 'active' : '' }}">
+            <a href="{{ route('holiday-classes.index') }}"><i class="bi bi-sun-fill"></i> Holiday Class</a>
+        </li>
         <li class="{{ request()->is('schedules/calendar') ? 'active' : '' }}">
             <a href="{{ route('schedules.calendar') }}"><i class="bi bi-calendar3-week-fill"></i> Kalender Jadwal</a>
         </li>

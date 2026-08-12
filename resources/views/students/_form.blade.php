@@ -44,21 +44,6 @@
         </select>
     </div>
     <div class="col-md-6 mb-3">
-        <label class="form-label">Tanggal Bergabung</label>
-        <input type="date" name="join_date" class="form-control" value="{{ old('join_date', isset($student) ? $student->join_date->format('Y-m-d') : now()->format('Y-m-d')) }}" required>
-    </div>
-    <div class="col-md-6 mb-3">
-        <label class="form-label">Status</label>
-        <select name="status" class="form-select" required>
-            <option value="active" @selected(old('status', $student->status ?? 'active') === 'active')>Aktif</option>
-            <option value="inactive" @selected(old('status', $student->status ?? '') === 'inactive')>Nonaktif</option>
-        </select>
-    </div>
-    <div class="col-12 mb-3">
-        <label class="form-label">Alamat (opsional)</label>
-        <textarea name="address" class="form-control" rows="2">{{ old('address', $student->address ?? '') }}</textarea>
-    </div>
-    <div class="col-md-6 mb-3">
         <label class="form-label">Daftarkan ke Kelas <span class="text-danger">*</span></label>
         <select name="class_id" id="class_id" class="form-select" data-no-search required>
             <option value="" disabled @selected($selectedClass === '' || $selectedClass === null)>-- Pilih Kelas --</option>
@@ -81,6 +66,21 @@
         @if($classes->isEmpty())
             <div class="form-text text-danger">Belum ada kelas tersedia. Tambahkan kelas terlebih dahulu.</div>
         @endif
+    </div>
+    <div class="col-md-6 mb-3">
+        <label class="form-label">Status</label>
+        <select name="status" class="form-select" required>
+            <option value="active" @selected(old('status', $student->status ?? 'active') === 'active')>Aktif</option>
+            <option value="inactive" @selected(old('status', $student->status ?? '') === 'inactive')>Nonaktif</option>
+        </select>
+    </div>
+    <div class="col-md-6 mb-3">
+        <label class="form-label">Tanggal Bergabung</label>
+        <input type="date" name="join_date" class="form-control" value="{{ old('join_date', isset($student) ? $student->join_date->format('Y-m-d') : now()->format('Y-m-d')) }}" required>
+    </div>
+    <div class="col-12 mb-3">
+        <label class="form-label">Alamat (opsional)</label>
+        <textarea name="address" class="form-control" rows="2">{{ old('address', $student->address ?? '') }}</textarea>
     </div>
 </div>
 

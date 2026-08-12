@@ -29,11 +29,22 @@ class Lead extends Model
         'date_of_birth' => 'date',
     ];
 
+    /**
+     * Tipe kelas untuk sesi liburan.
+     *
+     * Sengaja hanya berlaku untuk lead: kolom `leads.class_type` bertipe string
+     * (calon murid boleh berubah pikiran), sedangkan `students.class_type` tetap
+     * enum tiga kategori dan divalidasi terpisah di StudentController. Jadi nilai
+     * ini tidak pernah ikut berpindah saat admin mengubah lead menjadi murid.
+     */
+    public const HOLIDAY_TYPE = 'holiday';
+
     /** Label tipe kelas untuk ditampilkan ke admin. */
     public const CLASS_TYPES = [
         'preschool' => 'Preschool',
         'coloring' => 'Coloring',
         'drawing' => 'Drawing',
+        self::HOLIDAY_TYPE => 'Holiday Class',
     ];
 
     public function classTypeName(): ?string

@@ -95,7 +95,11 @@
         </form>
     </div>
     <div class="card-body">
-        @include('partials.unpaid-hidden-note', ['label' => 'request replacement'])
+        @include('partials.arrears-note', [
+            'count' => $arrearsCount,
+            'label' => 'request replacement pending',
+            'effect' => 'Pengajuan baru untuk mereka ditolak sampai tunggakan lunas — tinjau dulu sebelum approve.',
+        ])
         <div class="table-responsive">
             <table class="table table-hover align-middle">
                 <thead class="text-muted small text-uppercase">

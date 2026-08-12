@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Models\ClassRoom;
+use App\Models\HolidayClass;
 use App\Models\Lead;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -48,7 +49,7 @@ class StoreLeadRequest extends FormRequest
 
     /**
      * Adakah kelas yang cocok dengan tipe kelas yang dipilih? Kelas tanpa
-     * kategori (mis. Holiday Class) dianggap cocok untuk semua tipe.
+     * kategori dianggap cocok untuk semua tipe.
      */
     private function classExistsForSelectedType(): bool
     {
@@ -56,6 +57,12 @@ class StoreLeadRequest extends FormRequest
 
         if (! is_string($type) || $type === '') {
             return false; // Biar aturan class_type yang menegur lebih dulu.
+        }
+
+        // Holiday Class tidak ada di tabel `classes`: ketersediaannya ditentukan
+        // sesi mendatang di modul Holiday Class, sama seperti dropdown di form.
+        if ($type === Lead::HOLIDAY_TYPE) {
+            return HolidayClass::upcoming()->exists();
         }
 
         $categories = ClassRoom::query()->distinct()->pluck('class_category');

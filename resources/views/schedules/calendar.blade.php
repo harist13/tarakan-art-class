@@ -43,8 +43,10 @@
             <span><span class="d-inline-block rounded-circle me-1" style="width:12px;height:12px;background:#10B981;"></span>Repl. Approved</span>
             <span><span class="d-inline-block rounded-circle me-1" style="width:12px;height:12px;background:#EF4444;"></span>Repl. Rejected</span>
             <span><span class="d-inline-block rounded-circle me-1" style="width:12px;height:12px;background:#EA580C;"></span>Hari Libur</span>
+            <span><span class="d-inline-block rounded-circle me-1" style="width:12px;height:12px;background:#C026D3;"></span>Holiday Class</span>
             <span><span class="d-inline-block rounded-circle me-1" style="width:12px;height:12px;background:#6366F1;"></span>Acara</span>
-            <div class="form-check form-switch ms-2">
+            <div class="form-check form-switch ms-2"
+                 title="Menyembunyikan kelas yang penuh/ditutup, serta replacement &amp; Holiday Class yang jadwalnya sudah lewat. Hari libur & acara tetap tampil.">
                 <input class="form-check-input" type="checkbox" id="onlyAvailable" checked>
                 <label class="form-check-label" for="onlyAvailable">Hanya slot available</label>
             </div>
@@ -179,7 +181,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 link.classList.remove('d-none');
             } else if (info.event.url) {
                 link.href = info.event.url;
-                link.innerHTML = '<i class="bi bi-pencil me-1"></i> Kelola Replacement';
+                // Label menyesuaikan jenis event; replacement tetap jadi default.
+                link.innerHTML = '<i class="bi bi-pencil me-1"></i> ' + (p.linkLabel || 'Kelola Replacement');
                 link.classList.remove('d-none');
             } else {
                 link.classList.add('d-none');
@@ -194,16 +197,28 @@ document.addEventListener('DOMContentLoaded', function () {
     function visibleEvents() {
         const stu = currentStudent();
         if (stu) {
-            // Slot cocok murid + hari libur & acara (tetap ditampilkan sebagai konteks).
+            // Slot cocok murid + hari libur, acara, & Holiday Class (tetap
+            // ditampilkan sebagai konteks: menandai hari studio sedang terpakai,
+            // walau bukan slot yang bisa diajukan sebagai kelas pengganti).
             return events.filter(function (ev) {
                 const p = ev.extendedProps || {};
-                return matchesStudent(ev, stu) || p.holiday === true || p.type === 'Acara';
+                return matchesStudent(ev, stu)
+                    || p.holiday === true
+                    || p.type === 'Acara'
+                    || p.type === 'Holiday Class';
             });
         }
         if (!onlyAvailable.checked) return events;
         return events.filter(function (ev) {
             const p = ev.extendedProps || {};
-            return !(p.type === 'Kelas Reguler' && p.available !== true);
+            // Kelas reguler: 'available' sudah memuat penuh, ditutup, sudah lewat,
+            // jatuh di hari libur, dan tutor kosong.
+            if (p.type === 'Kelas Reguler') return p.available === true;
+            // Jadwal lain yang sudah lewat adalah riwayat, bukan agenda — termasuk
+            // replacement pending yang terlewat, yang juga tidak bisa dipakai lagi.
+            // Hari libur & acara sengaja tidak ditandai 'past' agar tetap tampil
+            // sebagai konteks kalender.
+            return p.past !== true;
         });
     }
 

@@ -262,7 +262,9 @@
             return {
                 value: option.value,
                 label: option.text.trim(),
-                // Kelas tanpa kategori (mis. Holiday Class) cocok untuk semua tipe.
+                // Opsi tanpa kategori cocok untuk semua tipe kelas. Holiday Class
+                // punya kategorinya sendiri ('holiday'), jadi hanya muncul saat
+                // tipe itu dipilih.
                 category: option.dataset.category || ''
             };
         });

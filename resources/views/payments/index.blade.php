@@ -21,6 +21,7 @@
                 <option value="">Semua Status</option>
                 <option value="paid" @selected($status === 'paid')>Paid</option>
                 <option value="unpaid" @selected($status === 'unpaid')>Unpaid</option>
+                <option value="overdue" @selected($status === 'overdue')>Lewat jatuh tempo</option>
             </select>
             @if($search !== '' || $status !== '')
                 <a href="{{ route('payments.index') }}" class="btn btn-sm btn-outline-secondary" title="Reset filter"><i class="bi bi-x-lg"></i></a>
@@ -31,7 +32,7 @@
         <div class="table-responsive">
             <table class="table table-hover align-middle">
                 <thead>
-                    <tr><th>Invoice</th><th>Murid</th><th>Tanggal</th><th>Jumlah</th><th>Metode</th><th>Status</th><th class="text-end">Aksi</th></tr>
+                    <tr><th>Invoice</th><th>Murid</th><th>Tanggal</th><th>Jatuh Tempo</th><th>Jumlah</th><th>Metode</th><th>Status</th><th class="text-end">Aksi</th></tr>
                 </thead>
                 <tbody>
                     @forelse($payments as $payment)
@@ -39,30 +40,39 @@
                             <td class="fw-bold">{{ $payment->invoice_number }}</td>
                             <td>{{ $payment->student->name ?? '-' }}</td>
                             <td>{{ $payment->payment_date->format('d M Y') }}</td>
+                            <td>
+                                {{ $payment->due_date?->format('d M Y') ?? '-' }}
+                                @if($payment->isOverdue())
+                                    <span class="badge bg-danger d-block mt-1">Lewat {{ $payment->daysOverdue() }} hari</span>
+                                @endif
+                            </td>
                             <td>Rp {{ number_format($payment->payment_amount, 0, ',', '.') }}</td>
                             <td>
                                 @php $methods = ['cash' => 'Cash', 'transfer' => 'Transfer', 'qris' => 'QRIS', 'virtual_account' => 'Virtual Account']; @endphp
                                 {{ $methods[$payment->payment_method] ?? ucfirst($payment->payment_method) }}
                             </td>
                             <td><span class="badge bg-{{ $payment->payment_status === 'paid' ? 'success' : 'warning' }}">{{ $payment->payment_status === 'paid' ? 'Paid' : 'Unpaid' }}</span></td>
-                            <td class="text-end">
-                                @if($payment->payment_status !== 'paid')
-                                <form action="{{ route('payments.confirm', $payment) }}" method="POST" class="d-inline" onsubmit="return confirm('Konfirmasi invoice ini sebagai LUNAS?')">
-                                    @csrf @method('PATCH')
-                                    <button class="btn btn-sm btn-success" title="Konfirmasi Lunas"><i class="bi bi-check2-circle"></i> Lunas</button>
-                                </form>
-                                @endif
-                                <a href="{{ route('payments.edit', $payment) }}" class="btn btn-sm btn-info text-white"><i class="bi bi-pencil"></i></a>
-                                @if(auth()->user()->isSuperAdmin())
-                                <form action="{{ route('payments.destroy', $payment) }}" method="POST" class="d-inline" onsubmit="return confirm('Void pembayaran ini?')">
-                                    @csrf @method('DELETE')
-                                    <button class="btn btn-sm btn-danger" title="Void"><i class="bi bi-x-circle"></i></button>
-                                </form>
-                                @endif
+                            {{-- Flex + nowrap: tombol aksi tetap sebaris walau kolomnya sempit. --}}
+                            <td class="text-end text-nowrap">
+                                <div class="d-flex gap-1 justify-content-end align-items-center">
+                                    @if($payment->payment_status !== 'paid')
+                                    <form action="{{ route('payments.confirm', $payment) }}" method="POST" onsubmit="return confirm('Konfirmasi invoice ini sebagai LUNAS?')">
+                                        @csrf @method('PATCH')
+                                        <button class="btn btn-sm btn-success text-nowrap" title="Konfirmasi Lunas"><i class="bi bi-check2-circle"></i> Lunas</button>
+                                    </form>
+                                    @endif
+                                    <a href="{{ route('payments.edit', $payment) }}" class="btn btn-sm btn-info text-white" title="Edit"><i class="bi bi-pencil"></i></a>
+                                    @if(auth()->user()->isSuperAdmin())
+                                    <form action="{{ route('payments.destroy', $payment) }}" method="POST" onsubmit="return confirm('Void pembayaran ini?')">
+                                        @csrf @method('DELETE')
+                                        <button class="btn btn-sm btn-danger" title="Void"><i class="bi bi-x-circle"></i></button>
+                                    </form>
+                                    @endif
+                                </div>
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="7" class="text-center text-muted">Belum ada pembayaran.</td></tr>
+                        <tr><td colspan="8" class="text-center text-muted">Belum ada pembayaran.</td></tr>
                     @endforelse
                 </tbody>
             </table>

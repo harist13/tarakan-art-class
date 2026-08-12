@@ -24,11 +24,25 @@ class PaymentObserver
     {
         if ($payment->payment_status === 'paid') {
             $this->syncIncome($payment);
-
-            return;
+        } else {
+            $payment->transaction()->delete();
         }
 
-        $payment->transaction()->delete();
+        $this->syncSuspension($payment);
+    }
+
+    /**
+     * Pulihkan murid yang ditangguhkan begitu tunggakannya beres, tanpa menunggu
+     * command harian — orang tua yang baru saja membayar di depan meja admin
+     * harus langsung bisa masuk daftar kelas lagi.
+     */
+    private function syncSuspension(Payment $payment): void
+    {
+        $student = $payment->student;
+
+        if ($student && $student->isSuspended() && ! $student->fresh()->hasArrears()) {
+            $student->unsuspend();
+        }
     }
 
     /**
@@ -38,6 +52,12 @@ class PaymentObserver
     public function deleting(Payment $payment): void
     {
         $payment->transaction()->delete();
+    }
+
+    /** Void invoice yang menunggak juga mencabut penangguhan muridnya. */
+    public function deleted(Payment $payment): void
+    {
+        $this->syncSuspension($payment);
     }
 
     /**

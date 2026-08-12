@@ -1,5 +1,24 @@
 @extends('layouts.app')
 
+@push('styles')
+<style>
+    /* Tabel murid: 7 kolom cukup padat, jadi padding dirapatkan sedikit
+       dan kolom aksi dibuat menempel di kanan saat tabel di-scroll. */
+    .students-table thead th,
+    .students-table tbody td { padding: 0.85rem 1rem; }
+    .students-table th { white-space: nowrap; }
+    .students-table .cell-main { font-weight: 600; line-height: 1.25; }
+    .students-table .cell-sub { font-size: 0.8rem; color: var(--text-muted); line-height: 1.25; }
+    .students-table .col-actions { position: sticky; right: 0; background-color: var(--surface); }
+    .students-table thead .col-actions { background-color: var(--surface-2); }
+    .students-table .col-actions::before {
+        content: ''; position: absolute; top: 0; bottom: 0; left: 0;
+        border-left: 1px solid var(--border);
+    }
+    .students-table tbody tr:hover td.col-actions { background-color: var(--surface-2); }
+</style>
+@endpush
+
 @section('content')
 <div class="d-sm-flex align-items-center justify-content-between mb-4">
     <h1 class="h3 mb-0 text-gray-800 fw-bold">Data Murid & Wali</h1>
@@ -37,52 +56,79 @@
     </div>
     <div class="card-body">
         <div class="table-responsive">
-            <table class="table table-hover align-middle">
+            <table class="table table-hover align-middle students-table">
                 <thead>
-                    <tr><th>ID Murid</th><th>Nama Murid</th><th>Usia</th><th>Kelas</th><th>Nama Wali</th><th>No HP</th><th>Status</th><th class="text-end">Aksi</th></tr>
+                    <tr>
+                        <th>Murid</th>
+                        <th>Usia</th>
+                        <th>Kelas</th>
+                        <th>Wali</th>
+                        <th>Bergabung</th>
+                        <th>Status</th>
+                        <th class="text-end col-actions">Aksi</th>
+                    </tr>
                 </thead>
                 <tbody>
                     @forelse($students as $student)
                         <tr>
-                            <td class="fw-bold">{{ $student->student_id }}</td>
-                            <td>{{ $student->name }}</td>
                             <td>
+                                <div class="cell-main">{{ $student->name }}</div>
+                                <div class="cell-sub">{{ $student->student_id }}</div>
+                            </td>
+                            <td class="text-nowrap">
                                 {{ $student->age !== null ? $student->age.' th' : '-' }}
                                 @if($student->has_manual_age)
                                     <i class="bi bi-pencil-fill text-muted small" title="Usia diisi manual (hitungan dari tanggal lahir: {{ $student->calculated_age }} th)"></i>
                                 @endif
                             </td>
                             <td>
-                                @forelse($student->classes as $class)
-                                    <span class="badge bg-light text-dark border">{{ $class->class_name }}</span>
-                                @empty
-                                    <span class="text-muted small">Belum ada kelas</span>
-                                @endforelse
+                                <div class="d-flex flex-wrap gap-1">
+                                    @forelse($student->classes as $class)
+                                        <span class="badge bg-light text-dark border">{{ $class->class_name }}</span>
+                                    @empty
+                                        <span class="text-muted small">Belum ada kelas</span>
+                                    @endforelse
+                                </div>
                             </td>
-                            <td>{{ $student->parent_name }}</td>
-                            <td>{{ $student->phone_number }}</td>
                             <td>
-                                <span class="badge bg-{{ $student->status === 'active' ? 'success' : 'secondary' }}">{{ ucfirst($student->status) }}</span>
-                                {{-- Murid belum lunas tidak muncul di absensi, raport, & replacement. --}}
-                                @if(! $student->isPaid())
-                                    <span class="badge bg-warning text-dark d-block mt-1"
-                                          title="Murid {{ $student->paymentBlockReason() }} — tidak muncul di absensi, raport, & replacement class.">
-                                        <i class="bi bi-exclamation-triangle-fill me-1"></i>{{ $student->paymentBadgeLabel() }}
-                                    </span>
-                                @endif
+                                <div class="cell-main">{{ $student->parent_name }}</div>
+                                <div class="cell-sub">{{ $student->phone_number }}</div>
                             </td>
-                            <td class="text-end">
-                                <a href="{{ route('students.edit', $student) }}" class="btn btn-sm btn-info text-white"><i class="bi bi-pencil"></i></a>
+                            <td class="text-nowrap">{{ optional($student->join_date)->format('d/m/Y') ?? '-' }}</td>
+                            <td>
+                                <div class="d-flex flex-column align-items-start gap-1">
+                                    <span class="badge bg-{{ $student->status === 'active' ? 'success' : 'secondary' }}">{{ ucfirst($student->status) }}</span>
+                                    {{-- Penangguhan sistem: murid keluar dari daftar kelas ke depan, datanya tetap utuh. --}}
+                                    @if($student->isSuspended())
+                                        <span class="badge bg-danger"
+                                              title="{{ $student->suspended_reason }} — tidak masuk daftar kelas berikutnya sampai tunggakan lunas.">
+                                            <i class="bi bi-pause-circle-fill me-1"></i>Ditangguhkan
+                                        </span>
+                                    @endif
+                                    {{-- Penanda tagihan. Absensi & raport tetap jalan; yang ditahan hanya
+                                         kelas pengganti, pindah kelas, dan akses raport orang tua. --}}
+                                    @if($label = $student->paymentBadgeLabel())
+                                        <span class="badge bg-warning text-dark"
+                                              title="{{ $student->hasArrears()
+                                                  ? 'Murid '.$student->paymentBlockReason().' — kelas pengganti & akses raport orang tua ditahan.'
+                                                  : 'Belum ada invoice yang dilunasi. Absensi tetap bisa dicatat.' }}">
+                                            <i class="bi bi-exclamation-triangle-fill me-1"></i>{{ $label }}
+                                        </span>
+                                    @endif
+                                </div>
+                            </td>
+                            <td class="text-end text-nowrap col-actions">
+                                <a href="{{ route('students.edit', $student) }}" class="btn btn-sm btn-info text-white" title="Edit murid"><i class="bi bi-pencil"></i></a>
                                 @if(auth()->user()->isSuperAdmin())
                                 <form action="{{ route('students.destroy', $student) }}" method="POST" class="d-inline" onsubmit="return confirm('Hapus permanen murid ini?')">
                                     @csrf @method('DELETE')
-                                    <button class="btn btn-sm btn-danger"><i class="bi bi-trash"></i></button>
+                                    <button class="btn btn-sm btn-danger" title="Hapus murid"><i class="bi bi-trash"></i></button>
                                 </form>
                                 @endif
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="8" class="text-center text-muted">Tidak ada data murid.</td></tr>
+                        <tr><td colspan="7" class="text-center text-muted">Tidak ada data murid.</td></tr>
                     @endforelse
                 </tbody>
             </table>

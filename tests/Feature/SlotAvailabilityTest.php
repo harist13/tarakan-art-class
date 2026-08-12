@@ -6,6 +6,7 @@ use App\Models\CalendarEvent;
 use App\Models\ClassRoom;
 use App\Models\Holiday;
 use App\Models\Payment;
+use App\Models\ReplacementRequest;
 use App\Models\Student;
 use App\Models\Tutor;
 use App\Models\User;
@@ -173,6 +174,48 @@ class SlotAvailabilityTest extends TestCase
         ])->assertSessionHasErrors('origin_class_id');
     }
 
+    public function test_tanggal_jam_pengganti_kosong_ikut_jadwal_kelas_tujuan(): void
+    {
+        $this->actingAs($this->makeUser());
+        $target = $this->makeClass([
+            'schedule_date' => now()->addDays(5)->toDateString(),
+            'schedule_time' => '14:30',
+        ]);
+        $student = $this->makeStudent(['name' => 'Gani', 'parent_name' => 'Hesti']);
+
+        $this->post(route('schedules.store'), [
+            'student_id' => $student->id,
+            'class_id' => $target->id,
+            // replacement_date & replacement_time sengaja tidak dikirim.
+        ])->assertRedirect(route('schedules.index'))->assertSessionHasNoErrors();
+
+        $saved = ReplacementRequest::firstOrFail();
+        $this->assertSame($target->id, $saved->class_id);
+        $this->assertSame(now()->addDays(5)->toDateString(), $saved->replacement_date->toDateString());
+        $this->assertSame('14:30', substr($saved->replacement_time, 0, 5));
+    }
+
+    public function test_tanggal_jam_pengganti_manual_tidak_ditimpa_jadwal_kelas(): void
+    {
+        $this->actingAs($this->makeUser());
+        $target = $this->makeClass([
+            'schedule_date' => now()->addDays(5)->toDateString(),
+            'schedule_time' => '14:30',
+        ]);
+        $student = $this->makeStudent(['name' => 'Ika', 'parent_name' => 'Joko']);
+
+        // Sesi digeser dari jadwal aslinya — isian admin harus dipakai apa adanya.
+        $this->post(route('schedules.store'), [
+            'student_id' => $student->id,
+            'class_id' => $target->id,
+            'replacement_date' => now()->addDays(6)->toDateString(),
+            'replacement_time' => '16:00',
+        ])->assertRedirect(route('schedules.index'))->assertSessionHasNoErrors();
+
+        $saved = ReplacementRequest::firstOrFail();
+        $this->assertSame(now()->addDays(6)->toDateString(), $saved->replacement_date->toDateString());
+        $this->assertSame('16:00', substr($saved->replacement_time, 0, 5));
+    }
 
     public function test_halaman_jadwal_menampilkan_ringkasan_dan_legenda(): void
     {
@@ -195,6 +238,79 @@ class SlotAvailabilityTest extends TestCase
             ->assertOk()
             ->assertSee('Cari kelas pengganti')
             ->assertSee('replacementStudent', false);
+    }
+
+    /**
+     * Toggle "Hanya slot available" menyaring di sisi klien memakai penanda
+     * `past` dari server, jadi yang diuji di sini adalah penandanya: replacement
+     * yang jadwalnya lewat ditandai true apa pun statusnya — pending yang
+     * terlewat pun tidak bisa dipakai lagi.
+     */
+    public function test_replacement_yang_sudah_lewat_ditandai_past_di_kalender(): void
+    {
+        $this->actingAs($this->makeUser());
+
+        $student = $this->makeStudent();
+        $origin = $this->makeClass();
+        $target = $this->makeClass(['class_name' => 'Kelas Tujuan']);
+
+        // Satu per status, semuanya di masa lalu.
+        foreach (['pending', 'approved', 'rejected'] as $status) {
+            ReplacementRequest::create([
+                'student_id' => $student->id,
+                'origin_class_id' => $origin->id,
+                'class_id' => $target->id,
+                'replacement_date' => now()->subWeek()->toDateString(),
+                'replacement_time' => '09:00',
+                'request_status' => $status,
+            ]);
+        }
+
+        $content = $this->get(route('schedules.calendar'))->assertOk()->getContent();
+
+        $this->assertSame(3, substr_count($content, '"past":true'), 'Ketiga replacement lewat harus ditandai past.');
+        $this->assertStringNotContainsString('"past":false', $content);
+    }
+
+    public function test_replacement_mendatang_tidak_ditandai_past(): void
+    {
+        $this->actingAs($this->makeUser());
+
+        $student = $this->makeStudent();
+        $origin = $this->makeClass();
+        $target = $this->makeClass(['class_name' => 'Kelas Tujuan']);
+
+        ReplacementRequest::create([
+            'student_id' => $student->id,
+            'origin_class_id' => $origin->id,
+            'class_id' => $target->id,
+            'replacement_date' => now()->addWeek()->toDateString(),
+            'replacement_time' => '09:00',
+            'request_status' => 'pending',
+        ]);
+
+        $this->get(route('schedules.calendar'))
+            ->assertOk()
+            ->assertSee('"past":false', false)
+            ->assertDontSee('"past":true', false);
+    }
+
+    public function test_hari_libur_dan_acara_tidak_pernah_ditandai_past(): void
+    {
+        $this->actingAs($this->makeUser());
+
+        // Keduanya di masa lalu, tapi tetap tampil sebagai konteks kalender.
+        Holiday::create(['date' => now()->subMonth()->toDateString(), 'name' => 'Libur Lama']);
+        CalendarEvent::create([
+            'title' => 'Pameran Lampau',
+            'date' => now()->subMonth()->toDateString(),
+        ]);
+
+        $this->get(route('schedules.calendar'))
+            ->assertOk()
+            ->assertSee('Libur Lama')
+            ->assertSee('Pameran Lampau')
+            ->assertDontSee('"past":true', false);
     }
 
     public function test_hari_libur_muncul_di_kalender_walau_tanpa_jadwal(): void

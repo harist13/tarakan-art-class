@@ -21,6 +21,9 @@ class PaymentController extends Controller
             ->when($search, fn ($q) => $q->where('invoice_number', 'like', "%{$search}%")
                 ->orWhereHas('student', fn ($s) => $s->where('name', 'like', "%{$search}%")))
             ->when(in_array($status, ['paid', 'unpaid'], true), fn ($q) => $q->where('payment_status', $status))
+            // "overdue" = belum dibayar DAN sudah lewat jatuh tempo; ini yang
+            // sebenarnya perlu ditagih, bukan seluruh invoice unpaid.
+            ->when($status === 'overdue', fn ($q) => $q->overdue())
             ->orderByDesc('id')
             ->paginate(10)
             ->withQueryString();
@@ -107,6 +110,7 @@ class PaymentController extends Controller
         return $request->validate([
             'student_id' => ['required', 'exists:students,id'],
             'payment_date' => ['required', 'date'],
+            'due_date' => ['nullable', 'date', 'after_or_equal:payment_date'],
             'payment_amount' => ['required', 'numeric', 'min:0'],
             'payment_method' => ['required', Rule::in(['cash', 'transfer', 'qris', 'virtual_account'])],
             'payment_status' => ['required', Rule::in(['paid', 'unpaid'])],

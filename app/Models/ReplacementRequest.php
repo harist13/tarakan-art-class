@@ -43,4 +43,24 @@ class ReplacementRequest extends Model
     {
         return $this->belongsTo(User::class, 'approved_by');
     }
+
+    /**
+     * Gabungan tanggal + jam pengganti sebagai Carbon — sejajar dengan
+     * ClassRoom::scheduleAt() agar keduanya dinilai dengan cara yang sama.
+     */
+    public function scheduledAt(): \Illuminate\Support\Carbon
+    {
+        $time = $this->replacement_time ? substr($this->replacement_time, 0, 8) : '00:00:00';
+
+        return $this->replacement_date->copy()->setTimeFromTimeString($time);
+    }
+
+    /**
+     * Jadwalnya sudah lewat. Berlaku untuk semua status: pending yang terlewat
+     * pun tidak bisa dipakai lagi, jadi sifatnya riwayat — bukan agenda.
+     */
+    public function isPast(): bool
+    {
+        return $this->scheduledAt()->isPast();
+    }
 }

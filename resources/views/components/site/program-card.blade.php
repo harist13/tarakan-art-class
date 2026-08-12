@@ -17,6 +17,9 @@
     $icon = $icons[$program['icon'] ?? ''] ?? '🎨';
 
     $next = $program['next_class'] ?? null;
+    // Sesi Holiday Class terdekat — jadwal, kapasitas, & biaya di atas sudah ikut
+    // diisi dari sesi ini, yang tersisa hanyalah temanya (tidak ada di config).
+    $nextHoliday = $program['next_holiday'] ?? null;
 @endphp
 
 <article {{ $attributes->class('tac-card tac-card-hover h-100 d-flex flex-column overflow-hidden') }}>
@@ -75,6 +78,13 @@
                 @else
                     <span class="tac-badge tac-bg-coral-soft">Kelas penuh</span>
                 @endif
+            </p>
+        @elseif($nextHoliday)
+            <p class="d-flex flex-wrap align-items-center gap-2 tac-bg-paper-2 rounded-3 px-3 py-2 mt-3 mb-0"
+               style="font-size: 0.75rem;">
+                <span class="fw-semibold">Tema sesi terdekat:</span>
+                <span class="tac-muted">{{ $nextHoliday->class_name }}</span>
+                <span class="tac-badge tac-bg-leaf-soft">{{ $nextHoliday->capacity }} kursi</span>
             </p>
         @endif
 

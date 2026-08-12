@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\ActivityLog;
 use App\Models\Student;
 use App\Models\StudentReport;
-use App\Rules\StudentPaymentSettled;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -17,26 +16,27 @@ class ReportController extends Controller
         $search = $request->string('search')->toString();
 
         $reports = StudentReport::query()
-            ->with(['student', 'creator'])
-            // Raport murid yang belum lunas disembunyikan sampai pembayarannya beres.
-            ->whereHas('student', fn ($s) => $s->paid())
+            ->with(['student.payments', 'creator'])
+            // Raport tetap terlihat oleh admin apa pun status tagihannya; yang
+            // ditahan hanya akses orang tua lewat credential key (lihat guestShow).
             ->when($search, fn ($q) => $q->where('credential_key', 'like', "%{$search}%")
                 ->orWhereHas('student', fn ($s) => $s->where('name', 'like', "%{$search}%")))
             ->orderByDesc('id')
             ->paginate(10)
             ->withQueryString();
 
-        // Jumlah raport yang ditahan karena muridnya belum lunas, sekadar catatan
-        // agar admin tidak mengira datanya hilang.
-        $hiddenCount = StudentReport::whereHas('student', fn ($s) => $s->unpaid())->count();
+        // Jumlah raport yang tertahan dari orang tua karena muridnya menunggak.
+        $withheldCount = StudentReport::whereHas('student', fn ($s) => $s->inArrears())->count();
 
-        return view('reports.index', compact('reports', 'search', 'hiddenCount'));
+        return view('reports.index', compact('reports', 'search', 'withheldCount'));
     }
 
     public function create()
     {
-        // Hanya murid lunas yang bisa dibuatkan raport.
-        $students = Student::where('status', 'active')->paid()->orderBy('name')->get();
+        // Raport boleh disusun untuk semua murid yang masih ikut kelas — menahan
+        // penulisannya hanya membuat pekerjaan tutor menumpuk. Yang tertahan saat
+        // menunggak adalah akses orang tua ke hasilnya.
+        $students = Student::attendable()->orderBy('name')->get();
 
         return view('reports.create', compact('students'));
     }
@@ -78,10 +78,10 @@ class ReportController extends Controller
 
     public function edit(StudentReport $report)
     {
-        // Murid lunas + murid yang sudah terlanjur dipilih di raport ini,
-        // agar pilihan lamanya tidak hilang dari dropdown saat mengedit.
+        // Murid yang masih ikut kelas + murid yang sudah terlanjur dipilih di
+        // raport ini, agar pilihan lamanya tidak hilang dari dropdown saat mengedit.
         $students = Student::query()
-            ->where(fn ($q) => $q->paid()->orWhere('id', $report->student_id))
+            ->where(fn ($q) => $q->attendable()->orWhere('id', $report->student_id))
             ->orderBy('name')
             ->get();
 
@@ -157,10 +157,11 @@ class ReportController extends Controller
             return back()->withErrors(['credential_key' => 'Credential key tidak ditemukan.'])->onlyInput('credential_key');
         }
 
-        // Raport ditahan selama pembayaran murid belum lunas.
-        if (! $report->student || ! $report->student->isPaid()) {
+        // Raport ditahan selama ada tagihan yang lewat jatuh tempo. Invoice yang
+        // baru terbit & belum jatuh tempo tidak menahan apa pun.
+        if (! $report->student || $report->student->hasArrears()) {
             return back()->withErrors([
-                'credential_key' => 'Raport belum dapat dibuka karena pembayaran murid belum lunas. Silakan hubungi admin.',
+                'credential_key' => 'Raport belum dapat dibuka karena ada tagihan yang lewat jatuh tempo. Silakan hubungi admin.',
             ])->onlyInput('credential_key');
         }
 
@@ -170,7 +171,7 @@ class ReportController extends Controller
     private function validateData(Request $request): array
     {
         return $request->validate([
-            'student_id' => ['required', 'exists:students,id', new StudentPaymentSettled],
+            'student_id' => ['required', 'exists:students,id'],
             'period_start' => ['required', 'date'],
             'period_end' => ['required', 'date', 'after_or_equal:period_start'],
             'activity_notes' => ['required', 'string'],

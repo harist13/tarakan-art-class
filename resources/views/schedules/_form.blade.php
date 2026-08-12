@@ -10,9 +10,10 @@
         </select>
         @error('student_id')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
         <small class="text-muted d-block mt-1">
-            <i class="bi bi-cash-coin me-1"></i>Hanya murid dengan pembayaran lunas yang bisa dipilih.
+            <i class="bi bi-cash-coin me-1"></i>Murid dengan invoice <strong>lewat jatuh tempo</strong> tidak bisa dipilih —
+            kelas pengganti adalah fasilitas tambahan. Invoice yang belum jatuh tempo tidak menghalangi.
             @if($students->isEmpty())
-                <span class="text-danger">Belum ada murid lunas — lunasi invoice di <a href="{{ route('payments.index') }}">menu Pembayaran</a>.</span>
+                <span class="text-danger d-block">Semua murid sedang menunggak — lunasi tunggakannya di <a href="{{ route('payments.index') }}">menu Pembayaran</a>.</span>
             @endif
         </small>
     </div>
@@ -41,7 +42,10 @@
                 @php $selected = old('class_id', $request->class_id ?? request('class_id', '')) == $class->id; @endphp
                 {{-- Hanya tampilkan slot yang tersedia; kelas yang sedang dipilih (saat edit) tetap muncul. --}}
                 @if($class->isAvailable() || $selected)
-                    <option value="{{ $class->id }}" data-category="{{ $class->class_category }}" @selected($selected)>
+                    {{-- data-date/data-time: sumber isian otomatis tanggal & jam pengganti. --}}
+                    <option value="{{ $class->id }}" data-category="{{ $class->class_category }}"
+                        data-date="{{ $class->schedule_date->format('Y-m-d') }}"
+                        data-time="{{ \Illuminate\Support\Str::of($class->schedule_time)->substr(0,5) }}" @selected($selected)>
                         {{ $class->class_name }} ({{ ucfirst($class->class_category) }}) — {{ $class->availability()['text'] }}
                     </option>
                 @endif
@@ -70,15 +74,26 @@
             </div>
         </div>
     </div>
+    {{-- Tanggal & jam pengganti terisi otomatis dari jadwal kelas tujuan, tapi tetap
+         bisa ditimpa admin bila sesinya digeser. Dikosongkan = ikut jadwal kelas
+         (diisi ulang di server), jadi keduanya sengaja tidak `required`. --}}
     <div class="col-md-6 mb-3">
         <label class="form-label">Tanggal Pengganti</label>
-        <input type="date" name="replacement_date" id="replacement_date" class="form-control @error('replacement_date') is-invalid @enderror" value="{{ old('replacement_date', isset($request) ? $request->replacement_date->format('Y-m-d') : request('replacement_date', '')) }}" required>
+        <input type="date" name="replacement_date" id="replacement_date" class="form-control @error('replacement_date') is-invalid @enderror" value="{{ old('replacement_date', isset($request) ? $request->replacement_date->format('Y-m-d') : request('replacement_date', '')) }}">
         @error('replacement_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
     </div>
     <div class="col-md-6 mb-3">
         <label class="form-label">Jam Pengganti</label>
-        <input type="time" name="replacement_time" id="replacement_time" class="form-control @error('replacement_time') is-invalid @enderror" value="{{ old('replacement_time', isset($request) ? \Illuminate\Support\Str::of($request->replacement_time)->substr(0,5) : request('replacement_time', '')) }}" required>
+        <input type="time" name="replacement_time" id="replacement_time" class="form-control @error('replacement_time') is-invalid @enderror" value="{{ old('replacement_time', isset($request) ? \Illuminate\Support\Str::of($request->replacement_time)->substr(0,5) : request('replacement_time', '')) }}">
         @error('replacement_time')<div class="invalid-feedback">{{ $message }}</div>@enderror
+    </div>
+    <div class="col-12 mb-3 d-flex flex-wrap align-items-center gap-2">
+        <span class="small text-muted" id="scheduleSyncHint">
+            <i class="bi bi-calendar-event me-1"></i>Pilih kelas tujuan — tanggal &amp; jam akan terisi otomatis dari jadwalnya.
+        </span>
+        <button type="button" class="btn btn-sm btn-outline-secondary d-none" id="scheduleSyncBtn">
+            <i class="bi bi-arrow-repeat me-1"></i>Samakan dengan jadwal kelas
+        </button>
     </div>
     <div class="col-12 mb-3">
         <label class="form-label">Alasan</label>
@@ -233,15 +248,115 @@ document.addEventListener('DOMContentLoaded', function () {
         if (origin || force) setSelectValue(originSel, origin);
     }
 
+    // ── Tanggal & jam pengganti mengikuti jadwal kelas tujuan ──
+
+    const dateInput = document.getElementById('replacement_date');
+    const timeInput = document.getElementById('replacement_time');
+    const syncHint = document.getElementById('scheduleSyncHint');
+    const syncBtn = document.getElementById('scheduleSyncBtn');
+
+    // Jadwal tiap kelas dipetakan sekali dari DOM awal: renderOptions() menyusun
+    // ulang opsi lewat Tom Select yang tidak membawa data-attribute, jadi jadwalnya
+    // tak bisa dibaca lagi dari option setelah penyaringan pertama.
+    const classSchedules = {};
+    Array.from(classSel.options).forEach(function (o) {
+        if (o.value) classSchedules[o.value] = { date: o.dataset.date || '', time: o.dataset.time || '' };
+    });
+
+    // Sekali admin mengetik sendiri sebuah field, field itu berhenti ikut jadwal
+    // kelas sampai tombol "Samakan" ditekan.
+    let dateManual = false;
+    let timeManual = false;
+
+    function classSchedule() {
+        return classSchedules[classSel.value] || null;
+    }
+
+    /** "Rab, 20 Agu 2026 09:00" — untuk ditampilkan di hint. */
+    function scheduleLabel(s) {
+        const p = s.date.split('-');
+        const d = new Date(+p[0], +p[1] - 1, +p[2]);
+        const tanggal = isNaN(d.getTime())
+            ? s.date
+            : d.toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+
+        return (tanggal + ' ' + s.time).trim();
+    }
+
+    function updateSyncHint() {
+        if (!syncHint) return;
+        const s = classSchedule();
+
+        if (!s) {
+            syncHint.className = 'small text-muted';
+            syncHint.innerHTML = '<i class="bi bi-calendar-event me-1"></i>Pilih kelas tujuan — tanggal &amp; jam akan terisi otomatis dari jadwalnya.';
+            if (syncBtn) syncBtn.classList.add('d-none');
+
+            return;
+        }
+
+        const label = '<strong>' + scheduleLabel(s) + '</strong>';
+        const kosong = !dateInput.value || !timeInput.value;
+        const beda = (!!dateInput.value && !!s.date && dateInput.value !== s.date)
+            || (!!timeInput.value && !!s.time && timeInput.value !== s.time);
+
+        if (kosong) {
+            syncHint.className = 'small text-muted';
+            syncHint.innerHTML = '<i class="bi bi-calendar-event me-1"></i>Dikosongkan — akan mengikuti jadwal kelas tujuan (' + label + ').';
+        } else if (beda) {
+            syncHint.className = 'small text-warning-emphasis';
+            syncHint.innerHTML = '<i class="bi bi-pencil-square me-1"></i>Diisi manual, berbeda dari jadwal kelas tujuan (' + label + ').';
+        } else {
+            syncHint.className = 'small text-muted';
+            syncHint.innerHTML = '<i class="bi bi-calendar-check me-1"></i>Mengikuti jadwal kelas tujuan (' + label + '). Boleh diubah bila sesinya digeser.';
+        }
+
+        if (syncBtn) syncBtn.classList.toggle('d-none', !(kosong || beda));
+    }
+
+    // Isi field yang masih "otomatis" dari jadwal kelas tujuan.
+    function syncSchedule() {
+        const s = classSchedule();
+        if (s) {
+            if (!dateManual && s.date) dateInput.value = s.date;
+            if (!timeManual && s.time) timeInput.value = s.time;
+        }
+        updateSyncHint();
+    }
+
+    if (dateInput && timeInput) {
+        // Nilai awal (mode edit / old input) dianggap manual hanya bila memang
+        // berbeda dari jadwal kelas — supaya isian admin tidak ditimpa diam-diam.
+        const awal = classSchedule();
+        dateManual = !!dateInput.value && (!awal || dateInput.value !== awal.date);
+        timeManual = !!timeInput.value && (!awal || timeInput.value !== awal.time);
+
+        dateInput.addEventListener('input', function () { dateManual = true; updateSyncHint(); });
+        timeInput.addEventListener('input', function () { timeManual = true; updateSyncHint(); });
+        classSel.addEventListener('change', syncSchedule);
+
+        if (syncBtn) {
+            syncBtn.addEventListener('click', function () {
+                dateManual = false;
+                timeManual = false;
+                syncSchedule();
+            });
+        }
+    }
+
     studentSel.addEventListener('change', function () {
         filterClasses();
         filterOrigins();
         fillOrigin(true);
+        // Penyaringan bisa melepas kelas yang tadinya terpilih tanpa memicu
+        // event change (setValue silent), jadi jadwal disegarkan manual.
+        if (dateInput && timeInput) syncSchedule();
     });
     // Jalankan saat load (mode edit / old input).
     filterClasses();
     filterOrigins();
     fillOrigin(false);
+    if (dateInput && timeInput) syncSchedule();
 });
 </script>
 @endpush
