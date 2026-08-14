@@ -22,16 +22,20 @@
         <select name="origin_class_id" id="origin_class_id" class="form-select @error('origin_class_id') is-invalid @enderror">
             <option value="">— Pilih Kelas Asal —</option>
             @foreach($classes as $class)
+                {{-- data-day/data-time dipakai untuk mendeteksi sesi pengganti yang
+                     masih sama persis dengan jadwal kelas asal. --}}
                 <option value="{{ $class->id }}" data-category="{{ $class->class_category }}"
+                    data-day="{{ $class->day_of_week }}" data-time="{{ $class->timeLabel() }}"
                     @selected(old('origin_class_id', $request->origin_class_id ?? request('origin_class_id', '')) == $class->id)>
-                    {{ $class->class_name }} ({{ ucfirst($class->class_category) }}) — {{ $class->schedule_date->format('d M Y') }} {{ \Illuminate\Support\Str::of($class->schedule_time)->substr(0,5) }}
+                    {{ $class->class_name }} ({{ ucfirst($class->class_category) }}) — {{ $class->scheduleLabel() }}
                 </option>
             @endforeach
         </select>
         @error('origin_class_id')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
         {{-- Peringatan saat murid belum punya enrollment aktif — kelas asal harus dipilih manual. --}}
         <div class="small text-danger mt-1 d-none" id="noClassWarning"><i class="bi bi-exclamation-triangle me-1"></i>Murid ini belum memilih kelas.</div>
-        <small class="text-muted d-block mt-1" id="originHint"><i class="bi bi-box-arrow-left me-1"></i>Jadwal yang ditinggalkan murid. Terisi otomatis dari kelas aktifnya.</small>
+        <small class="text-muted d-block mt-1" id="originHint"><i class="bi bi-box-arrow-left me-1"></i>Slot yang ditinggalkan murid. Terisi otomatis dari kelas aktifnya.</small>
+        <small class="text-muted d-block mt-1"><i class="bi bi-arrow-repeat me-1"></i>Boleh sama dengan kelas baru, asalkan hari &amp; jam penggantinya berbeda dari jadwal kelas asal — kalau sama persis, tidak ada sesi yang berpindah.</small>
     </div>
     <div class="col-md-4 mb-3">
         <label class="form-label">Kelas Baru <span class="text-muted">(yang sekarang)</span></label>
@@ -42,11 +46,14 @@
                 @php $selected = old('class_id', $request->class_id ?? request('class_id', '')) == $class->id; @endphp
                 {{-- Hanya tampilkan slot yang tersedia; kelas yang sedang dipilih (saat edit) tetap muncul. --}}
                 @if($class->isAvailable() || $selected)
-                    {{-- data-date/data-time: sumber isian otomatis tanggal & jam pengganti. --}}
+                    {{-- data-date/data-time: sumber isian otomatis tanggal & jam pengganti.
+                         Tanggalnya sesi mingguan berikutnya, bukan tanggal mulai berlaku slot. --}}
+                    @php $nextSession = $class->nextOccurrence(); @endphp
                     <option value="{{ $class->id }}" data-category="{{ $class->class_category }}"
-                        data-date="{{ $class->schedule_date->format('Y-m-d') }}"
-                        data-time="{{ \Illuminate\Support\Str::of($class->schedule_time)->substr(0,5) }}" @selected($selected)>
-                        {{ $class->class_name }} ({{ ucfirst($class->class_category) }}) — {{ $class->availability()['text'] }}
+                        data-date="{{ $nextSession?->format('Y-m-d') }}"
+                        data-day="{{ $class->day_of_week }}"
+                        data-time="{{ $class->timeLabel() }}" @selected($selected)>
+                        {{ $class->class_name }} ({{ ucfirst($class->class_category) }}) — {{ $class->scheduleLabel() }} · {{ $class->availability()['text'] }}
                     </option>
                 @endif
             @endforeach
@@ -111,10 +118,41 @@ document.addEventListener('DOMContentLoaded', function () {
     const originHint = document.getElementById('originHint');
     const noClassWarning = document.getElementById('noClassWarning');
     const noSlotAlert = document.getElementById('noSlotAlert');
+    const dateInput = document.getElementById('replacement_date');
+    const timeInput = document.getElementById('replacement_time');
+    const syncHint = document.getElementById('scheduleSyncHint');
+    const syncBtn = document.getElementById('scheduleSyncBtn');
     if (!studentSel || !classSel) return;
 
     const form = classSel.form;
     const submitBtn = form ? form.querySelector('button[type="submit"]') : null;
+
+    // Dua hal berbeda bisa menghalangi submit, jadi statusnya dihitung di satu tempat.
+    let noSlots = false;
+
+    // Jadwal tiap kelas dipetakan sekali dari DOM awal: renderOptions() menyusun
+    // ulang opsi lewat Tom Select yang tidak membawa data-attribute, jadi jadwalnya
+    // tak bisa dibaca lagi dari option setelah penyaringan pertama. Harus dikumpulkan
+    // sebelum penyaringan apa pun berjalan.
+    //
+    // Dikumpulkan dari kedua select: dropdown kelas asal memuat semua kelas,
+    // sedangkan dropdown kelas tujuan hanya yang available tapi membawa tanggal
+    // sesi berikutnya.
+    const classSchedules = {};
+    (function collectSchedules() {
+        [originSel, classSel].forEach(function (sel) {
+            if (!sel) return;
+            Array.from(sel.options).forEach(function (o) {
+                if (!o.value) return;
+                const prev = classSchedules[o.value] || {};
+                classSchedules[o.value] = {
+                    date: o.dataset.date || prev.date || '',
+                    time: o.dataset.time || prev.time || '',
+                    day: o.dataset.day || prev.day || '',
+                };
+            });
+        });
+    })();
 
     // Simpan daftar opsi asli tiap dropdown; di-render ulang dari sini saat menyaring.
     function snapshot(sel) {
@@ -187,16 +225,22 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         // Terhalang hanya bila memang tak ada slot sama sekali — bukan karena beda tipe.
-        const blocked = total === 0;
+        noSlots = total === 0;
         if (noSlotAlert) {
-            noSlotAlert.classList.toggle('d-none', !blocked);
+            noSlotAlert.classList.toggle('d-none', !noSlots);
         }
-        if (submitBtn) {
-            submitBtn.disabled = blocked;
-            submitBtn.title = blocked ? 'Tidak ada slot pengganti yang tersedia' : '';
-        }
+        updateSubmitState();
         // Kelas wajib diisi hanya bila ada pilihan — hindari pesan "required" yang membingungkan.
-        classSel.required = !blocked;
+        classSel.required = !noSlots;
+    }
+
+    function updateSubmitState() {
+        if (!submitBtn) return;
+        const conflict = sameAsOrigin();
+        submitBtn.disabled = noSlots || conflict;
+        submitBtn.title = noSlots
+            ? 'Tidak ada slot pengganti yang tersedia'
+            : (conflict ? 'Sesi pengganti masih sama dengan jadwal kelas asal' : '');
     }
 
     // ── Kelas asal: kelas yang diikuti murid diutamakan, lalu terisi otomatis ──
@@ -250,19 +294,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // ── Tanggal & jam pengganti mengikuti jadwal kelas tujuan ──
 
-    const dateInput = document.getElementById('replacement_date');
-    const timeInput = document.getElementById('replacement_time');
-    const syncHint = document.getElementById('scheduleSyncHint');
-    const syncBtn = document.getElementById('scheduleSyncBtn');
-
-    // Jadwal tiap kelas dipetakan sekali dari DOM awal: renderOptions() menyusun
-    // ulang opsi lewat Tom Select yang tidak membawa data-attribute, jadi jadwalnya
-    // tak bisa dibaca lagi dari option setelah penyaringan pertama.
-    const classSchedules = {};
-    Array.from(classSel.options).forEach(function (o) {
-        if (o.value) classSchedules[o.value] = { date: o.dataset.date || '', time: o.dataset.time || '' };
-    });
-
     // Sekali admin mengetik sendiri sebuah field, field itu berhenti ikut jadwal
     // kelas sampai tombol "Samakan" ditekan.
     let dateManual = false;
@@ -283,14 +314,55 @@ document.addEventListener('DOMContentLoaded', function () {
         return (tanggal + ' ' + s.time).trim();
     }
 
+    const DAY_NAMES = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+
+    /** "Senin, 10:00" — jadwal rutin mingguan, bukan satu tanggal. */
+    function weeklyLabel(s) {
+        return ((DAY_NAMES[s.day] || '') + ', ' + s.time).trim();
+    }
+
+    /**
+     * Sesi pengganti masih sama persis dengan jadwal kelas asal: kelas yang sama,
+     * hari mingguan yang sama, jam yang sama. Dibandingkan hari (getDay, 0 = Minggu
+     * seperti Carbon::dayOfWeek) karena slot berulang tiap pekan — "Senin depan"
+     * tetap sesi yang sama dengan "Senin" kelas asal.
+     */
+    function sameAsOrigin() {
+        if (!originSel || !dateInput || !timeInput) return false;
+        if (!originSel.value || originSel.value !== classSel.value) return false;
+        if (!dateInput.value || !timeInput.value) return false;
+
+        const s = classSchedules[originSel.value];
+        if (!s || s.day === '' || !s.time) return false;
+
+        const p = dateInput.value.split('-');
+        const d = new Date(+p[0], +p[1] - 1, +p[2]);
+        if (isNaN(d.getTime())) return false;
+
+        return String(d.getDay()) === String(s.day) && timeInput.value === s.time;
+    }
+
     function updateSyncHint() {
         if (!syncHint) return;
         const s = classSchedule();
+
+        // Konflik dengan kelas asal diutamakan: ini satu-satunya kondisi yang
+        // benar-benar menghalangi submit.
+        if (sameAsOrigin()) {
+            syncHint.className = 'small text-danger';
+            syncHint.innerHTML = '<i class="bi bi-x-octagon me-1"></i>Sesi pengganti sama persis dengan jadwal kelas asal (<strong>'
+                + weeklyLabel(classSchedules[originSel.value]) + '</strong>) — tidak ada sesi yang berpindah. Ubah hari atau jamnya, atau pilih kelas tujuan lain.';
+            if (syncBtn) syncBtn.classList.add('d-none');
+            updateSubmitState();
+
+            return;
+        }
 
         if (!s) {
             syncHint.className = 'small text-muted';
             syncHint.innerHTML = '<i class="bi bi-calendar-event me-1"></i>Pilih kelas tujuan — tanggal &amp; jam akan terisi otomatis dari jadwalnya.';
             if (syncBtn) syncBtn.classList.add('d-none');
+            updateSubmitState();
 
             return;
         }
@@ -312,6 +384,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         if (syncBtn) syncBtn.classList.toggle('d-none', !(kosong || beda));
+        updateSubmitState();
     }
 
     // Isi field yang masih "otomatis" dari jadwal kelas tujuan.
@@ -334,6 +407,9 @@ document.addEventListener('DOMContentLoaded', function () {
         dateInput.addEventListener('input', function () { dateManual = true; updateSyncHint(); });
         timeInput.addEventListener('input', function () { timeManual = true; updateSyncHint(); });
         classSel.addEventListener('change', syncSchedule);
+        // Mengganti kelas asal bisa memunculkan/menghilangkan konflik tanpa
+        // mengubah tanggal & jam sama sekali.
+        if (originSel) originSel.addEventListener('change', updateSyncHint);
 
         if (syncBtn) {
             syncBtn.addEventListener('click', function () {

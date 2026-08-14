@@ -112,7 +112,7 @@
                             <td>
                                 @if($req->originClass)
                                     {{ $req->originClass->class_name }}
-                                    <br><small class="text-muted">{{ $req->originClass->schedule_date->format('d M Y') }} · {{ \Illuminate\Support\Str::of($req->originClass->schedule_time)->substr(0,5) }}</small>
+                                    <br><small class="text-muted">{{ $req->originClass->scheduleLabel() }}</small>
                                 @else
                                     <span class="text-muted">—</span>
                                 @endif
@@ -194,7 +194,13 @@
                         @php $av = $slot->availability(); @endphp
                         <tr>
                             <td class="fw-bold">{{ $slot->class_name }}<br><small class="text-muted">{{ $slot->class_code }} · {{ ucfirst($slot->class_category) }}</small></td>
-                            <td>{{ $slot->schedule_date->format('d M Y') }}<br><small class="text-muted">{{ \Illuminate\Support\Str::of($slot->schedule_time)->substr(0,5) }}</small></td>
+                            @php $nextSession = $slot->nextOccurrence(); @endphp
+                            <td>
+                                {{ $slot->scheduleLabel() }}
+                                @if($slot->is_recurring)
+                                    <br><small class="text-muted">{{ $nextSession ? 'Sesi berikutnya '.$nextSession->format('d M Y') : 'Belum ada sesi mendatang' }}</small>
+                                @endif
+                            </td>
                             <td>{{ $slot->enrolledCount() }} / {{ $slot->capacity }}</td>
                             <td><span class="badge bg-{{ $av['color'] }}">{{ $av['text'] }}</span></td>
                             <td class="text-end">

@@ -87,10 +87,11 @@ class PublicSiteController extends Controller
         $today = Carbon::today();
         $until = $today->copy()->addDays(self::SCHEDULE_HORIZON_DAYS);
 
+        // Slot mingguan diambil seluruhnya, lalu direntangkan jadi sesi konkret
+        // dalam rentang tampilan — bukan disaring per tanggal, karena satu slot
+        // berjalan berulang tanpa tanggal akhir.
         $classes = ClassRoom::with('tutor')
             ->withCount(['students as enrolled_count' => fn ($q) => $q->where('student_class.status', 'active')])
-            ->whereBetween('schedule_date', [$today, $until])
-            ->orderBy('schedule_date')
             ->orderBy('schedule_time')
             ->get();
 
@@ -100,7 +101,7 @@ class PublicSiteController extends Controller
 
         return view('public.schedule', [
             'programs' => $this->programsWithWeeklySchedule($classes, $holidayClasses),
-            'days' => $classes->groupBy(fn (ClassRoom $c) => $c->schedule_date->toDateString()),
+            'days' => $this->sessionsByDate($classes, $today, $until),
             'holidays' => Holiday::whereBetween('date', [$today, $until])->orderBy('date')->get(),
             'announcements' => CalendarEvent::where('date', '>=', $today)->orderBy('date')->limit(6)->get(),
             'holidayClasses' => $holidayClasses,
@@ -163,6 +164,33 @@ class PublicSiteController extends Controller
     // ─── Helper ────────────────────────────────────────────────────────
 
     /**
+     * Rentangkan slot mingguan jadi sesi konkret, dikelompokkan per tanggal.
+     *
+     * Sesi yang jatuh di hari libur sengaja ikut dirender (skipHolidays = false):
+     * halaman ini informatif, jadi lebih berguna menampilkannya bertanda
+     * "Ditiadakan" daripada menghilangkannya diam-diam dari jadwal.
+     *
+     * @param  Collection<int, ClassRoom>  $classes
+     * @return Collection<string, Collection<int, ClassRoom>>
+     */
+    private function sessionsByDate(Collection $classes, Carbon $from, Carbon $to): Collection
+    {
+        $byDate = [];
+
+        foreach ($classes as $class) {
+            foreach ($class->occurrencesBetween($from, $to, skipHolidays: false) as $at) {
+                $byDate[$at->toDateString()][] = $class;
+            }
+        }
+
+        ksort($byDate);
+
+        return collect($byDate)->map(
+            fn (array $slots) => collect($slots)->sortBy(fn (ClassRoom $c) => $c->timeLabel())->values()
+        );
+    }
+
+    /**
      * Program dari config, dilengkapi jadwal terdekat & sisa kursi dari database
      * bila kategorinya ada di Class Management.
      *
@@ -179,10 +207,10 @@ class PublicSiteController extends Controller
             ->withCount(['students as enrolled_count' => fn ($q) => $q->where('student_class.status', 'active')])
             ->whereIn('class_category', $categories)
             ->where('status', 'open')
-            ->whereDate('schedule_date', '>=', Carbon::today())
-            ->orderBy('schedule_date')
-            ->orderBy('schedule_time')
             ->get()
+            // Slot mingguan tidak punya "tanggal jadwal" tunggal, jadi urutan
+            // terdekat dihitung dari sesi berikutnya masing-masing slot.
+            ->sortBy(fn (ClassRoom $c) => $c->nextOccurrence()?->timestamp ?? PHP_INT_MAX)
             ->groupBy('class_category');
 
         $nextHoliday = $this->usesHolidaySessions($programs)
@@ -263,7 +291,7 @@ class PublicSiteController extends Controller
      * Holiday Class tidak berulang mingguan, jadi barisnya diisi tanggal sesi
      * mendatang dari modul Holiday Class, bukan pola hari + jam.
      *
-     * @param  Collection<int, ClassRoom>  $classes  slot pada rentang tampilan (sudah di-fetch)
+     * @param  Collection<int, ClassRoom>  $classes  seluruh slot mingguan (sudah di-fetch)
      * @param  Collection<int, HolidayClass>  $holidayClasses  sesi liburan mendatang
      * @return Collection<int, array<string, mixed>>
      */
@@ -292,7 +320,7 @@ class PublicSiteController extends Controller
                 ->sortKeys()
                 ->map(function (Collection $group, string $time) {
                     $days = $group
-                        ->map(fn (ClassRoom $c) => (int) $c->schedule_date->dayOfWeek)
+                        ->map(fn (ClassRoom $c) => (int) $c->day_of_week)
                         ->unique()->sort()
                         ->map(fn (int $dow) => self::DAY_NAMES[$dow])
                         ->implode(' & ');

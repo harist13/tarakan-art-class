@@ -11,6 +11,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Mail;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class PublicSiteTest extends TestCase
@@ -32,7 +33,7 @@ class PublicSiteTest extends TestCase
         ];
     }
 
-    #[\PHPUnit\Framework\Attributes\DataProvider('publicRoutes')]
+    #[DataProvider('publicRoutes')]
     public function test_halaman_publik_bisa_diakses_tanpa_login(string $routeName): void
     {
         $this->get(route($routeName))
@@ -338,6 +339,8 @@ class PublicSiteTest extends TestCase
             'class_category' => 'coloring',
             'tutor_id' => $tutor->id,
             'capacity' => $capacity,
+            // Kelas mingguan yang sesi pertamanya jatuh pada $date — penelepon
+            // memakainya sebagai "kelas pada tanggal ini".
             'schedule_date' => $date,
             'schedule_time' => '15:00:00',
             'class_fee' => 275000,

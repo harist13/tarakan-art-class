@@ -72,7 +72,10 @@
             <p class="d-flex flex-wrap align-items-center gap-2 tac-bg-paper-2 rounded-3 px-3 py-2 mt-3 mb-0"
                style="font-size: 0.75rem;">
                 <span class="fw-semibold">Kelas terdekat:</span>
-                <span class="tac-muted">{{ $next->schedule_date->format('d/m/Y') }}, {{ substr($next->schedule_time, 0, 5) }} WITA</span>
+                @php $nextSession = $next->nextOccurrence(); @endphp
+                <span class="tac-muted">
+                    {{ $nextSession ? $nextSession->format('d/m/Y') : $next->dayName().' (mingguan)' }}, {{ $next->timeLabel() }} WITA
+                </span>
                 @if($next->remainingSeats() > 0)
                     <span class="tac-badge tac-bg-leaf-soft">{{ $next->remainingSeats() }} kursi tersisa</span>
                 @else

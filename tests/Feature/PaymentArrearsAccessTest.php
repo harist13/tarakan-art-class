@@ -58,7 +58,7 @@ class PaymentArrearsAccessTest extends TestCase
             'class_category' => $category,
             'tutor_id' => $tutor->id,
             'capacity' => 10,
-            'schedule_date' => now()->addWeek()->toDateString(),
+            'schedule_date' => now()->addDay()->toDateString(),
             'schedule_time' => '09:00',
             'class_fee' => 100000,
             'status' => 'open',

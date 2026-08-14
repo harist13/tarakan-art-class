@@ -6,35 +6,50 @@ use App\Models\ActivityLog;
 use App\Models\ClassRoom;
 use App\Models\Tutor;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class ClassRoomController extends Controller
 {
+    private const PER_PAGE = 10;
+
+    /**
+     * Paginasi manual untuk daftar yang sudah disaring di PHP.
+     *
+     * Dipakai saat filter "Hari" aktif, karena hari tidak lagi tersimpan sebagai
+     * kolom sehingga tak bisa disaring di level query.
+     *
+     * @param  Collection<int, ClassRoom>  $items
+     * @return LengthAwarePaginator<int, ClassRoom>
+     */
+    private function paginateFiltered(Collection $items, Request $request): LengthAwarePaginator
+    {
+        $items = $items->values();
+        $page = LengthAwarePaginator::resolveCurrentPage();
+
+        return new LengthAwarePaginator(
+            $items->forPage($page, self::PER_PAGE)->values(),
+            $items->count(),
+            self::PER_PAGE,
+            $page,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
+    }
+
     public function index(Request $request)
     {
         $search = $request->string('search')->toString();
-        $status = $request->string('status')->toString();     // tersedia | penuh | ditutup
+        $status = $request->string('status')->toString();     // tersedia | penuh | tanpa-tutor | ditutup
         $category = $request->string('category')->toString();  // preschool | coloring | drawing
-        $dateFrom = $request->string('date_from')->toString();
-        $dateTo = $request->string('date_to')->toString();
+        // Hari mingguan slot; '' = semua. '0' valid (Minggu), jadi dibandingkan sebagai string.
+        $day = $request->string('day')->toString();
 
         // Subquery jumlah murid aktif per kelas (untuk membandingkan dengan kapasitas).
         $enrolledSql = '(select count(*) from student_class where student_class.class_id = classes.id and student_class.status = ?)';
 
-        // Batas "sekarang" untuk membandingkan jadwal (portable MySQL/SQLite: bandingkan string).
-        $today = now()->toDateString();
-        $nowTime = now()->toTimeString();
-        $isPast = function ($q) use ($today, $nowTime) {
-            $q->where('classes.schedule_date', '<', $today)
-                ->orWhere(fn ($w) => $w->where('classes.schedule_date', $today)->where('classes.schedule_time', '<', $nowTime));
-        };
-        $notPast = function ($q) use ($today, $nowTime) {
-            $q->where('classes.schedule_date', '>', $today)
-                ->orWhere(fn ($w) => $w->where('classes.schedule_date', $today)->where('classes.schedule_time', '>=', $nowTime));
-        };
-
-        $classes = ClassRoom::query()
+        $query = ClassRoom::query()
             ->with('tutor')
             ->withCount([
                 'students',
@@ -45,26 +60,42 @@ class ClassRoomController extends Controller
                     ->orWhere('class_code', 'like', "%{$search}%");
             }))
             ->when(in_array($category, ['preschool', 'coloring', 'drawing'], true), fn ($q) => $q->where('class_category', $category))
-            // Rentang tanggal jadwal (dari–hingga), keduanya opsional.
-            ->when($dateFrom, fn ($q) => $q->whereDate('schedule_date', '>=', $dateFrom))
-            ->when($dateTo, fn ($q) => $q->whereDate('schedule_date', '<=', $dateTo))
-            // Status ketersediaan — mengikuti prioritas badge: ditutup > lewat > tutor kosong > penuh > tersedia.
+            // Status ketersediaan — mengikuti prioritas badge: ditutup > tutor kosong > penuh > tersedia.
+            // Tidak ada lagi status "sudah lewat": slot mingguan tidak kedaluwarsa.
             ->when($status === 'ditutup', fn ($q) => $q->where('classes.status', 'closed'))
-            ->when($status === 'lewat', fn ($q) => $q->where('classes.status', '!=', 'closed')->where($isPast))
-            ->when($status === 'tanpa-tutor', fn ($q) => $q->where('classes.status', '!=', 'closed')->where($notPast)
+            ->when($status === 'tanpa-tutor', fn ($q) => $q->where('classes.status', '!=', 'closed')
                 ->whereHas('tutor', fn ($t) => $t->where('status', '!=', 'active')))
-            ->when($status === 'penuh', fn ($q) => $q->where('classes.status', '!=', 'closed')->where($notPast)
+            ->when($status === 'penuh', fn ($q) => $q->where('classes.status', '!=', 'closed')
                 ->whereHas('tutor', fn ($t) => $t->where('status', 'active'))
                 ->whereRaw("{$enrolledSql} >= classes.capacity", ['active']))
-            ->when($status === 'tersedia', fn ($q) => $q->where('classes.status', '!=', 'closed')->where($notPast)
+            ->when($status === 'tersedia', fn ($q) => $q->where('classes.status', '!=', 'closed')
                 ->whereHas('tutor', fn ($t) => $t->where('status', 'active'))
                 ->whereRaw("{$enrolledSql} < classes.capacity", ['active']))
             // Kelas yang baru dibuat tampil paling atas; id menurun jadi pemecah
             // kalau ada beberapa kelas yang dibuat pada detik yang sama.
             ->orderByDesc('classes.created_at')
-            ->orderByDesc('classes.id')
-            ->paginate(10)
-            ->withQueryString();
+            ->orderByDesc('classes.id');
+
+        // Filter hari disaring di PHP, bukan lewat WHERE: `day_of_week` kini
+        // diturunkan dari schedule_date, dan ekspresi hari di SQL berbeda antara
+        // MySQL & SQLite — cabang raw per driver berarti cabang produksi tak
+        // pernah teruji. Jumlah kelas di sanggar kecil, jadi ini tak terasa.
+        //
+        // Saat satu hari dipilih, hasilnya diurutkan per jam: pertanyaan yang
+        // sedang dijawab adalah "kelas apa saja yang jalan hari ini", jadi yang
+        // berguna adalah urutan jadwal — bukan kelas terbaru seperti daftar penuh.
+        // Kelas sekali jalan yang tanggalnya sudah lewat ikut disaring keluar:
+        // pertanyaannya "apa yang jalan hari Senin", bukan "apa yang pernah jalan".
+        // Kelas mingguan selalu punya sesi berikutnya, jadi tak pernah tersaring.
+        // Daftar tanpa filter tetap menampilkan semuanya — itu inventaris kelas.
+        $classes = ($day !== '' && is_numeric($day))
+            ? $this->paginateFiltered(
+                $query->get()
+                    ->filter(fn (ClassRoom $c) => $c->day_of_week === (int) $day && $c->nextOccurrence() !== null)
+                    ->sortBy(fn (ClassRoom $c) => $c->timeLabel()),
+                $request
+            )
+            : $query->paginate(self::PER_PAGE)->withQueryString();
 
         // Filter panel tutor: cari nama/HP, status, & kelas yang diampu.
         $tutorSearch = $request->string('tutor_search')->toString();
@@ -90,7 +121,7 @@ class ClassRoomController extends Controller
         $tab = $request->string('tab')->toString() === 'tutor' ? 'tutor' : 'kelas';
 
         return view('classes.index', compact(
-            'classes', 'search', 'tutors', 'status', 'category', 'dateFrom', 'dateTo',
+            'classes', 'search', 'tutors', 'status', 'category', 'day',
             'tab', 'tutorSearch', 'tutorClassId', 'tutorStatus', 'allClasses'
         ));
     }
@@ -231,9 +262,14 @@ class ClassRoomController extends Controller
             'class_category' => ['required', Rule::in(['preschool', 'coloring', 'drawing'])],
             'tutor_id' => ['required', 'exists:tutors,id'],
             'capacity' => ['required', 'integer', 'min:1'],
+            // Jadwal: tanggal + jam. `day_of_week` sengaja tidak divalidasi karena
+            // bukan isian admin — ClassRoom menurunkannya dari schedule_date.
             'schedule_date' => ['required', 'date'],
             'schedule_time' => ['required'],
+            'is_recurring' => ['required', 'boolean'],
             'class_fee' => ['required', 'numeric', 'min:0'],
+        ], [
+            'schedule_date.required' => 'Tanggal kelas belum diisi.',
         ]);
     }
 }

@@ -72,6 +72,7 @@ class SlotAvailabilityTest extends TestCase
             'class_category' => 'drawing',
             'tutor_id' => $tutor->id,
             'capacity' => 5,
+            // Kelas mingguan yang sesi pertamanya besok.
             'schedule_date' => now()->addDay()->toDateString(),
             'schedule_time' => '09:00',
             'class_fee' => 100000,
@@ -91,11 +92,72 @@ class SlotAvailabilityTest extends TestCase
         $this->assertSame('secondary', $class->availability()['color']);
     }
 
-    public function test_slot_sudah_lewat_tidak_available(): void
+    /**
+     * Slot mingguan tidak kedaluwarsa: kelas yang dibuat berbulan-bulan lalu tetap
+     * available. Ini justru bug yang dulu terjadi saat jadwal masih disimpan
+     * sebagai satu tanggal.
+     */
+    public function test_kelas_lama_tetap_available(): void
     {
-        $class = $this->makeClass(['schedule_date' => now()->subDay()->toDateString()]);
-        $this->assertFalse($class->isAvailable());
-        $this->assertSame('Sudah lewat', $class->availability()['text']);
+        $class = $this->makeClass();
+        $class->forceFill(['created_at' => now()->subMonths(6)])->save();
+
+        $class = $class->fresh();
+        $this->assertTrue($class->isAvailable());
+        $this->assertNotNull($class->nextOccurrence());
+        $this->assertTrue($class->nextOccurrence()->isFuture());
+    }
+
+    /**
+     * Batas bawah sesi diambil dari `created_at`, menggantikan kolom tanggal mulai
+     * yang dulu harus diisi admin. Tanpa batas ini kalender akan menampilkan sesi
+     * dari sebelum kelasnya ada.
+     */
+    public function test_sesi_tidak_dihitung_dari_sebelum_kelas_dibuat(): void
+    {
+        $class = $this->makeClass();
+
+        $sesi = $class->occurrencesBetween(now()->subMonths(2), now()->addWeeks(2));
+
+        $this->assertNotEmpty($sesi);
+        foreach ($sesi as $at) {
+            $this->assertTrue(
+                $at->gte($class->created_at->copy()->startOfDay()),
+                'Sesi tidak boleh dihitung dari sebelum kelas dibuat.'
+            );
+        }
+    }
+
+    public function test_sesi_berikutnya_melewati_hari_libur(): void
+    {
+        $class = $this->makeClass();
+        $mingguIni = $class->nextOccurrence();
+
+        Holiday::create(['date' => $mingguIni->toDateString(), 'name' => 'Libur']);
+        ClassRoom::flushHolidayCache();
+
+        // Sesi minggu ini ditiadakan, jadi yang terdekat bergeser sepekan.
+        $this->assertSame(
+            $mingguIni->copy()->addWeek()->toDateString(),
+            $class->nextOccurrence()->toDateString()
+        );
+        // Slotnya sendiri tetap available — yang libur cuma satu sesi.
+        $this->assertTrue($class->isAvailable());
+    }
+
+    public function test_occurrences_berulang_mingguan_dalam_rentang(): void
+    {
+        $class = $this->makeClass();
+
+        $sesi = $class->occurrencesBetween(now(), now()->addWeeks(4));
+
+        // 4 minggu ke depan dari slot yang jatuh besok: 4 atau 5 sesi tergantung
+        // posisi hari; yang penting berulang tiap 7 hari dan jamnya konsisten.
+        $this->assertGreaterThanOrEqual(4, count($sesi));
+        foreach ($sesi as $at) {
+            $this->assertSame((int) $class->day_of_week, $at->dayOfWeek);
+            $this->assertSame('09:00', $at->format('H:i'));
+        }
     }
 
     public function test_slot_tanpa_tutor_aktif_tidak_available(): void
@@ -105,15 +167,131 @@ class SlotAvailabilityTest extends TestCase
         $this->assertSame('Tutor kosong', $class->availability()['text']);
     }
 
-    public function test_slot_pada_hari_libur_tidak_available(): void
+    public function test_form_kelas_memakai_input_tanggal_dan_saklar_pengulangan(): void
     {
-        $class = $this->makeClass();
-        Holiday::create(['date' => $class->schedule_date->toDateString(), 'name' => 'Libur']);
-        ClassRoom::flushHolidayCache();
+        $this->actingAs($this->makeUser());
 
-        $this->assertTrue($class->isHoliday());
-        $this->assertFalse($class->isAvailable());
-        $this->assertSame('Hari libur', $class->availability()['text']);
+        $this->get(route('classes.create'))
+            ->assertOk()
+            ->assertSee('Tanggal Kelas')
+            ->assertSee('Kelas berjalan setiap minggu')
+            ->assertSee('name="schedule_date"', false)
+            ->assertSee('name="is_recurring"', false)
+            // Hari tidak lagi diisi admin — diturunkan dari tanggal.
+            ->assertDontSee('— Pilih Hari —')
+            ->assertDontSee('name="day_of_week"', false);
+    }
+
+    public function test_kelas_baru_menurunkan_hari_dari_tanggal(): void
+    {
+        $this->actingAs($this->makeUser());
+        $tutor = Tutor::create(['name' => 'Kak Tutor', 'status' => 'active']);
+        $rabu = now()->next(3); // Rabu terdekat
+
+        $this->post(route('classes.store'), [
+            'class_name' => 'Drawing Sore',
+            'class_category' => 'drawing',
+            'tutor_id' => $tutor->id,
+            'capacity' => 8,
+            'schedule_date' => $rabu->toDateString(),
+            'schedule_time' => '16:00',
+            'is_recurring' => '1',
+            'class_fee' => 300000,
+        ])->assertRedirect(route('classes.index'))->assertSessionHasNoErrors();
+
+        $class = ClassRoom::where('class_name', 'Drawing Sore')->firstOrFail();
+        // Hari tidak dikirim form & tidak disimpan — diturunkan dari tanggalnya.
+        $this->assertSame(3, $class->day_of_week);
+        $this->assertTrue($class->is_recurring);
+        $this->assertSame('Setiap Rabu, 16:00', $class->scheduleLabel());
+        $this->assertSame(3, $class->nextOccurrence()->dayOfWeek);
+    }
+
+    public function test_kelas_sekali_jalan_hanya_punya_satu_sesi(): void
+    {
+        $this->actingAs($this->makeUser());
+        $class = $this->makeClass(['is_recurring' => false]);
+
+        $sesi = $class->occurrencesBetween(now(), now()->addWeeks(6));
+
+        $this->assertCount(1, $sesi);
+        $this->assertSame($class->schedule_date->toDateString(), $sesi[0]->toDateString());
+        $this->assertStringContainsString($class->schedule_date->format('d M Y'), $class->scheduleLabel());
+    }
+
+    /**
+     * Perbedaan pokok antara kedua mode: kelas sekali jalan memang kedaluwarsa
+     * setelah tanggalnya lewat, kelas mingguan tidak pernah.
+     */
+    public function test_kelas_sekali_jalan_kedaluwarsa_setelah_tanggalnya_lewat(): void
+    {
+        $lewat = ['schedule_date' => now()->subWeek()->toDateString()];
+
+        $sekaliJalan = $this->makeClass($lewat + ['is_recurring' => false]);
+        $this->assertNull($sekaliJalan->nextOccurrence());
+        $this->assertFalse($sekaliJalan->isAvailable());
+        $this->assertSame('Sudah lewat', $sekaliJalan->availability()['text']);
+
+        $mingguan = $this->makeClass($lewat);
+        $this->assertNotNull($mingguan->nextOccurrence());
+        $this->assertTrue($mingguan->isAvailable());
+    }
+
+    /**
+     * Filter "Hari" tidak lagi memakai WHERE — hari diturunkan dari schedule_date,
+     * jadi penyaringan & paginasinya dilakukan di PHP.
+     */
+    public function test_filter_hari_menyaring_daftar_kelas(): void
+    {
+        $this->actingAs($this->makeUser());
+        $this->makeClass(['class_name' => 'Kelas Senin', 'schedule_date' => now()->next(1)->toDateString()]);
+        $this->makeClass(['class_name' => 'Kelas Kamis', 'schedule_date' => now()->next(4)->toDateString()]);
+        $this->makeClass(['class_name' => 'Kelas Minggu', 'schedule_date' => now()->next(0)->toDateString()]);
+
+        // Kelas Senin kedua sengaja dibuat belakangan tapi berjam lebih pagi:
+        // saat satu hari dipilih, urutannya harus jadwal, bukan kelas terbaru.
+        $this->makeClass([
+            'class_name' => 'Kelas Senin Pagi',
+            'schedule_date' => now()->next(1)->toDateString(),
+            'schedule_time' => '07:00',
+        ]);
+
+        // Kelas sekali jalan pada Senin yang sudah lewat: masih ada di inventaris,
+        // tapi tidak lagi "jalan hari Senin".
+        $this->makeClass([
+            'class_name' => 'Kelas Senin Lampau',
+            'schedule_date' => now()->subWeek()->next(1)->toDateString(),
+            'is_recurring' => false,
+        ]);
+
+        $senin = $this->get(route('classes.index', ['day' => 1]))->assertOk();
+        $this->assertSame(
+            ['Kelas Senin Pagi', 'Kelas Senin'],
+            $senin->viewData('classes')->pluck('class_name')->all()
+        );
+
+        // Minggu = 0. Nilai ini mudah terjatuh sebagai "kosong" di pengecekan
+        // filter, jadi sengaja ikut diuji.
+        $minggu = $this->get(route('classes.index', ['day' => 0]))->assertOk();
+        $this->assertSame(['Kelas Minggu'], $minggu->viewData('classes')->pluck('class_name')->all());
+
+        // Tanpa filter, semuanya tampil — termasuk yang sekali jalan & sudah lewat.
+        $semua = $this->get(route('classes.index'))->assertOk();
+        $this->assertContains('Kelas Senin Lampau', $semua->viewData('classes')->pluck('class_name')->all());
+        $this->assertCount(5, $semua->viewData('classes'));
+    }
+
+    public function test_daftar_kelas_menampilkan_jadwal_mingguan(): void
+    {
+        $this->actingAs($this->makeUser());
+        $class = $this->makeClass();
+
+        $this->get(route('classes.index'))
+            ->assertOk()
+            ->assertSee($class->scheduleLabel())
+            ->assertSee('Sesi berikutnya')
+            // Kelas mingguan tak pernah kedaluwarsa.
+            ->assertDontSee('Sudah lewat');
     }
 
     public function test_kecocokan_level_hanya_penanda_bukan_syarat(): void
@@ -159,19 +337,123 @@ class SlotAvailabilityTest extends TestCase
         ]);
     }
 
-    public function test_kelas_asal_tidak_boleh_sama_dengan_kelas_baru(): void
+    /**
+     * Kelas adalah slot mingguan, jadi "pindah ke kelas yang sama" wajar — asalkan
+     * sesinya benar-benar berpindah. Di sini harinya berbeda dari jadwal kelas asal.
+     */
+    public function test_kelas_asal_boleh_sama_bila_harinya_berbeda(): void
     {
         $this->actingAs($this->makeUser());
-        $class = $this->makeClass();
+        $class = $this->makeClass(); // slot jatuh pada hari besok, 09:00
         $student = $this->makeStudent(['name' => 'Eko', 'parent_name' => 'Fani']);
+
+        $hariLain = now()->addDays(3); // dua hari setelah hari slot — pasti beda hari
 
         $this->post(route('schedules.store'), [
             'student_id' => $student->id,
             'origin_class_id' => $class->id,
             'class_id' => $class->id,
-            'replacement_date' => now()->addDays(3)->toDateString(),
+            'replacement_date' => $hariLain->toDateString(),
             'replacement_time' => '09:00',
-        ])->assertSessionHasErrors('origin_class_id');
+        ])->assertRedirect(route('schedules.index'))->assertSessionHasNoErrors();
+
+        $saved = ReplacementRequest::firstOrFail();
+        $this->assertSame($class->id, $saved->origin_class_id);
+        $this->assertSame($class->id, $saved->class_id);
+        $this->assertSame($hariLain->toDateString(), $saved->replacement_date->toDateString());
+    }
+
+    public function test_kelas_asal_boleh_sama_bila_jamnya_berbeda(): void
+    {
+        $this->actingAs($this->makeUser());
+        $class = $this->makeClass();
+        $student = $this->makeStudent(['name' => 'Putri', 'parent_name' => 'Rian']);
+
+        // Hari yang sama dengan slot (sepekan setelahnya), tapi jamnya digeser.
+        $this->post(route('schedules.store'), [
+            'student_id' => $student->id,
+            'origin_class_id' => $class->id,
+            'class_id' => $class->id,
+            'replacement_date' => now()->addDays(8)->toDateString(),
+            'replacement_time' => '14:00',
+        ])->assertRedirect(route('schedules.index'))->assertSessionHasNoErrors();
+
+        $this->assertSame('14:00', substr(ReplacementRequest::firstOrFail()->replacement_time, 0, 5));
+    }
+
+    /**
+     * Kelas yang sama DAN hari + jam yang sama = tidak ada sesi yang berpindah.
+     * Hari dibandingkan sebagai hari mingguan, jadi "pekan depan pada hari & jam
+     * yang sama" pun tetap ditolak.
+     */
+    public function test_kelas_asal_sama_dengan_hari_dan_jam_identik_ditolak(): void
+    {
+        $this->actingAs($this->makeUser());
+        $class = $this->makeClass();
+        $student = $this->makeStudent(['name' => 'Sari', 'parent_name' => 'Tono']);
+
+        $this->post(route('schedules.store'), [
+            'student_id' => $student->id,
+            'origin_class_id' => $class->id,
+            'class_id' => $class->id,
+            'replacement_date' => now()->addDays(8)->toDateString(), // hari yang sama, pekan depan
+            'replacement_time' => '09:00',
+        ])->assertSessionHasErrors('replacement_date');
+
+        $this->assertDatabaseCount('replacement_requests', 0);
+    }
+
+    /**
+     * Tanggal & jam yang dikosongkan diisi dari sesi berikutnya kelas tujuan —
+     * yang untuk kelas yang sama selalu jatuh tepat di jadwal kelas asal. Jadi
+     * pengecekan harus jalan setelah isian otomatis, bukan sebelumnya.
+     */
+    public function test_kelas_asal_sama_tanpa_isian_tanggal_ikut_ditolak(): void
+    {
+        $this->actingAs($this->makeUser());
+        $class = $this->makeClass();
+        $student = $this->makeStudent(['name' => 'Umar', 'parent_name' => 'Vina']);
+
+        $this->post(route('schedules.store'), [
+            'student_id' => $student->id,
+            'origin_class_id' => $class->id,
+            'class_id' => $class->id,
+            // tanggal & jam sengaja tidak dikirim
+        ])->assertSessionHasErrors('replacement_date');
+
+        $this->assertDatabaseCount('replacement_requests', 0);
+    }
+
+    public function test_tanggal_pengganti_yang_sudah_lewat_ditolak(): void
+    {
+        $this->actingAs($this->makeUser());
+        $class = $this->makeClass();
+        $student = $this->makeStudent(['name' => 'Lina', 'parent_name' => 'Mira']);
+
+        $this->post(route('schedules.store'), [
+            'student_id' => $student->id,
+            'class_id' => $class->id,
+            'replacement_date' => now()->subDay()->toDateString(),
+            'replacement_time' => '09:00',
+        ])->assertSessionHasErrors('replacement_date');
+    }
+
+    public function test_tanggal_pengganti_pada_hari_libur_ditolak(): void
+    {
+        $this->actingAs($this->makeUser());
+        $class = $this->makeClass();
+        $student = $this->makeStudent(['name' => 'Nanda', 'parent_name' => 'Omar']);
+
+        $libur = now()->addDays(3)->toDateString();
+        Holiday::create(['date' => $libur, 'name' => 'Libur']);
+        ClassRoom::flushHolidayCache();
+
+        $this->post(route('schedules.store'), [
+            'student_id' => $student->id,
+            'class_id' => $class->id,
+            'replacement_date' => $libur,
+            'replacement_time' => '09:00',
+        ])->assertSessionHasErrors('replacement_date');
     }
 
     public function test_tanggal_jam_pengganti_kosong_ikut_jadwal_kelas_tujuan(): void
@@ -266,10 +548,35 @@ class SlotAvailabilityTest extends TestCase
             ]);
         }
 
+        $events = $this->calendarEvents('Replacement Class');
+
+        $this->assertCount(3, $events);
+        foreach ($events as $event) {
+            $this->assertTrue($event['extendedProps']['past'], 'Replacement lewat harus ditandai past.');
+        }
+    }
+
+    /**
+     * Event kalender bertipe tertentu, di-decode dari payload halaman.
+     *
+     * Sejak kelas jadi slot mingguan, halaman kalender memuat banyak event kelas
+     * reguler yang juga membawa penanda `past`. Jadi penanda replacement harus
+     * diperiksa per event, bukan dengan mencocokkan string di seluruh halaman.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function calendarEvents(string $type): array
+    {
         $content = $this->get(route('schedules.calendar'))->assertOk()->getContent();
 
-        $this->assertSame(3, substr_count($content, '"past":true'), 'Ketiga replacement lewat harus ditandai past.');
-        $this->assertStringNotContainsString('"past":false', $content);
+        // `const events = [...];` dirender dalam satu baris oleh @json.
+        preg_match('/const events = (\[.*\]);/', $content, $matches);
+        $events = json_decode($matches[1] ?? '[]', true) ?: [];
+
+        return array_values(array_filter(
+            $events,
+            fn (array $event) => ($event['extendedProps']['type'] ?? null) === $type
+        ));
     }
 
     public function test_replacement_mendatang_tidak_ditandai_past(): void
@@ -289,10 +596,23 @@ class SlotAvailabilityTest extends TestCase
             'request_status' => 'pending',
         ]);
 
-        $this->get(route('schedules.calendar'))
-            ->assertOk()
-            ->assertSee('"past":false', false)
-            ->assertDontSee('"past":true', false);
+        $events = $this->calendarEvents('Replacement Class');
+
+        $this->assertCount(1, $events);
+        $this->assertFalse($events[0]['extendedProps']['past']);
+    }
+
+    public function test_kelas_mingguan_direntangkan_jadi_banyak_event_kalender(): void
+    {
+        $this->actingAs($this->makeUser());
+        $class = $this->makeClass();
+
+        $events = $this->calendarEvents('Kelas Reguler');
+
+        // Satu slot mingguan menghasilkan banyak sesi dalam rentang tampilan —
+        // dulu hanya muncul sekali seumur hidup kelas.
+        $this->assertGreaterThan(10, count($events));
+        $this->assertSame($class->scheduleLabel(), $events[0]['extendedProps']['schedule']);
     }
 
     public function test_hari_libur_dan_acara_tidak_pernah_ditandai_past(): void

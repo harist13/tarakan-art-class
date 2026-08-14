@@ -38,7 +38,8 @@ class SampleDataSeeder extends Seeder
                 ['class_name' => $c['class_name']],
                 array_merge($c, [
                     'tutor_id' => $tutors[$i % $tutors->count()]->id,
-                    'schedule_date' => now()->addDays($i + 1)->toDateString(),
+                    // Kelas mingguan: Senin, Selasa, Rabu terdekat.
+                    'schedule_date' => now()->next($i + 1)->toDateString(),
                     'schedule_time' => sprintf('%02d:00:00', 9 + $i),
                 ])
             );
@@ -53,8 +54,8 @@ class SampleDataSeeder extends Seeder
                 ['name' => $name],
                 [
                     'date_of_birth' => now()->subYears(7 + ($i % 5))->toDateString(),
-                    'parent_name' => 'Orang Tua ' . explode(' ', $name)[0],
-                    'phone_number' => '08213456' . str_pad((string) $i, 4, '0', STR_PAD_LEFT),
+                    'parent_name' => 'Orang Tua '.explode(' ', $name)[0],
+                    'phone_number' => '08213456'.str_pad((string) $i, 4, '0', STR_PAD_LEFT),
                     'class_type' => ['preschool', 'coloring', 'drawing'][$i % 3],
                     'status' => $i % 7 === 0 ? 'inactive' : 'active',
                     'join_date' => now()->subMonths(5 - min($i % 6, 5))->toDateString(),

@@ -36,22 +36,32 @@
                 <option value="tersedia" @selected($status === 'tersedia')>Tersedia</option>
                 <option value="penuh" @selected($status === 'penuh')>Penuh</option>
                 <option value="tanpa-tutor" @selected($status === 'tanpa-tutor')>Tutor Kosong</option>
-                <option value="lewat" @selected($status === 'lewat')>Sudah Lewat</option>
                 <option value="ditutup" @selected($status === 'ditutup')>Ditutup</option>
             </select>
-            <div class="input-group input-group-sm" style="width:240px;">
-                <span class="input-group-text"><i class="bi bi-calendar3"></i></span>
-                <input type="text" id="jadwalRange" data-no-live class="form-control py-2" placeholder="Semua tanggal jadwal" autocomplete="off" readonly>
-                <button type="button" id="jadwalClear" class="btn btn-outline-secondary" title="Hapus rentang" @if($dateFrom === '' && $dateTo === '') style="display:none" @endif><i class="bi bi-x-lg"></i></button>
-                <input type="hidden" name="date_from" id="dateFrom" value="{{ $dateFrom }}">
-                <input type="hidden" name="date_to" id="dateTo" value="{{ $dateTo }}">
-            </div>
-            @if($search !== '' || $category !== '' || $status !== '' || $dateFrom !== '' || $dateTo !== '')
+            <select name="day" class="form-select form-select-sm" style="width:150px;">
+                <option value="">Semua Hari</option>
+                @foreach(\App\Models\ClassRoom::DAY_NAMES as $dow => $label)
+                    <option value="{{ $dow }}" @selected($day === (string) $dow)>{{ $label }}</option>
+                @endforeach
+            </select>
+            @if($search !== '' || $category !== '' || $status !== '' || $day !== '')
                 <a href="{{ route('classes.index') }}" class="btn btn-sm btn-outline-secondary" title="Reset filter"><i class="bi bi-x-lg"></i></a>
             @endif
         </form>
     </div>
     <div class="card-body">
+        {{-- Filter hari menyembunyikan kelas sekali jalan yang sudah lewat, jadi
+             perlu dinyatakan — baris yang hilang tanpa penjelasan membingungkan. --}}
+        @if($day !== '' && is_numeric($day))
+            <div class="alert alert-light border small d-flex align-items-center gap-2 py-2">
+                <i class="bi bi-funnel"></i>
+                <span>
+                    Kelas yang jalan <strong>hari {{ \App\Models\ClassRoom::DAY_NAMES[(int) $day] ?? '-' }}</strong>, diurutkan per jam.
+                    Kelas sekali jalan yang tanggalnya sudah lewat tidak ditampilkan —
+                    <a href="{{ route('classes.index') }}" class="alert-link">lihat semua kelas</a>.
+                </span>
+            </div>
+        @endif
         <div class="table-responsive">
             <table class="table table-hover align-middle">
                 <thead>
@@ -69,7 +79,18 @@
                                 @php $av = $class->availability(); @endphp
                                 <span class="badge bg-{{ $av['color'] }}">{{ $av['text'] }}</span>
                             </td>
-                            <td>{{ $class->schedule_date->format('d M Y') }}<br><small class="text-muted">{{ \Illuminate\Support\Str::of($class->schedule_time)->substr(0,5) }}</small></td>
+                            <td>
+                                {{ $class->scheduleLabel() }}
+                                <br><small class="text-muted">
+                                    @if(! $class->is_recurring)
+                                        <span class="badge bg-light text-dark border">Sekali jalan</span>
+                                    @elseif($next = $class->nextOccurrence())
+                                        Sesi berikutnya {{ $next->format('d M Y') }}
+                                    @else
+                                        Belum ada sesi mendatang
+                                    @endif
+                                </small>
+                            </td>
                             <td>Rp {{ number_format($class->class_fee, 0, ',', '.') }}</td>
                             <td class="text-end">
                                 <form action="{{ route('classes.toggle-status', $class) }}" method="POST" class="d-inline">
@@ -238,78 +259,8 @@
 </div>
 @endsection
 
-@push('styles')
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-<style>
-    /* Selaraskan popup flatpickr dengan tema (terutama dark mode). */
-    [data-bs-theme="dark"] .flatpickr-calendar {
-        background: var(--surface); color: var(--text); box-shadow: 0 6px 24px rgba(0,0,0,0.5);
-    }
-    [data-bs-theme="dark"] .flatpickr-calendar .flatpickr-months,
-    [data-bs-theme="dark"] .flatpickr-calendar .flatpickr-weekday { color: var(--text); fill: var(--text); }
-    [data-bs-theme="dark"] .flatpickr-day { color: var(--text); }
-    [data-bs-theme="dark"] .flatpickr-day.prevMonthDay,
-    [data-bs-theme="dark"] .flatpickr-day.nextMonthDay { color: var(--text-muted); }
-    [data-bs-theme="dark"] .flatpickr-day:hover { background: var(--surface-2); border-color: var(--surface-2); }
-    [data-bs-theme="dark"] .flatpickr-day.inRange { background: rgba(14,165,233,0.18); border-color: transparent; box-shadow: none; }
-    .flatpickr-day.selected, .flatpickr-day.startRange, .flatpickr-day.endRange { background: var(--primary-color); border-color: var(--primary-color); }
-    #jadwalRange { background-color: var(--surface); cursor: pointer; }
-</style>
-@endpush
-
 @push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script>
-    (function () {
-        const input = document.getElementById('jadwalRange');
-        if (!input || !window.flatpickr) return;
-
-        const form = input.closest('form');
-        const hFrom = document.getElementById('dateFrom');
-        const hTo = document.getElementById('dateTo');
-        const clearBtn = document.getElementById('jadwalClear');
-
-        // Preload rentang dari nilai filter aktif (kirim sebagai Date agar tak salah parse).
-        const preset = [];
-        if (hFrom.value) preset.push(new Date(hFrom.value + 'T00:00:00'));
-        if (hTo.value) preset.push(new Date(hTo.value + 'T00:00:00'));
-
-        function submitForm() {
-            form.requestSubmit ? form.requestSubmit() : form.submit();
-        }
-
-        const fp = flatpickr(input, {
-            mode: 'range',
-            dateFormat: 'd/m/Y',        // format tampilan di field
-            rangeSeparator: ' s/d ',
-            disableMobile: true,        // pakai kalender flatpickr (range) juga di mobile
-            defaultDate: preset.length ? preset : null,
-            onClose: function (dates) {
-                let from = '', to = '';
-                if (dates.length === 2) {
-                    from = fp.formatDate(dates[0], 'Y-m-d');
-                    to = fp.formatDate(dates[1], 'Y-m-d');
-                } else if (dates.length === 1) {
-                    from = to = fp.formatDate(dates[0], 'Y-m-d');
-                }
-                if (from === hFrom.value && to === hTo.value) return; // tak berubah
-                hFrom.value = from;
-                hTo.value = to;
-                submitForm();
-            },
-        });
-
-        if (clearBtn) {
-            clearBtn.addEventListener('click', function () {
-                if (hFrom.value === '' && hTo.value === '') return;
-                fp.clear();
-                hFrom.value = '';
-                hTo.value = '';
-                submitForm();
-            });
-        }
-    })();
-
     // ── Switch panel: Manajemen Kelas <-> Manajemen Tutor ──
     (function () {
         const panelKelas = document.getElementById('panelKelas');

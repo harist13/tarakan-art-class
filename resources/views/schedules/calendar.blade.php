@@ -149,6 +149,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 : info.event.start.toLocaleString('id-ID', { dateStyle: 'full', timeStyle: 'short' });
             rows += `<p class="mb-1"><strong>Waktu:</strong> ${waktu}</p>`;
             if (p.code)        rows += `<p class="mb-1"><strong>Kode Kelas:</strong> ${p.code}</p>`;
+            if (p.schedule)    rows += `<p class="mb-1"><strong>Jadwal Rutin:</strong> ${p.schedule}</p>`;
             if (p.category)    rows += `<p class="mb-1"><strong>Kategori:</strong> ${p.category}</p>`;
             if (p.tutor)       rows += `<p class="mb-1"><strong>Tutor:</strong> ${p.tutor}</p>`;
             if (p.occupancy)   rows += `<p class="mb-1"><strong>Terisi:</strong> ${p.occupancy}</p>`;

@@ -74,7 +74,7 @@
     @if($days->isNotEmpty())
         <div class="d-grid gap-4 mt-4">
             @foreach($days as $date => $classes)
-                @php $carbonDate = $classes->first()->schedule_date; @endphp
+                @php $carbonDate = \Illuminate\Support\Carbon::parse($date); @endphp
                 <div class="tac-card overflow-hidden">
                     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 tac-bg-paper-2 px-4 py-3"
                          style="border-bottom: 1px solid var(--tac-line);">

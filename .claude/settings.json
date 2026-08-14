@@ -26,7 +26,19 @@
       "PowerShell(php artisan test --filter=PublicSiteTest)",
       "PowerShell(php artisan test --filter=SlotAvailabilityTest)",
       "Bash(php artisan *)",
-      "Bash(php artisan tinker '--execute= *)"
+      "Bash(php artisan tinker '--execute= *)",
+      "Bash(grep -o '\"message\":\"[^\"]\\\\{0,400\\\\}' \"C:\\\\Users\\\\LENOVO\\\\.claude\\\\projects\\\\c--laragon-www-tarakan-art-class\\\\3d72e206-84be-4f5f-b435-24377875e14e\\\\tool-results\\\\bdlcqffmg.txt\")",
+      "Bash(php -r ' *)",
+      "Bash(node --check C:/Users/LENOVO/AppData/Local/Temp/claude/c--laragon-www-tarakan-art-class/3d72e206-84be-4f5f-b435-24377875e14e/scratchpad/form.js)",
+      "Bash(node --check C:/Users/LENOVO/AppData/Local/Temp/claude/c--laragon-www-tarakan-art-class/3d72e206-84be-4f5f-b435-24377875e14e/scratchpad/classform.js)",
+      "Bash(perl -i -ne \"print unless /^\\\\s*'start_date' => [^,]*,\\\\s*$/\" database/seeders/SampleDataSeeder.php tests/Feature/HolidayClassTest.php tests/Feature/PaymentArrearsAccessTest.php tests/Feature/PublicSiteTest.php tests/Feature/StudentManagementTest.php)",
+      "Bash(perl -i -ne \"print unless /^\\\\s*'start_date' => now\\\\\\(\\\\\\)->toDateString\\\\\\(\\\\\\),\\\\s*$/\" tests/Feature/SlotAvailabilityTest.php)",
+      "Bash(node --check __TRACKED_VAR__/classform.js)",
+      "Bash(perl -i -pe 's/'\\\\''day_of_week'\\\\'' => now\\\\\\(\\\\\\)->addDay\\\\\\(\\\\\\)->dayOfWeek,/'\\\\''schedule_date'\\\\'' => now\\(\\)->addDay\\(\\)->toDateString\\(\\),/; s/'\\\\''day_of_week'\\\\'' => now\\\\\\(\\\\\\)->addDays\\\\\\(5\\\\\\)->dayOfWeek,/'\\\\''schedule_date'\\\\'' => now\\(\\)->addDays\\(5\\)->toDateString\\(\\),/; s/'\\\\''day_of_week'\\\\'' => now\\\\\\(\\\\\\)->dayOfWeek,/'\\\\''schedule_date'\\\\'' => now\\(\\)->toDateString\\(\\),/; s/'\\\\''day_of_week'\\\\'' => \\\\\\\\Illuminate\\\\\\\\Support\\\\\\\\Carbon::parse\\\\\\('\\\\''2026-08-15'\\\\''\\\\\\)->dayOfWeek,/'\\\\''schedule_date'\\\\'' => '\\\\''2026-08-15'\\\\'',/; s/'\\\\''day_of_week'\\\\'' => \\\\$date->dayOfWeek,/'\\\\''schedule_date'\\\\'' => \\\\$date,/' tests/Feature/*.php)",
+      "Bash(perl -i -pe 's/'\\\\''day_of_week'\\\\'' => \\\\$i \\\\+ 1,/'\\\\''schedule_date'\\\\'' => now\\(\\)->next\\(\\\\$i + 1\\)->toDateString\\(\\),/' database/seeders/SampleDataSeeder.php)",
+      "Bash(grep -n 'scheduleLabel\\(\\).'\\\\'' \\(mingguan\\)'\\\\''\\\\|'\\\\''Rabu, 16:00'\\\\''\\\\|assertSame\\(\\(int\\) $class->day_of_week' tests/Feature/SlotAvailabilityTest.php)",
+      "PowerShell(php artisan test --filter=ReplacementAttendanceTest)",
+      "PowerShell(php artisan test)"
     ],
     "additionalDirectories": [
       "C:\\Users\\LENOVO\\AppData\\Local\\Temp\\claude\\c--laragon-www-tarakan-art-class\\7b704970-429c-4686-b28c-0dc23945c341\\scratchpad"

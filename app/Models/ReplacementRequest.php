@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 class ReplacementRequest extends Model
 {
@@ -46,9 +47,9 @@ class ReplacementRequest extends Model
 
     /**
      * Gabungan tanggal + jam pengganti sebagai Carbon — sejajar dengan
-     * ClassRoom::scheduleAt() agar keduanya dinilai dengan cara yang sama.
+     * ClassRoom::occurrenceAt() agar keduanya dinilai dengan cara yang sama.
      */
-    public function scheduledAt(): \Illuminate\Support\Carbon
+    public function scheduledAt(): Carbon
     {
         $time = $this->replacement_time ? substr($this->replacement_time, 0, 8) : '00:00:00';
 

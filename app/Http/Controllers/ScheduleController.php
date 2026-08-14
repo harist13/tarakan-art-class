@@ -11,11 +11,21 @@ use App\Models\ReplacementRequest;
 use App\Models\Student;
 use App\Rules\StudentPaymentSettled;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class ScheduleController extends Controller
 {
+    /**
+     * Rentang kalender: kelas adalah slot mingguan tanpa akhir, jadi kejadiannya
+     * harus dibatasi. Sedikit ke belakang agar riwayat terdekat tetap terlihat.
+     */
+    private const CALENDAR_PAST_DAYS = 45;
+
+    private const CALENDAR_FUTURE_DAYS = 120;
+
     public function index(Request $request)
     {
         $status = $request->string('status')->toString();
@@ -36,12 +46,14 @@ class ScheduleController extends Controller
             ->withQueryString();
 
         // Daftar slot kelas + ketersediaan, untuk panel tutup/buka slot di layar Scheduler.
+        // Diurutkan di PHP: hari kini diturunkan dari schedule_date, jadi tidak
+        // bisa dipakai di ORDER BY.
         $slots = ClassRoom::query()
             ->with('tutor')
             ->withCount(['students as enrolled_count' => fn ($q) => $q->where('student_class.status', 'active')])
-            ->orderBy('schedule_date')
-            ->orderBy('schedule_time')
-            ->get();
+            ->get()
+            ->sortBy(fn (ClassRoom $c) => [$c->day_of_week, $c->timeLabel()])
+            ->values();
 
         // Hari libur untuk panel pengelolaan (yang akan datang di atas).
         $holidays = Holiday::orderBy('date')->get();
@@ -144,30 +156,46 @@ class ScheduleController extends Controller
     {
         $events = [];
 
-        // Jadwal kelas reguler. Available = indigo; penuh/ditutup = abu-abu.
+        // Jadwal kelas reguler. Setiap slot mingguan direntangkan jadi satu event
+        // per kejadian dalam rentang tampilan — hari libur otomatis dilewati oleh
+        // occurrencesBetween(). Available = biru; penuh/ditutup/lewat = abu-abu.
         $classes = ClassRoom::with('tutor')
             ->withCount(['students as enrolled_count' => fn ($q) => $q->where('student_class.status', 'active')])
             ->get();
 
+        $from = Carbon::today()->subDays(self::CALENDAR_PAST_DAYS);
+        $to = Carbon::today()->addDays(self::CALENDAR_FUTURE_DAYS);
+
         foreach ($classes as $class) {
-            $available = $class->isAvailable();
+            $slotAvailable = $class->isAvailable();
             $av = $class->availability();
-            $events[] = [
-                'title' => $class->class_name.($available ? '' : ' ('.$av['text'].')'),
-                'start' => $this->combineDateTime($class->schedule_date, $class->schedule_time),
-                'color' => $available ? '#0EA5E9' : '#94A3B8',
-                'extendedProps' => [
-                    'type' => 'Kelas Reguler',
-                    'tutor' => $class->tutor->name ?? '-',
-                    'category' => ucfirst($class->class_category),
-                    'cat' => $class->class_category, // nilai mentah untuk pencocokan level murid
-                    'classId' => $class->id,
-                    'code' => $class->class_code,
-                    'availability' => $av['text'],
-                    'available' => $available,
-                    'occupancy' => $class->enrolledCount().' / '.$class->capacity,
-                ],
-            ];
+
+            foreach ($class->occurrencesBetween($from, $to) as $at) {
+                // Sesi yang sudah lewat tidak bisa dipakai sebagai slot pengganti,
+                // walau slot mingguannya sendiri masih available.
+                $past = $at->isPast();
+                $available = $slotAvailable && ! $past;
+                $label = $past ? 'Sudah lewat' : $av['text'];
+
+                $events[] = [
+                    'title' => $class->class_name.($available ? '' : ' ('.$label.')'),
+                    'start' => $at->format('Y-m-d\TH:i:s'),
+                    'color' => $available ? '#0EA5E9' : '#94A3B8',
+                    'extendedProps' => [
+                        'type' => 'Kelas Reguler',
+                        'tutor' => $class->tutor->name ?? '-',
+                        'category' => ucfirst($class->class_category),
+                        'cat' => $class->class_category, // nilai mentah untuk pencocokan level murid
+                        'classId' => $class->id,
+                        'code' => $class->class_code,
+                        'schedule' => $class->scheduleLabel(),
+                        'availability' => $label,
+                        'available' => $available,
+                        'past' => $past,
+                        'occupancy' => $class->enrolledCount().' / '.$class->capacity,
+                    ],
+                ];
+            }
         }
 
         // Holiday Class — sesi musiman saat libur sekolah. Fuchsia, satu-satunya
@@ -372,23 +400,29 @@ class ScheduleController extends Controller
     /**
      * Validasi request replacement.
      *
-     * Slot tujuan harus AVAILABLE (tidak penuh & tidak ditutup). Saat mengedit,
-     * kelas yang sudah dipilih sebelumnya tetap diizinkan meski kini penuh/ditutup.
-     * Tipe kelas boleh berbeda — murid diizinkan pindah lintas tipe.
+     * Slot tujuan harus AVAILABLE (tidak penuh, tidak ditutup, tutornya ada).
+     * Saat mengedit, kelas yang sudah dipilih sebelumnya tetap diizinkan meski
+     * kini penuh/ditutup. Tipe kelas boleh berbeda — murid diizinkan pindah
+     * lintas tipe.
      *
-     * Tanggal & jam pengganti default-nya mengikuti jadwal kelas tujuan; admin
-     * boleh menimpanya lewat form bila sesinya digeser dari jadwal asli.
+     * Kelas asal boleh sama dengan kelas baru: kelas adalah slot mingguan, jadi
+     * "pindah ke kelas yang sama pada sesi lain" adalah kasus yang wajar. Tapi
+     * sesi penggantinya harus benar-benar berbeda — lihat
+     * assertReplacementDiffersFromOrigin().
+     *
+     * "Sudah lewat" dan "hari libur" dinilai pada `replacement_date`, bukan pada
+     * slotnya — slot mingguan sendiri tidak pernah kedaluwarsa.
      */
     private function validateReplacement(Request $request, ?ReplacementRequest $current = null): array
     {
         $data = $request->validate([
             'student_id' => ['required', 'exists:students,id', new StudentPaymentSettled],
             // Kelas asal: jadwal yang ditinggalkan. Opsional karena data lama belum punya.
-            'origin_class_id' => ['nullable', 'exists:classes,id', 'different:class_id'],
+            'origin_class_id' => ['nullable', 'exists:classes,id'],
             'class_id' => [
                 'required',
                 'exists:classes,id',
-                function ($attribute, $value, $fail) use ($current, $request) {
+                function ($attribute, $value, $fail) use ($current) {
                     // Biarkan kelas yang sama saat edit walau statusnya kini berubah.
                     if ($current && (int) $value === (int) $current->class_id) {
                         return;
@@ -403,11 +437,9 @@ class ScheduleController extends Controller
                         // Alasan spesifik sesuai kondisi slot.
                         $reason = match (true) {
                             $class->isClosed() => 'sudah ditutup admin',
-                            $class->isPast() => 'jadwalnya sudah lewat',
-                            $class->isHoliday() => 'jatuh pada hari libur',
                             ! $class->hasTutor() => 'belum ada tutor',
                             $class->isFull() => 'sudah penuh',
-                            default => 'tidak tersedia',
+                            default => 'tidak punya sesi mendatang',
                         };
                         $fail("Kelas \"{$class->class_name}\" {$reason} sehingga tidak bisa dijadikan slot pengganti. Silakan pilih slot lain yang tersedia.");
                     }
@@ -416,21 +448,83 @@ class ScheduleController extends Controller
                     // tipe. Ketidakcocokan hanya ditandai di UI sebagai peringatan.
                 },
             ],
-            // Boleh kosong: yang kosong diisi dari jadwal kelas tujuan (lihat
-            // applyClassSchedule). Yang diisi admin dipakai apa adanya.
-            'replacement_date' => ['nullable', 'date'],
+            // Boleh kosong: yang kosong diisi dari sesi berikutnya kelas tujuan
+            // (lihat applyClassSchedule). Yang diisi admin dipakai apa adanya.
+            'replacement_date' => [
+                // bail: closure di bawah memanggil Carbon::parse, jadi jangan sampai
+                // ikut jalan saat formatnya sendiri sudah tidak valid.
+                'bail', 'nullable', 'date',
+                // Sesi pengganti yang sudah lewat tidak ada gunanya diajukan. Saat
+                // mengedit, tanggal lama tetap diizinkan agar request lama bisa dirapikan.
+                function ($attribute, $value, $fail) use ($current) {
+                    $date = Carbon::parse($value)->startOfDay();
+
+                    if ($date->lt(Carbon::today()) && (! $current || $current->replacement_date->toDateString() !== $date->toDateString())) {
+                        $fail('Tanggal pengganti sudah lewat. Pilih tanggal hari ini atau setelahnya.');
+
+                        return;
+                    }
+
+                    if (in_array($date->toDateString(), ClassRoom::holidayDates(), true)) {
+                        $fail('Tanggal pengganti jatuh pada hari libur — kelas ditiadakan pada tanggal tersebut.');
+                    }
+                },
+            ],
             'replacement_time' => ['nullable', 'date_format:H:i,H:i:s'],
             'reason' => ['nullable', 'string'],
         ], [
             // Pesan Indonesia agar admin langsung paham apa yang kurang.
             'student_id.required' => 'Murid belum dipilih.',
-            'origin_class_id.different' => 'Kelas asal dan kelas baru tidak boleh sama.',
             'class_id.required' => 'Kelas tujuan belum dipilih. Jika daftar kelas kosong, berarti tidak ada slot yang tersedia saat ini.',
             'replacement_date.date' => 'Tanggal pengganti tidak valid.',
             'replacement_time.date_format' => 'Jam pengganti tidak valid (format JJ:MM).',
         ]);
 
-        return $this->applyClassSchedule($data);
+        // Urutannya penting: isian yang dikosongkan diisi dulu dari jadwal kelas
+        // tujuan, baru diperiksa. Untuk kelas yang sama, isian otomatis itu justru
+        // selalu jatuh tepat di jadwal kelas asal — persis yang harus ditolak.
+        $data = $this->applyClassSchedule($data);
+        $this->assertReplacementDiffersFromOrigin($data);
+
+        return $data;
+    }
+
+    /**
+     * Replacement di kelas yang sama harus benar-benar berpindah sesi.
+     *
+     * Kelas asal boleh sama dengan kelas baru, tapi kalau hari & jamnya juga sama,
+     * sesi penggantinya identik dengan sesi yang ditinggalkan — tidak ada yang
+     * berpindah. Yang dibandingkan hari mingguan, bukan tanggal persis: slot
+     * berjalan tiap minggu pada hari & jam yang sama, jadi "Senin 10:00 minggu
+     * depan" tetap sesi yang sama dengan "Senin 10:00" kelas asal.
+     *
+     * Kelas tujuan yang berbeda tidak dibatasi — bentrok jam antar kelas justru
+     * wajar, karena murid memang meninggalkan sesi aslinya.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function assertReplacementDiffersFromOrigin(array $data): void
+    {
+        $originId = $data['origin_class_id'] ?? null;
+
+        if (! $originId || (int) $originId !== (int) ($data['class_id'] ?? 0)) {
+            return;
+        }
+
+        $origin = ClassRoom::find($originId);
+
+        if (! $origin) {
+            return;
+        }
+
+        $sameDay = (int) Carbon::parse($data['replacement_date'])->dayOfWeek === (int) $origin->day_of_week;
+        $sameTime = substr((string) $data['replacement_time'], 0, 5) === $origin->timeLabel();
+
+        if ($sameDay && $sameTime) {
+            throw ValidationException::withMessages([
+                'replacement_date' => "Sesi pengganti sama persis dengan jadwal kelas asal ({$origin->scheduleLabel()}), jadi tidak ada sesi yang berpindah. Ubah hari atau jamnya, atau pilih kelas tujuan yang lain.",
+            ]);
+        }
     }
 
     /**
@@ -447,8 +541,12 @@ class ScheduleController extends Controller
             return $data;
         }
 
-        $data['replacement_date'] ??= $class->schedule_date->format('Y-m-d');
-        $data['replacement_time'] ??= substr($class->schedule_time, 0, 5);
+        // Sesi mingguan berikutnya yang nyata, bukan tanggal jadwal apa pun yang
+        // tersimpan di kelas — kelas hanya menyimpan pola hari + jam.
+        $next = $class->nextOccurrence();
+
+        $data['replacement_date'] ??= ($next ?? Carbon::today())->format('Y-m-d');
+        $data['replacement_time'] ??= $class->timeLabel();
 
         return $data;
     }
