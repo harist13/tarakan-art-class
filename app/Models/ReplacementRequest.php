@@ -11,6 +11,7 @@ class ReplacementRequest extends Model
     protected $fillable = [
         'student_id',
         'origin_class_id',
+        'missed_date',
         'class_id',
         'replacement_date',
         'replacement_time',
@@ -20,8 +21,15 @@ class ReplacementRequest extends Model
     ];
 
     protected $casts = [
+        'missed_date' => 'date',
         'replacement_date' => 'date',
     ];
+
+    /** Request yang sudah disetujui — hanya ini yang mengubah daftar absensi. */
+    public function scopeApproved($query)
+    {
+        return $query->where('request_status', 'approved');
+    }
 
     public function student(): BelongsTo
     {

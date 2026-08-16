@@ -382,11 +382,82 @@ class SlotAvailabilityTest extends TestCase
     }
 
     /**
-     * Kelas yang sama DAN hari + jam yang sama = tidak ada sesi yang berpindah.
-     * Hari dibandingkan sebagai hari mingguan, jadi "pekan depan pada hari & jam
-     * yang sama" pun tetap ditolak.
+     * Kelas, hari, dan jam yang sama tapi tanggal berbeda: murid menyusul di sesi
+     * pekan berikutnya. Sesinya benar-benar berpindah, jadi sah — yang dibandingkan
+     * tanggal persis, bukan hari mingguannya.
      */
-    public function test_kelas_asal_sama_dengan_hari_dan_jam_identik_ditolak(): void
+    public function test_kelas_asal_sama_di_sesi_pekan_berikutnya_diizinkan(): void
+    {
+        $this->actingAs($this->makeUser());
+        $class = $this->makeClass(); // sesi terdekat: besok, 09:00
+        $student = $this->makeStudent(['name' => 'Sari', 'parent_name' => 'Tono']);
+
+        $pekanDepan = now()->addDays(8); // hari yang sama dengan sesi terdekat, sepekan setelahnya
+
+        $this->post(route('schedules.store'), [
+            'student_id' => $student->id,
+            'origin_class_id' => $class->id,
+            'class_id' => $class->id,
+            'replacement_date' => $pekanDepan->toDateString(),
+            'replacement_time' => '09:00',
+        ])->assertRedirect(route('schedules.index'))->assertSessionHasNoErrors();
+
+        $this->assertSame($pekanDepan->toDateString(), ReplacementRequest::firstOrFail()->replacement_date->toDateString());
+    }
+
+    /**
+     * "Tanggal sesi yang dilewatkan" harus benar-benar sesi kelas asal. Dropdown di
+     * form sudah membatasinya, tapi itu hanya penjaga sisi browser — tanggal lain
+     * tak pernah cocok dengan absensi, jadi muridnya tidak akan pernah dikeluarkan
+     * dari sesi mana pun.
+     */
+    public function test_missed_date_di_luar_sesi_kelas_asal_ditolak(): void
+    {
+        $this->actingAs($this->makeUser());
+        $class = $this->makeClass(); // sesi mingguan: besok, 09:00
+        $student = $this->makeStudent(['name' => 'Wira', 'parent_name' => 'Yuli']);
+
+        $this->post(route('schedules.store'), [
+            'student_id' => $student->id,
+            'origin_class_id' => $class->id,
+            'missed_date' => now()->addDays(3)->toDateString(), // dua hari dari hari kelas
+            'class_id' => $class->id,
+            'replacement_date' => now()->addDays(8)->toDateString(),
+            'replacement_time' => '09:00',
+        ])->assertSessionHasErrors('missed_date');
+
+        $this->assertDatabaseCount('replacement_requests', 0);
+    }
+
+    /** Sesi kelas asal yang sudah lewat tetap boleh — kelas pengganti sering diminta belakangan. */
+    public function test_missed_date_sesi_lampau_kelas_asal_diterima(): void
+    {
+        $this->actingAs($this->makeUser());
+        // Kelas sudah berjalan sebulan, jadi punya sesi lampau yang nyata —
+        // sesi sebelum kelasnya dimulai memang tidak pernah ada.
+        $class = $this->makeClass(['schedule_date' => now()->addDay()->subWeeks(4)->toDateString()]);
+        $student = $this->makeStudent(['name' => 'Xena', 'parent_name' => 'Zaki']);
+
+        // Hari kelas yang sama, sepekan sebelum sesi terdekat.
+        $lampau = now()->addDay()->subWeek();
+
+        $this->post(route('schedules.store'), [
+            'student_id' => $student->id,
+            'origin_class_id' => $class->id,
+            'missed_date' => $lampau->toDateString(),
+            'class_id' => $class->id,
+            'replacement_date' => now()->addDays(8)->toDateString(),
+            'replacement_time' => '09:00',
+        ])->assertRedirect(route('schedules.index'))->assertSessionHasNoErrors();
+
+        $this->assertSame($lampau->toDateString(), ReplacementRequest::firstOrFail()->missed_date->toDateString());
+    }
+
+    /**
+     * Yang tetap ditolak: sesi pengganti jatuh tepat pada sesi yang ditinggalkan —
+     * kelas, tanggal, dan jam sama persis. Tidak ada yang berpindah.
+     */
+    public function test_kelas_asal_sama_pada_sesi_yang_ditinggalkan_ditolak(): void
     {
         $this->actingAs($this->makeUser());
         $class = $this->makeClass();
@@ -396,7 +467,7 @@ class SlotAvailabilityTest extends TestCase
             'student_id' => $student->id,
             'origin_class_id' => $class->id,
             'class_id' => $class->id,
-            'replacement_date' => now()->addDays(8)->toDateString(), // hari yang sama, pekan depan
+            'replacement_date' => now()->addDay()->toDateString(), // sesi terdekat kelas asal
             'replacement_time' => '09:00',
         ])->assertSessionHasErrors('replacement_date');
 
@@ -404,11 +475,11 @@ class SlotAvailabilityTest extends TestCase
     }
 
     /**
-     * Tanggal & jam yang dikosongkan diisi dari sesi berikutnya kelas tujuan —
-     * yang untuk kelas yang sama selalu jatuh tepat di jadwal kelas asal. Jadi
-     * pengecekan harus jalan setelah isian otomatis, bukan sebelumnya.
+     * Tanggal & jam yang dikosongkan diisi dari jadwal kelas tujuan. Untuk kelas
+     * yang sama, sesi terdekatnya justru sesi yang sedang ditinggalkan — jadi
+     * isian otomatisnya digeser ke sesi sesudahnya, bukan ditolak.
      */
-    public function test_kelas_asal_sama_tanpa_isian_tanggal_ikut_ditolak(): void
+    public function test_kelas_asal_sama_tanpa_isian_tanggal_digeser_ke_sesi_berikutnya(): void
     {
         $this->actingAs($this->makeUser());
         $class = $this->makeClass();
@@ -419,9 +490,11 @@ class SlotAvailabilityTest extends TestCase
             'origin_class_id' => $class->id,
             'class_id' => $class->id,
             // tanggal & jam sengaja tidak dikirim
-        ])->assertSessionHasErrors('replacement_date');
+        ])->assertRedirect(route('schedules.index'))->assertSessionHasNoErrors();
 
-        $this->assertDatabaseCount('replacement_requests', 0);
+        $saved = ReplacementRequest::firstOrFail();
+        $this->assertSame(now()->addDays(8)->toDateString(), $saved->replacement_date->toDateString());
+        $this->assertSame('09:00', substr($saved->replacement_time, 0, 5));
     }
 
     public function test_tanggal_pengganti_yang_sudah_lewat_ditolak(): void

@@ -26,10 +26,32 @@ class ScheduleController extends Controller
 
     private const CALENDAR_FUTURE_DAYS = 120;
 
+    /**
+     * Status slot untuk filter panel → warna badge availability().
+     *
+     * Dicocokkan lewat warnanya, bukan lewat aturan tersendiri, supaya filter
+     * tidak pernah berbeda pendapat dengan badge yang tampil di barisnya —
+     * keduanya bersumber dari satu pemanggilan availability() yang sama.
+     */
+    private const SLOT_STATUS_COLORS = [
+        'tersedia' => 'success',
+        'penuh' => 'danger',
+        'tanpa-tutor' => 'warning',
+        'lewat' => 'dark',
+        'ditutup' => 'secondary',
+    ];
+
     public function index(Request $request)
     {
         $status = $request->string('status')->toString();
         $search = $request->string('search')->toString();
+
+        // Panel yang terbuka. Halaman ini menampung tiga pekerjaan terpisah —
+        // memproses request, mengatur slot, dan menandai kalender — jadi hanya
+        // satu yang ditampilkan sekaligus. Disimpan di query string supaya
+        // bertahan setelah filter disubmit atau form penanda kalender redirect.
+        $tab = $request->string('tab')->toString();
+        $tab = in_array($tab, ['slots', 'markers'], true) ? $tab : 'requests';
 
         $requests = ReplacementRequest::query()
             ->with(['student.payments', 'classRoom', 'originClass', 'approver'])
@@ -48,11 +70,26 @@ class ScheduleController extends Controller
         // Daftar slot kelas + ketersediaan, untuk panel tutup/buka slot di layar Scheduler.
         // Diurutkan di PHP: hari kini diturunkan dari schedule_date, jadi tidak
         // bisa dipakai di ORDER BY.
-        $slots = ClassRoom::query()
+        $allSlots = ClassRoom::query()
             ->with('tutor')
             ->withCount(['students as enrolled_count' => fn ($q) => $q->where('student_class.status', 'active')])
             ->get()
             ->sortBy(fn (ClassRoom $c) => [$c->day_of_week, $c->timeLabel()])
+            ->values();
+
+        // Filter panel slot. Disaring di PHP, bukan lewat WHERE: koleksinya memang
+        // sudah dimuat penuh untuk menghitung ringkasan, dan statusnya berasal
+        // dari availability() yang tak punya padanan langsung di SQL.
+        $slotSearch = $request->string('slot_search')->toString();
+        $slotStatus = $request->string('slot_status')->toString();
+
+        $slots = $allSlots
+            ->when($slotSearch !== '', fn ($c) => $c->filter(
+                fn (ClassRoom $s) => str_contains(mb_strtolower($s->class_name.' '.$s->class_code), mb_strtolower($slotSearch))
+            ))
+            ->when(isset(self::SLOT_STATUS_COLORS[$slotStatus]), fn ($c) => $c->filter(
+                fn (ClassRoom $s) => $s->availability()['color'] === self::SLOT_STATUS_COLORS[$slotStatus]
+            ))
             ->values();
 
         // Hari libur untuk panel pengelolaan (yang akan datang di atas).
@@ -61,9 +98,12 @@ class ScheduleController extends Controller
         // Acara / agenda umum untuk panel pengelolaan.
         $calendarEvents = CalendarEvent::orderBy('date')->orderBy('start_time')->get();
 
-        // Ringkasan untuk scorecard di atas halaman.
+        // Ringkasan untuk scorecard di atas halaman — dihitung dari seluruh slot,
+        // bukan dari hasil filter panel: ini gambaran keadaan, bukan cerminan
+        // pencarian yang sedang dilakukan admin.
         $pendingCount = ReplacementRequest::where('request_status', 'pending')->count();
-        $availableSlots = $slots->filter->isAvailable()->count();
+        $totalSlots = $allSlots->count();
+        $availableSlots = $allSlots->filter->isAvailable()->count();
 
         // Request pending milik murid yang menunggak — perlu ditinjau admin
         // sebelum di-approve.
@@ -73,7 +113,8 @@ class ScheduleController extends Controller
 
         return view('schedules.index', compact(
             'requests', 'status', 'search', 'slots', 'holidays', 'calendarEvents',
-            'pendingCount', 'availableSlots', 'arrearsCount'
+            'pendingCount', 'availableSlots', 'totalSlots', 'arrearsCount', 'tab',
+            'slotSearch', 'slotStatus'
         ));
     }
 
@@ -419,6 +460,26 @@ class ScheduleController extends Controller
             'student_id' => ['required', 'exists:students,id', new StudentPaymentSettled],
             // Kelas asal: jadwal yang ditinggalkan. Opsional karena data lama belum punya.
             'origin_class_id' => ['nullable', 'exists:classes,id'],
+            // Tanggal sesi yang dilewatkan. Boleh kosong — diisi dari sesi terdekat
+            // kelas asal (lihat applyMissedDate). Boleh lampau: kelas pengganti
+            // sering diminta setelah anaknya absen.
+            //
+            // Harus sesi yang benar-benar ada di kelas asal. Dropdown di form sudah
+            // membatasinya, tapi itu penjaga sisi browser saja — tanggal lain tak
+            // pernah cocok dengan absensi, jadi muridnya tidak akan dikeluarkan dari
+            // sesi mana pun dan kolomnya terisi tanpa berfungsi.
+            'missed_date' => [
+                'bail', 'nullable', 'date',
+                function ($attribute, $value, $fail) use ($request) {
+                    $origin = ClassRoom::find($request->input('origin_class_id'));
+
+                    if (! $origin || $origin->occursOn(Carbon::parse($value))) {
+                        return;
+                    }
+
+                    $fail("Tanggal tersebut bukan sesi kelas \"{$origin->class_name}\" ({$origin->scheduleLabel()}) — bisa jadi jatuh di hari lain atau pada hari libur. Pilih salah satu sesi kelas tersebut.");
+                },
+            ],
             'class_id' => [
                 'required',
                 'exists:classes,id',
@@ -483,6 +544,7 @@ class ScheduleController extends Controller
         // Urutannya penting: isian yang dikosongkan diisi dulu dari jadwal kelas
         // tujuan, baru diperiksa. Untuk kelas yang sama, isian otomatis itu justru
         // selalu jatuh tepat di jadwal kelas asal — persis yang harus ditolak.
+        $data = $this->applyMissedDate($data);
         $data = $this->applyClassSchedule($data);
         $this->assertReplacementDiffersFromOrigin($data);
 
@@ -490,13 +552,38 @@ class ScheduleController extends Controller
     }
 
     /**
-     * Replacement di kelas yang sama harus benar-benar berpindah sesi.
+     * Lengkapi tanggal sesi yang dilewatkan dengan sesi terdekat kelas asal.
      *
-     * Kelas asal boleh sama dengan kelas baru, tapi kalau hari & jamnya juga sama,
-     * sesi penggantinya identik dengan sesi yang ditinggalkan — tidak ada yang
-     * berpindah. Yang dibandingkan hari mingguan, bukan tanggal persis: slot
-     * berjalan tiap minggu pada hari & jam yang sama, jadi "Senin 10:00 minggu
-     * depan" tetap sesi yang sama dengan "Senin 10:00" kelas asal.
+     * Itu tebakan yang paling masuk akal saat admin tidak mengisinya sendiri,
+     * dan sekali tersimpan nilainya tidak ikut bergeser walau waktu berjalan —
+     * itulah sebabnya kolomnya ada.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function applyMissedDate(array $data): array
+    {
+        if (! empty($data['missed_date']) || empty($data['origin_class_id'])) {
+            return $data;
+        }
+
+        $data['missed_date'] = ClassRoom::find($data['origin_class_id'])
+            ?->nextOccurrence()?->format('Y-m-d');
+
+        return $data;
+    }
+
+    /**
+     * Sesi pengganti tidak boleh jatuh tepat pada sesi yang ditinggalkan.
+     *
+     * Kelas asal boleh sama dengan kelas baru, termasuk pada hari & jam yang sama:
+     * "menyusul di sesi minggu berikutnya, kelas yang sama" justru pola replacement
+     * yang paling wajar. Yang tidak masuk akal hanyalah menaruh sesi pengganti
+     * persis di sesi yang sedang dilewatkan — di situ tidak ada yang berpindah.
+     *
+     * Karena itu yang dibandingkan tanggal persis, bukan hari mingguannya, dan
+     * acuannya `missed_date` yang tersimpan — bukan lagi kejadian terdekat kelas
+     * asal yang jawabannya berubah seiring waktu berjalan.
      *
      * Kelas tujuan yang berbeda tidak dibatasi — bentrok jam antar kelas justru
      * wajar, karena murid memang meninggalkan sesi aslinya.
@@ -506,8 +593,9 @@ class ScheduleController extends Controller
     private function assertReplacementDiffersFromOrigin(array $data): void
     {
         $originId = $data['origin_class_id'] ?? null;
+        $missed = $data['missed_date'] ?? null;
 
-        if (! $originId || (int) $originId !== (int) ($data['class_id'] ?? 0)) {
+        if (! $originId || ! $missed || (int) $originId !== (int) ($data['class_id'] ?? 0)) {
             return;
         }
 
@@ -517,12 +605,15 @@ class ScheduleController extends Controller
             return;
         }
 
-        $sameDay = (int) Carbon::parse($data['replacement_date'])->dayOfWeek === (int) $origin->day_of_week;
+        $missedAt = Carbon::parse($missed);
+        $sameDate = Carbon::parse($data['replacement_date'])->toDateString() === $missedAt->toDateString();
         $sameTime = substr((string) $data['replacement_time'], 0, 5) === $origin->timeLabel();
 
-        if ($sameDay && $sameTime) {
+        if ($sameDate && $sameTime) {
+            $label = $missedAt->locale('id')->translatedFormat('l, j F Y').' - '.$origin->timeLabel();
+
             throw ValidationException::withMessages([
-                'replacement_date' => "Sesi pengganti sama persis dengan jadwal kelas asal ({$origin->scheduleLabel()}), jadi tidak ada sesi yang berpindah. Ubah hari atau jamnya, atau pilih kelas tujuan yang lain.",
+                'replacement_date' => "Sesi pengganti jatuh tepat pada sesi yang ditinggalkan ({$label}), jadi tidak ada sesi yang berpindah. Pilih tanggal sesi lain, atau kelas tujuan yang berbeda.",
             ]);
         }
     }
@@ -544,6 +635,14 @@ class ScheduleController extends Controller
         // Sesi mingguan berikutnya yang nyata, bukan tanggal jadwal apa pun yang
         // tersimpan di kelas — kelas hanya menyimpan pola hari + jam.
         $next = $class->nextOccurrence();
+
+        // Replacement di kelas yang sama: sesi terdekat justru sesi yang sedang
+        // ditinggalkan, jadi default-nya digeser ke sesi sesudahnya. Tanpa ini
+        // isian otomatis selalu jatuh tepat di sesi yang ditolak
+        // assertReplacementDiffersFromOrigin().
+        if ($next && (int) ($data['origin_class_id'] ?? 0) === (int) $class->id) {
+            $next = $class->nextOccurrence($next->copy()->addSecond()) ?? $next;
+        }
 
         $data['replacement_date'] ??= ($next ?? Carbon::today())->format('Y-m-d');
         $data['replacement_time'] ??= $class->timeLabel();

@@ -30,51 +30,88 @@
             </div>
         </a>
     </div>
+    {{-- Tiap scorecard membuka panel yang mengelolanya — angka yang menarik
+         perhatian dan tempat menindaklanjutinya jadi satu klik. --}}
     <div class="col-xl-3 col-md-6 mb-4">
-        <div class="card border-left-success h-100 py-2 shadow-sm">
-            <div class="card-body">
-                <div class="row align-items-center">
-                    <div class="col">
-                        <div class="text-success text-uppercase mb-1" style="font-size:0.7rem; font-weight:800; letter-spacing:.5px;">Slot Tersedia</div>
-                        <div class="h4 mb-0 fw-bold text-gray-800">{{ $availableSlots }} <span class="small text-muted fw-normal">/ {{ $slots->count() }}</span></div>
-                        <div class="small text-muted mt-1">bisa dipilih untuk pengganti</div>
+        <a href="{{ route('schedules.index', ['tab' => 'slots']) }}" class="text-decoration-none">
+            <div class="card border-left-success h-100 py-2 shadow-sm">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <div class="text-success text-uppercase mb-1" style="font-size:0.7rem; font-weight:800; letter-spacing:.5px;">Slot Tersedia</div>
+                            <div class="h4 mb-0 fw-bold text-gray-800">{{ $availableSlots }} <span class="small text-muted fw-normal">/ {{ $totalSlots }}</span></div>
+                            <div class="small text-muted mt-1">bisa dipilih untuk pengganti</div>
+                        </div>
+                        <div class="col-auto"><i class="bi bi-check-circle fs-1" style="color:#E2E8F0;"></i></div>
                     </div>
-                    <div class="col-auto"><i class="bi bi-check-circle fs-1" style="color:#E2E8F0;"></i></div>
                 </div>
             </div>
-        </div>
+        </a>
     </div>
     <div class="col-xl-3 col-md-6 mb-4">
-        <div class="card border-left-info h-100 py-2 shadow-sm">
-            <div class="card-body">
-                <div class="row align-items-center">
-                    <div class="col">
-                        <div class="text-info text-uppercase mb-1" style="font-size:0.7rem; font-weight:800; letter-spacing:.5px;">Hari Libur</div>
-                        <div class="h4 mb-0 fw-bold text-gray-800">{{ $holidays->count() }}</div>
-                        <div class="small text-muted mt-1">tanggal kelas ditiadakan</div>
+        <a href="{{ route('schedules.index', ['tab' => 'markers']) }}" class="text-decoration-none">
+            <div class="card border-left-info h-100 py-2 shadow-sm">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <div class="text-info text-uppercase mb-1" style="font-size:0.7rem; font-weight:800; letter-spacing:.5px;">Hari Libur</div>
+                            <div class="h4 mb-0 fw-bold text-gray-800">{{ $holidays->count() }}</div>
+                            <div class="small text-muted mt-1">tanggal kelas ditiadakan</div>
+                        </div>
+                        <div class="col-auto"><i class="bi bi-calendar-x fs-1" style="color:#E2E8F0;"></i></div>
                     </div>
-                    <div class="col-auto"><i class="bi bi-calendar-x fs-1" style="color:#E2E8F0;"></i></div>
                 </div>
             </div>
-        </div>
+        </a>
     </div>
     <div class="col-xl-3 col-md-6 mb-4">
-        <div class="card border-left-primary h-100 py-2 shadow-sm">
-            <div class="card-body">
-                <div class="row align-items-center">
-                    <div class="col">
-                        <div class="text-primary text-uppercase mb-1" style="font-size:0.7rem; font-weight:800; letter-spacing:.5px;">Acara / Agenda</div>
-                        <div class="h4 mb-0 fw-bold text-gray-800">{{ $calendarEvents->count() }}</div>
-                        <div class="small text-muted mt-1">tampil di kalender</div>
+        <a href="{{ route('schedules.index', ['tab' => 'markers']) }}" class="text-decoration-none">
+            <div class="card border-left-primary h-100 py-2 shadow-sm">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <div class="text-primary text-uppercase mb-1" style="font-size:0.7rem; font-weight:800; letter-spacing:.5px;">Acara / Agenda</div>
+                            <div class="h4 mb-0 fw-bold text-gray-800">{{ $calendarEvents->count() }}</div>
+                            <div class="small text-muted mt-1">tampil di kalender</div>
+                        </div>
+                        <div class="col-auto"><i class="bi bi-calendar-event fs-1" style="color:#E2E8F0;"></i></div>
                     </div>
-                    <div class="col-auto"><i class="bi bi-calendar-event fs-1" style="color:#E2E8F0;"></i></div>
                 </div>
             </div>
-        </div>
+        </a>
     </div>
 </div>
 
-{{-- ── Tugas utama: Daftar Request Replacement ──────────────────── --}}
+@php
+    // Error validasi hari libur / acara harus terlihat, jadi panelnya dipaksa
+    // terbuka — kalau tidak, pesan errornya tersembunyi di panel yang tertutup.
+    $eventTab = $errors->event->isNotEmpty();
+    $tab = ($errors->holiday->isNotEmpty() || $eventTab) ? 'markers' : $tab;
+@endphp
+
+{{-- Switch panel: satu halaman, tiga pekerjaan yang berdiri sendiri. Ditumpuk
+     vertikal seperti sebelumnya, panel slot & penanda kalender praktis tak
+     pernah terlihat tanpa menggulir jauh. --}}
+<div class="btn-group mb-4 shadow-sm flex-wrap" role="group" aria-label="Pilih panel">
+    <input type="radio" class="btn-check" name="panelToggle" id="toggleRequests" autocomplete="off" @checked($tab === 'requests')>
+    <label class="btn btn-outline-primary" for="toggleRequests">
+        <i class="bi bi-arrow-left-right me-1"></i>Request Replacement
+        @if($pendingCount)<span class="badge bg-warning text-dark ms-1">{{ $pendingCount }}</span>@endif
+    </label>
+    <input type="radio" class="btn-check" name="panelToggle" id="toggleSlots" autocomplete="off" @checked($tab === 'slots')>
+    <label class="btn btn-outline-primary" for="toggleSlots">
+        <i class="bi bi-toggles me-1"></i>Ketersediaan Slot
+        <span class="badge bg-success ms-1">{{ $availableSlots }}</span>
+    </label>
+    <input type="radio" class="btn-check" name="panelToggle" id="toggleMarkers" autocomplete="off" @checked($tab === 'markers')>
+    <label class="btn btn-outline-primary" for="toggleMarkers">
+        <i class="bi bi-calendar-week me-1"></i>Hari Libur &amp; Acara
+        <span class="badge bg-info ms-1">{{ $holidays->count() + $calendarEvents->count() }}</span>
+    </label>
+</div>
+
+{{-- ── Panel 1: Daftar Request Replacement ──────────────────────── --}}
+<div id="panelRequests" @if($tab !== 'requests') style="display:none;" @endif>
 <div class="card mb-4">
     <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-3">
         <span class="fw-bold text-nowrap"><i class="bi bi-arrow-left-right me-2 text-primary"></i>Daftar Request Replacement Class</span>
@@ -103,7 +140,9 @@
         <div class="table-responsive">
             <table class="table table-hover align-middle">
                 <thead class="text-muted small text-uppercase">
-                    <tr><th>Murid</th><th>Kelas Asal</th><th>Kelas Baru</th><th>Jadwal Baru</th><th>Alasan</th><th>Status</th><th class="text-end">Aksi</th></tr>
+                    {{-- Istilahnya disamakan dengan form pengajuan: "kelas asal"
+                         (sesi yang dilewatkan) → "kelas pengganti". --}}
+                    <tr><th>Murid</th><th>Kelas Asal</th><th>Kelas Pengganti</th><th>Sesi Pengganti</th><th>Alasan</th><th>Status</th><th class="text-end">Aksi</th></tr>
                 </thead>
                 <tbody>
                     @forelse($requests as $req)
@@ -121,9 +160,11 @@
                                 <i class="bi bi-arrow-right-short text-success"></i>{{ $req->classRoom->class_name ?? '-' }}
                                 @if($req->classRoom)<br><small class="text-muted">{{ ucfirst($req->classRoom->class_category) }}</small>@endif
                             </td>
+                            {{-- Jam ditampilkan 12 jam seperti di form pengajuan,
+                                 supaya tidak ada dua konvensi waktu dalam satu alur. --}}
                             <td class="text-nowrap">
                                 <i class="bi bi-calendar3 text-muted me-1"></i>{{ $req->replacement_date->format('d M Y') }}
-                                <br><small class="text-muted"><i class="bi bi-clock me-1"></i>{{ \Illuminate\Support\Str::of($req->replacement_time)->substr(0,5) }}</small>
+                                <br><small class="text-muted"><i class="bi bi-clock me-1"></i>{{ \Illuminate\Support\Carbon::parse($req->replacement_time)->format('g.i A') }}</small>
                             </td>
                             <td class="small">{{ $req->reason ?: '—' }}</td>
                             <td>
@@ -164,27 +205,49 @@
     </div>
 </div>
 
-{{-- ── Pengaturan jadwal & slot ─────────────────────────────────── --}}
-<h2 class="h5 fw-bold text-gray-800 mt-4 mb-1"><i class="bi bi-sliders me-2 text-secondary"></i>Pengaturan Jadwal & Slot</h2>
-<p class="text-muted small mb-3">Atur slot mana yang bisa dipakai untuk kelas pengganti, serta penanda kalender (hari libur & acara).</p>
+</div>{{-- /panelRequests --}}
 
-{{-- Panel kelola ketersediaan slot. --}}
+{{-- ── Panel 2: Ketersediaan Slot Kelas ─────────────────────────── --}}
+<div id="panelSlots" @if($tab !== 'slots') style="display:none;" @endif>
 <div class="card mb-4">
-    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-        <span class="fw-bold"><i class="bi bi-toggles me-2 text-primary"></i>Ketersediaan Slot Kelas</span>
-        <small class="text-muted">Tutup slot yang tak layak agar tak muncul saat mencari kelas pengganti.</small>
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <span class="fw-bold text-nowrap"><i class="bi bi-toggles me-2 text-primary"></i>Ketersediaan Slot Kelas</span>
+        <form method="GET" data-live class="d-flex flex-wrap align-items-center gap-2">
+            {{-- Menjaga panel ini tetap terbuka setelah filter disubmit. --}}
+            <input type="hidden" name="tab" value="slots">
+            <div class="input-group input-group-sm" style="width:200px;">
+                <span class="input-group-text bg-transparent border-end-0"><i class="bi bi-search text-muted"></i></span>
+                <input type="text" name="slot_search" value="{{ $slotSearch }}" class="form-control border-start-0 ps-0 py-2" placeholder="Cari kelas / kode...">
+            </div>
+            <select name="slot_status" class="form-select form-select-sm" style="width:160px;">
+                <option value="">Semua Status</option>
+                <option value="tersedia" @selected($slotStatus === 'tersedia')>Tersedia</option>
+                <option value="penuh" @selected($slotStatus === 'penuh')>Penuh</option>
+                <option value="tanpa-tutor" @selected($slotStatus === 'tanpa-tutor')>Tutor kosong</option>
+                <option value="lewat" @selected($slotStatus === 'lewat')>Sudah lewat</option>
+                <option value="ditutup" @selected($slotStatus === 'ditutup')>Ditutup</option>
+            </select>
+            @if($slotSearch !== '' || $slotStatus !== '')
+                <a href="{{ route('schedules.index', ['tab' => 'slots']) }}" class="btn btn-sm btn-outline-secondary" title="Reset filter"><i class="bi bi-x-lg"></i></a>
+            @endif
+        </form>
     </div>
     <div class="card-body">
-        {{-- Legenda status agar warna badge mudah dimengerti. --}}
+        <p class="text-muted small mb-3"><i class="bi bi-info-circle me-1"></i>Tutup slot yang tak layak agar tak muncul saat mencari kelas pengganti.</p>
+        {{-- Legenda status agar warna badge mudah dimengerti. Isinya persis
+             keluaran availability(): "Hari libur" sengaja tak ada di sini karena
+             bukan status slot — tanggal libur hanya dilewati saat menghitung sesi
+             berikutnya, slotnya sendiri tetap tersedia. --}}
         <div class="d-flex flex-wrap gap-3 small mb-3 pb-3 border-bottom">
             <span><span class="badge bg-success">Tersedia</span> bisa dipilih</span>
             <span><span class="badge bg-danger">Penuh</span> kuota habis</span>
             <span><span class="badge bg-warning">Tutor kosong</span> tutor nonaktif</span>
-            <span><span class="badge bg-dark">Sudah lewat</span> jadwal berlalu</span>
-            <span><span class="badge bg-info">Hari libur</span> kelas ditiadakan</span>
+            <span><span class="badge bg-dark">Sudah lewat</span> tak punya sesi mendatang</span>
             <span><span class="badge bg-secondary">Ditutup</span> ditutup admin</span>
         </div>
-        <div class="table-responsive" style="max-height: 340px; overflow-y: auto;">
+        {{-- Tanpa max-height: di panelnya sendiri tabel ini tak perlu diperas
+             jadi kotak bergulir di dalam halaman yang juga bergulir. --}}
+        <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
                 <thead class="text-muted small text-uppercase">
                     <tr><th>Kelas</th><th>Jadwal</th><th>Terisi</th><th>Status</th><th class="text-end">Aksi</th></tr>
@@ -218,7 +281,9 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="5" class="text-center text-muted py-4">Belum ada kelas.</td></tr>
+                        <tr><td colspan="5" class="text-center text-muted py-4">
+                            {{ ($slotSearch !== '' || $slotStatus !== '') ? 'Tidak ada slot yang cocok dengan filter.' : 'Belum ada kelas.' }}
+                        </td></tr>
                     @endforelse
                 </tbody>
             </table>
@@ -226,8 +291,10 @@
     </div>
 </div>
 
-{{-- Penanda kalender: Hari Libur & Acara dalam satu card bertab. --}}
-@php $eventTab = $errors->event->isNotEmpty(); @endphp
+</div>{{-- /panelSlots --}}
+
+{{-- ── Panel 3: Penanda kalender (Hari Libur & Acara) ───────────── --}}
+<div id="panelMarkers" @if($tab !== 'markers') style="display:none;" @endif>
 <div class="card mb-4">
     <div class="card-header pb-0">
         <ul class="nav nav-tabs card-header-tabs" role="tablist">
@@ -340,6 +407,8 @@
     </div>
 </div>
 
+</div>{{-- /panelMarkers --}}
+
 {{-- Modal alasan saat menutup slot manual. --}}
 <div class="modal fade" id="closeSlotModal" tabindex="-1">
     <div class="modal-dialog">
@@ -368,6 +437,37 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    // ── Switch panel: Request Replacement / Ketersediaan Slot / Hari Libur & Acara ──
+    (function () {
+        const PANELS = [
+            { tab: 'requests', panel: 'panelRequests', toggle: 'toggleRequests' },
+            { tab: 'slots', panel: 'panelSlots', toggle: 'toggleSlots' },
+            { tab: 'markers', panel: 'panelMarkers', toggle: 'toggleMarkers' },
+        ];
+
+        function applyPanel(tab) {
+            PANELS.forEach(function (p) {
+                const el = document.getElementById(p.panel);
+                if (el) el.style.display = p.tab === tab ? '' : 'none';
+            });
+
+            // Simpan tab di URL agar bertahan saat reload, setelah submit filter,
+            // dan setelah form hari libur / acara redirect back().
+            const url = new URL(location);
+            if (tab === 'requests') { url.searchParams.delete('tab'); } else { url.searchParams.set('tab', tab); }
+            history.replaceState(null, '', url);
+        }
+
+        let aktif = 'requests';
+        PANELS.forEach(function (p) {
+            const toggle = document.getElementById(p.toggle);
+            if (!toggle) return;
+            if (toggle.checked) aktif = p.tab;
+            toggle.addEventListener('change', function () { applyPanel(p.tab); });
+        });
+        applyPanel(aktif);
+    })();
+
     const modalEl = document.getElementById('closeSlotModal');
     const modal = new bootstrap.Modal(modalEl);
     const form = document.getElementById('closeSlotForm');

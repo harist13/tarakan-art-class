@@ -260,6 +260,43 @@ class ClassRoom extends Model
     }
 
     /**
+     * Label sesi bertanggal: "Senin, 20 Juli 2026 - 12.00 PM".
+     *
+     * Berbeda dari scheduleLabel() yang menyebut pola mingguan ("Setiap Senin,
+     * 10:00"): ini selalu satu sesi konkret, baik untuk kelas berulang maupun
+     * sekali jalan. Dipakai saat yang perlu dijawab adalah "kapan tepatnya",
+     * mis. jadwal kelas asal di form replacement.
+     *
+     * Sesi yang dipakai adalah kejadian berikutnya (hari libur sudah dilewati
+     * nextOccurrence()). Kelas sekali jalan yang sesinya sudah lewat tetap
+     * dilabeli dengan tanggal aslinya — itu memang jadwal terakhirnya. Kelas
+     * berulang yang kehabisan sesi mengembalikan null.
+     *
+     * Nama hari & bulan dipaksa locale 'id' karena APP_LOCALE aplikasi ini 'en'.
+     */
+    public function sessionLabel(): ?string
+    {
+        $at = $this->nextOccurrence()
+            ?? ($this->is_recurring ? null : $this->occurrenceAt($this->schedule_date));
+
+        return $at ? self::formatSession($at) : null;
+    }
+
+    /**
+     * "Senin, 17 Agustus 2026 - 10.00 AM" — satu sesi bertanggal.
+     *
+     * Dipisah agar daftar sesi (mis. pilihan "tanggal sesi yang dilewatkan" di form
+     * replacement) memakai bentuk yang persis sama dengan sessionLabel(), bukan
+     * salinan format yang bisa menyimpang sendiri.
+     *
+     * Locale dipaksa 'id' karena APP_LOCALE aplikasi ini 'en'.
+     */
+    public static function formatSession(Carbon $at): string
+    {
+        return $at->locale('id')->translatedFormat('l, j F Y').' - '.$at->format('g.i A');
+    }
+
+    /**
      * Gabungkan tanggal sesi dengan jam slot.
      */
     public function occurrenceAt(Carbon $date): Carbon
@@ -347,6 +384,25 @@ class ClassRoom extends Model
         }
 
         return $dates;
+    }
+
+    /**
+     * Sesi di sekitar hari ini, sebagai pilihan "tanggal sesi yang dilewatkan"
+     * di form replacement.
+     *
+     * Mundur beberapa pekan karena kelas pengganti sering baru diminta setelah
+     * anaknya absen, dan maju beberapa pekan untuk absen yang sudah direncanakan.
+     * Hari libur tidak masuk daftar — di tanggal itu kelasnya ditiadakan, jadi
+     * tak ada sesi yang bisa ditinggalkan.
+     *
+     * @return array<int, Carbon>
+     */
+    public function sessionWindow(int $weeksBack = 8, int $weeksAhead = 8): array
+    {
+        return $this->occurrencesBetween(
+            Carbon::today()->subWeeks($weeksBack),
+            Carbon::today()->addWeeks($weeksAhead)
+        );
     }
 
     /**
