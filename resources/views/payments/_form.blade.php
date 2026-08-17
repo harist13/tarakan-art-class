@@ -39,6 +39,10 @@
                 <option value="virtual_account" @selected(old('payment_method', $payment->payment_method ?? '') === 'virtual_account')>Virtual Account</option>
             </optgroup>
         </select>
+        {{-- Penegasan penting: pilihan di sini TIDAK membatasi channel di Snap.
+             Orang tua tetap bebas memilih apa pun di popup, dan nilai ini akan
+             tertimpa channel sebenarnya begitu pembayaran online berhasil. --}}
+        <small class="text-muted">Catatan awal admin. Tidak membatasi pilihan orang tua di halaman bayar.</small>
     </div>
     <div class="col-md-3 mb-3">
         <label class="form-label">Status</label>
@@ -55,7 +59,9 @@
 <div class="alert alert-light border small mb-3">
     <i class="bi bi-info-circle me-1"></i>
     Invoice <strong>Paid</strong> otomatis tercatat sebagai pemasukan di Laporan Keuangan &amp; Dashboard.
-    Integrasi gateway otomatis (Midtrans/Xendit) <strong>belum aktif</strong> — pembayaran QRIS/VA dikonfirmasi manual oleh Admin.
+    Invoice <strong>Unpaid</strong> bisa dikirim ke WhatsApp wali murid lewat tombol <i class="bi bi-whatsapp"></i> di daftar
+    pembayaran; pesannya membawa tautan bayar Midtrans, dan status invoice berubah lunas sendiri setelah pembayaran berhasil.
+    Kolom <strong>Metode / Channel</strong> di atas hanya catatan awal — channel sebenarnya diisi otomatis dari gateway.
     <br>
     Invoice <strong>Unpaid</strong> yang belum jatuh tempo tidak menghalangi apa pun. Setelah lewat jatuh tempo, murid ditandai
     menunggak (kelas pengganti &amp; akses raport orang tua ditahan), dan setelah lewat
@@ -67,12 +73,14 @@
 <script>
     const studentSelect = document.getElementById('paymentStudent');
     const amountInput = document.getElementById('paymentAmount');
+    // Jumlah invoice selalu mengikuti murid yang sedang dipilih. Angka yang
+    // diketik admin berlaku untuk murid itu saja — begitu muridnya diganti,
+    // angka lama tidak lagi relevan dan diisi ulang dari biaya kelas murid baru.
+    // Murid tanpa kelas berbiaya dikosongkan, bukan mewarisi nominal murid
+    // sebelumnya; admin harus mengisinya sendiri secara sadar.
     studentSelect?.addEventListener('change', function () {
-        const fee = this.options[this.selectedIndex]?.dataset.fee;
-        // Isi otomatis hanya bila jumlah masih kosong / 0 (jangan timpa input manual admin).
-        if (fee && Number(fee) > 0 && (!amountInput.value || Number(amountInput.value) === 0)) {
-            amountInput.value = fee;
-        }
+        const fee = Number(this.options[this.selectedIndex]?.dataset.fee || 0);
+        amountInput.value = fee > 0 ? fee : '';
     });
 </script>
 @endpush

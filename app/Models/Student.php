@@ -76,6 +76,27 @@ class Student extends Model
         return $manual !== null && (int) $manual !== $this->calculated_age;
     }
 
+    /**
+     * Nomor WhatsApp wali dalam format internasional tanpa "+" (dipakai wa.me).
+     *
+     * Kolom `phone_number` diisi bebas oleh admin — 0812…, 62812…, +62 812-…,
+     * atau 812… yang angka nolnya terpotong saat disalin. Semua dinormalkan ke
+     * 62…; null bila nomornya terlalu pendek untuk dipakai.
+     */
+    public function whatsappNumber(): ?string
+    {
+        $digits = preg_replace('/\D/', '', (string) $this->phone_number);
+
+        $digits = match (true) {
+            $digits === '' => '',
+            str_starts_with($digits, '62') => $digits,
+            str_starts_with($digits, '0') => '62'.substr($digits, 1),
+            default => '62'.$digits,
+        };
+
+        return strlen($digits) >= 10 ? $digits : null;
+    }
+
     // ─── Status pembayaran ─────────────────────────────────────────
     //
     // Data akademik murid TIDAK disembunyikan karena tagihan. Kelas ini tatap

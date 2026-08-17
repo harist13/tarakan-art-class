@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\ActivityLog;
 use App\Models\Payment;
 use App\Models\Student;
+use App\Support\InvoiceWhatsApp;
+use App\Support\MidtransSnap;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -28,7 +30,17 @@ class PaymentController extends Controller
             ->paginate(10)
             ->withQueryString();
 
-        return view('payments.index', compact('payments', 'search', 'status'));
+        // Menentukan tampil-tidaknya tombol "salin tautan bayar": tanpa kunci
+        // Midtrans, tautannya tidak ada gunanya dikirim.
+        $snap = app(MidtransSnap::class);
+        $midtransActive = $snap->isConfigured();
+
+        // Alamat lokal tidak mungkin dijangkau server Midtrans, jadi notifikasi
+        // pelunasan tidak akan pernah tiba. Gejalanya membingungkan (pembayaran
+        // berhasil tapi invoice tetap Unpaid), maka disebutkan langsung di layar.
+        $webhookUnreachable = $midtransActive && ! $snap->webhookReachable();
+
+        return view('payments.index', compact('payments', 'search', 'status', 'midtransActive', 'webhookUnreachable'));
     }
 
     public function create()
@@ -76,6 +88,76 @@ class PaymentController extends Controller
         });
 
         return back()->with('success', "Invoice {$payment->invoice_number} dikonfirmasi LUNAS & tercatat di keuangan.");
+    }
+
+    /**
+     * Buka chat WhatsApp wali murid dengan rincian invoice sudah terisi.
+     *
+     * Sengaja lewat controller (bukan tautan wa.me langsung di Blade) supaya
+     * pengirimannya tercatat di Log Aktivitas — admin bisa menelusuri invoice
+     * mana yang sudah ditagih dan oleh siapa.
+     */
+    public function sendWhatsapp(Payment $payment, MidtransSnap $snap)
+    {
+        $payment->loadMissing('student');
+
+        // Tautan pembayaran hanya disertakan untuk invoice yang belum lunas dan
+        // hanya bila Midtrans dikonfigurasi. Transaksi Snap-nya sendiri baru
+        // dibuat saat orang tua membuka tautannya — di sini tidak ada panggilan
+        // API, jadi tombol WhatsApp tidak pernah gagal karena gateway.
+        $payUrl = $snap->isConfigured() && $payment->payment_status !== 'paid'
+            ? $payment->payUrl()
+            : null;
+
+        $link = InvoiceWhatsApp::link($payment, $payUrl);
+
+        if ($link === null) {
+            return back()->with('error', 'Nomor HP wali murid belum terisi atau tidak valid. Lengkapi dulu di menu Murid.');
+        }
+
+        ActivityLog::record('sent', $payment, "Mengirim invoice {$payment->invoice_number} via WhatsApp ke {$payment->student->name}");
+
+        return redirect()->away($link);
+    }
+
+    /**
+     * Tarik ulang status dari Midtrans untuk invoice yang menunggu pembayaran.
+     *
+     * Jaring pengaman bila webhook tidak sampai — misalnya server sedang mati
+     * saat orang tua membayar, atau notifikasi belum dipasang di dashboard.
+     */
+    public function syncGateway(Payment $payment, MidtransSnap $snap)
+    {
+        if (! $snap->isConfigured() || ! $payment->snap_order_id) {
+            return back()->with('error', 'Invoice ini belum punya transaksi Midtrans untuk dicek.');
+        }
+
+        $status = $snap->statusFor($payment);
+
+        if (empty($status['transaction_status'])) {
+            // Bedakan "Midtrans menjawab: tidak ada transaksinya" dari kegagalan
+            // membaca. Pesan lama menyuruh admin mencoba lagi, padahal mengulang
+            // tidak akan mengubah apa pun — yang perlu diperiksa hal lain.
+            $reason = $status['status_message'] ?? 'Midtrans tidak menjawab.';
+
+            return back()->with('error',
+                "Midtrans belum mencatat pembayaran untuk order {$payment->snap_order_id} — \"{$reason}\" ".
+                'Bila transaksinya terlihat di Dashboard Midtrans, berarti pencarian lewat order_id tidak menemukannya '.
+                '(sering terjadi pada channel e-wallet). Pasang Payment Notification URL agar statusnya dikirim otomatis.');
+        }
+
+        $settled = DB::transaction(fn () => $snap->applyStatus($payment, $status));
+
+        if ($settled) {
+            ActivityLog::record('updated', $payment, "Invoice {$payment->invoice_number} lunas via Midtrans (cek manual)");
+
+            return back()->with('success', "Invoice {$payment->invoice_number} sudah LUNAS & tercatat di keuangan.");
+        }
+
+        // Pengecekannya sendiri berhasil, tapi hasilnya "belum lunas" — dan itu
+        // yang perlu dilihat admin. Ditandai merah supaya tidak terbaca sekilas
+        // sebagai konfirmasi pembayaran seperti pesan sukses lainnya.
+        return back()->with('error', "Status Midtrans: {$status['transaction_status']}. Invoice belum lunas.");
     }
 
     public function update(Request $request, Payment $payment)

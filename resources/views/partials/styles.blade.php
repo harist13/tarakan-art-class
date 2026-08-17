@@ -359,6 +359,20 @@
         padding: 0.3rem 0.7rem;
     }
 
+    /* Hijau merek WhatsApp — sengaja beda dari btn-success (Konfirmasi Lunas)
+       agar dua tombol hijau di kolom Aksi tidak tertukar. */
+    .btn-whatsapp {
+        background-color: #25D366;
+        border-color: #25D366;
+        color: #fff;
+    }
+    .btn-whatsapp:hover, .btn-whatsapp:focus {
+        background-color: #1DA851;
+        border-color: #1DA851;
+        color: #fff;
+        transform: translateY(-1px);
+    }
+
     /* Text helpers used across views */
     .text-primary { color: var(--primary-color) !important; }
     .text-gray-800, .text-gray-700 { color: var(--text) !important; }

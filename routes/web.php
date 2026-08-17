@@ -1,21 +1,22 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ActivityLogController;
+use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ClassRoomController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ExportController;
-use App\Http\Controllers\UserController;
-use App\Http\Controllers\StudentController;
-use App\Http\Controllers\ClassRoomController;
-use App\Http\Controllers\HolidayClassController;
-use App\Http\Controllers\ScheduleController;
-use App\Http\Controllers\AttendanceController;
-use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\FinancialController;
-use App\Http\Controllers\ReportController;
+use App\Http\Controllers\HolidayClassController;
 use App\Http\Controllers\InventoryController;
+use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\PaymentLinkController;
 use App\Http\Controllers\PublicSiteController;
+use App\Http\Controllers\ReportController;
+use App\Http\Controllers\ScheduleController;
+use App\Http\Controllers\StudentController;
+use App\Http\Controllers\UserController;
+use Illuminate\Support\Facades\Route;
 
 // ─── Website Publik (marketing & informasi) ────────────────────
 // Terpisah dari sistem admin: tanpa auth, layout & sistem desain sendiri.
@@ -29,6 +30,17 @@ Route::controller(PublicSiteController::class)->group(function () {
     Route::post('/kontak', 'storeLead')->name('public.contact.store')->middleware('throttle:6,1');
     Route::get('/sitemap.xml', 'sitemap')->name('public.sitemap');
 });
+
+// ─── Pembayaran Online (Midtrans Snap) — tanpa login ───────────
+// Tautan /bayar/{token} dikirim admin ke orang tua lewat WhatsApp.
+Route::get('/bayar/{token}', [PaymentLinkController::class, 'show'])->name('pay.show');
+// Dipanggil halaman bayar setelah popup Snap sukses; statusnya tetap diverifikasi
+// ke Midtrans dari sisi server. Dibatasi rate-nya karena terbuka tanpa login.
+Route::post('/bayar/{token}/verifikasi', [PaymentLinkController::class, 'verify'])
+    ->middleware('throttle:15,1')->name('pay.verify');
+// Payment Notification URL yang didaftarkan di dashboard Midtrans. Dikecualikan
+// dari CSRF (lihat bootstrap/app.php); keasliannya dijaga signature_key.
+Route::post('/midtrans/notification', [PaymentLinkController::class, 'notification'])->name('midtrans.notification');
 
 // ─── Auth Routes (Guest Only) ──────────────────────────────────
 Route::middleware('guest')->group(function () {
@@ -107,6 +119,10 @@ Route::middleware('auth')->group(function () {
     Route::get('payments/{payment}/edit', [PaymentController::class, 'edit'])->name('payments.edit');
     Route::put('payments/{payment}', [PaymentController::class, 'update'])->name('payments.update');
     Route::patch('payments/{payment}/confirm', [PaymentController::class, 'confirmPaid'])->name('payments.confirm');
+    // Kirim invoice ke WhatsApp wali murid (membuka chat wa.me yang sudah terisi).
+    Route::get('payments/{payment}/whatsapp', [PaymentController::class, 'sendWhatsapp'])->name('payments.whatsapp');
+    // Tarik ulang status dari Midtrans bila webhook tidak sampai.
+    Route::patch('payments/{payment}/sync-gateway', [PaymentController::class, 'syncGateway'])->name('payments.sync-gateway');
     // Void pembayaran — hanya Super Admin.
     Route::delete('payments/{payment}', [PaymentController::class, 'destroy'])
         ->middleware('role:super_admin')->name('payments.destroy');

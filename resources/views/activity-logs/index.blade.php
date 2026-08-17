@@ -8,6 +8,7 @@
         'created' => ['label' => 'Dibuat',    'badge' => 'success', 'icon' => 'bi-plus-circle'],
         'updated' => ['label' => 'Diperbarui', 'badge' => 'info',    'icon' => 'bi-pencil-square'],
         'deleted' => ['label' => 'Dihapus',   'badge' => 'danger',  'icon' => 'bi-trash'],
+        'sent'    => ['label' => 'Dikirim',   'badge' => 'primary', 'icon' => 'bi-send'],
     ];
     $subjectLabels = [
         'Student'            => 'Murid',

@@ -81,8 +81,12 @@
                     create: false,
                     plugins: ['dropdown_input'],
                 });
-                // Wrapper Tom Select tidak mewarisi inline width select asli — salin agar ukuran konsisten.
-                if (sel.style.width) ts.wrapper.style.width = sel.style.width;
+                // Wrapper Tom Select tidak mewarisi inline width select asli — salin agar ukuran
+                // konsisten. min/max-width & flex ikut disalin: tanpa itu wrapper melebar 100%
+                // dan mendorong kontrol lain membungkus ke baris berikutnya.
+                ['width', 'minWidth', 'maxWidth', 'flex'].forEach(function (prop) {
+                    if (sel.style[prop]) ts.wrapper.style[prop] = sel.style[prop];
+                });
                 // Tandai kontrol ukuran kecil agar tingginya bisa disamakan dgn field search/date.
                 if (sel.classList.contains('form-select-sm') || sel.classList.contains('form-control-sm')) {
                     ts.wrapper.classList.add('tac-ts-sm');

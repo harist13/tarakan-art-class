@@ -20,7 +20,7 @@ class ActivityLogController extends Controller
         $query = ActivityLog::query()
             ->with('user')
             ->when($userId !== '', fn ($q) => $q->where('user_id', $userId))
-            ->when(in_array($action, ['created', 'updated', 'deleted'], true), fn ($q) => $q->where('action', $action))
+            ->when(in_array($action, ['created', 'updated', 'deleted', 'sent'], true), fn ($q) => $q->where('action', $action))
             ->when($search !== '', fn ($q) => $q->where('description', 'like', "%{$search}%"));
 
         $logs = $query->orderByDesc('logged_at')->orderByDesc('id')->paginate(20)->withQueryString();

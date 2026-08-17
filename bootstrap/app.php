@@ -16,6 +16,12 @@ return Application::configure(basePath: dirname(__DIR__))
         // asset()/url() ikut skema https dari luar.
         $middleware->trustProxies(at: '*');
 
+        // Webhook Midtrans datang dari server mereka, jadi tidak punya token
+        // CSRF. Keasliannya diverifikasi lewat signature_key di controller.
+        $middleware->validateCsrfTokens(except: [
+            'midtrans/notification',
+        ]);
+
         $middleware->alias([
             'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
             'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
