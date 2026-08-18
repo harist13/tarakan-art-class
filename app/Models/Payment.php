@@ -133,13 +133,31 @@ class Payment extends Model
         return $this->payment_status !== 'paid' && $this->gateway_status === 'pending';
     }
 
+    /**
+     * Boleh dilunasi manual oleh admin lewat tombol "Lunas"?
+     *
+     * Hanya pembayaran tunai. Uang cash diterima admin di tempat, jadi dialah
+     * satu-satunya yang bisa memastikannya. Channel lain diselesaikan sendiri
+     * oleh Midtrans lewat notifikasi — menekan "Lunas" di situ berarti mencatat
+     * pemasukan atas uang yang belum tentu masuk, dan invoice yang terlanjur
+     * ditandai lunas tidak akan pernah dicek ulang ke gateway.
+     */
+    public function canConfirmManually(): bool
+    {
+        return $this->payment_status !== 'paid' && $this->payment_method === 'cash';
+    }
+
     /** Label metode pembayaran untuk layar & pesan WhatsApp. */
     public function methodLabel(): string
     {
         return [
             'cash' => 'Cash',
             'transfer' => 'Transfer',
-            'qris' => 'QRIS',
+            'qris' => 'QRIS / E-Wallet',
+            // Nilai peninggalan saat QRIS & e-wallet sempat dipisah. Migrasi
+            // sudah menormalkannya ke 'qris'; baris ini jaring pengaman agar
+            // data yang lolos tidak tampil sebagai "Ewallet".
+            'ewallet' => 'QRIS / E-Wallet',
             'virtual_account' => 'Virtual Account',
         ][$this->payment_method] ?? ucfirst((string) $this->payment_method);
     }

@@ -91,8 +91,10 @@ class PaymentIncomeSyncTest extends TestCase
         $user = $this->makeUser();
         $student = $this->makeStudent();
 
+        // Cash: satu-satunya metode yang boleh dilunaskan lewat tombol "Lunas".
         $this->actingAs($user)->post(route('payments.store'), $this->payload($student, [
             'payment_status' => 'unpaid',
+            'payment_method' => 'cash',
         ]));
 
         $payment = Payment::firstOrFail();

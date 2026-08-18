@@ -70,7 +70,7 @@ class ExportController extends Controller
             $p->student->name ?? '-',
             optional($p->payment_date)->format('d/m/Y'),
             number_format($p->payment_amount, 0, ',', '.'),
-            ucfirst((string) $p->payment_method),
+            $p->methodLabel(),
             $p->payment_status === 'paid' ? 'Lunas' : 'Belum Lunas',
             $p->notes ?: '-',
         ]);

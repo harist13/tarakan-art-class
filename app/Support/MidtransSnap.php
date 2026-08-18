@@ -311,8 +311,13 @@ class MidtransSnap
     public function methodFor(?string $paymentType): string
     {
         return match ($paymentType) {
-            // E-wallet & QR. DANA, LinkAja, OVO, dan dompet lain membayar lewat
-            // QRIS (standar nasional), jadi Midtrans melaporkannya sebagai qris.
+            // Seluruh pembayaran dompet digital jadi satu kategori, ditampilkan
+            // sebagai "QRIS / E-Wallet". Memisahkan QRIS dari e-wallet terdengar
+            // rapi tapi tidak bisa ditegakkan: hanya GoPay & ShopeePay yang
+            // punya channel sendiri di Midtrans, sedangkan DANA, OVO, dan
+            // LinkAja membayar lewat QRIS dan dilaporkan sebagai 'qris' tanpa
+            // menyebut dompetnya — jadi kategori "E-Wallet" akan selamanya
+            // kosong dari dompet yang justru paling sering dipakai.
             'qris', 'other_qris', 'gopay', 'shopeepay', 'dana' => 'qris',
 
             // Virtual Account seluruh bank + Mandiri Bill Payment (echannel).

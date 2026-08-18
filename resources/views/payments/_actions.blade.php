@@ -52,16 +52,31 @@
         </form>
     @endif
 
+    {{-- Konfirmasi lunas manual hanya untuk pembayaran tunai. Untuk channel
+         gateway, pelunasan datang dari Midtrans; tombolnya tetap ditampilkan
+         (dimatikan) supaya admin tahu tombol itu ada dan tahu sebabnya —
+         menyembunyikannya hanya memindahkan pertanyaan ke grup WhatsApp. --}}
     @if($payment->payment_status !== 'paid')
-        <form action="{{ route('payments.confirm', $payment) }}" method="POST"
-              onsubmit="return confirm('Konfirmasi invoice ini sebagai LUNAS?')">
-            @csrf @method('PATCH')
-            {{-- Label "Lunas" disembunyikan di layar sempit; ikonnya sudah cukup
-                 jelas dan tooltipnya tetap ada. --}}
-            <button class="btn btn-sm btn-success text-nowrap" title="Konfirmasi Lunas">
-                <i class="bi bi-check2-circle"></i><span class="d-none d-sm-inline ms-1">Lunas</span>
-            </button>
-        </form>
+        @if($payment->canConfirmManually())
+            <form action="{{ route('payments.confirm', $payment) }}" method="POST"
+                  onsubmit="return confirm('Konfirmasi invoice ini sebagai LUNAS?')">
+                @csrf @method('PATCH')
+                {{-- Label "Lunas" disembunyikan di layar sempit; ikonnya sudah cukup
+                     jelas dan tooltipnya tetap ada. --}}
+                <button class="btn btn-sm btn-success text-nowrap" title="Konfirmasi Lunas (pembayaran tunai)">
+                    <i class="bi bi-check2-circle"></i><span class="d-none d-sm-inline ms-1">Lunas</span>
+                </button>
+            </form>
+        @else
+            {{-- Tooltip dipasang di span pembungkus: peramban tidak menampilkan
+                 title milik elemen yang disabled. --}}
+            <span class="d-inline-block" tabindex="0"
+                  title="Hanya pembayaran Cash yang bisa dilunaskan manual. {{ $payment->methodLabel() }} menunggu konfirmasi dari Midtrans — pakai tombol cek status, atau ubah metodenya lewat Edit bila uangnya diterima tunai.">
+                <button class="btn btn-sm btn-success text-nowrap" disabled>
+                    <i class="bi bi-check2-circle"></i><span class="d-none d-sm-inline ms-1">Lunas</span>
+                </button>
+            </span>
+        @endif
     @endif
 
     <a href="{{ route('payments.edit', $payment) }}" class="btn btn-sm btn-info text-white" title="Edit">

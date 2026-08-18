@@ -73,13 +73,23 @@ class PaymentController extends Controller
     }
 
     /**
-     * Konfirmasi invoice sebagai LUNAS (mensimulasikan konfirmasi payment gateway).
+     * Konfirmasi invoice tunai sebagai LUNAS.
      * Otomatis mencatat pemasukan ke Financial & Dashboard.
      */
     public function confirmPaid(Payment $payment)
     {
         if ($payment->payment_status === 'paid') {
             return back()->with('error', 'Invoice ini sudah lunas.');
+        }
+
+        // Tombolnya memang sudah dimatikan di layar, tapi itu hanya tampilan —
+        // yang menahan pelunasan atas uang yang belum masuk adalah pemeriksaan
+        // di sini. Channel gateway dilunasi oleh notifikasi Midtrans.
+        if (! $payment->canConfirmManually()) {
+            return back()->with('error',
+                "Invoice {$payment->invoice_number} memakai {$payment->methodLabel()} — pelunasannya menunggu konfirmasi Midtrans, ".
+                'bukan konfirmasi manual. Pakai tombol cek status; bila uangnya ternyata diterima tunai, '.
+                'ubah dulu Metode / Channel-nya menjadi Cash lewat Edit.');
         }
 
         DB::transaction(function () use ($payment) {
@@ -152,6 +162,16 @@ class PaymentController extends Controller
             ActivityLog::record('updated', $payment, "Invoice {$payment->invoice_number} lunas via Midtrans (cek manual)");
 
             return back()->with('success', "Invoice {$payment->invoice_number} sudah LUNAS & tercatat di keuangan.");
+        }
+
+        // applyStatus() hanya menjawab "BARU saja lunas", jadi invoice yang sudah
+        // dilunasi lebih dulu oleh webhook juga menjawab false. Keduanya tidak
+        // boleh disamakan: halaman yang terbuka sebelum webhook tiba masih
+        // menampilkan tombol ini, dan menekannya dulu berbuah pesan merah
+        // "belum lunas" tepat di sebelah badge hijau Paid.
+        if ($payment->payment_status === 'paid') {
+            return back()->with('success',
+                "Invoice {$payment->invoice_number} memang sudah LUNAS (status Midtrans: {$status['transaction_status']}).");
         }
 
         // Pengecekannya sendiri berhasil, tapi hasilnya "belum lunas" — dan itu

@@ -29,20 +29,26 @@
     </div>
     <div class="col-md-3 mb-3">
         <label class="form-label">Metode / Channel</label>
+        {{-- Satu daftar datar. Pengelompokan "Manual" vs "Payment Gateway"
+             menuntut admin memahami perbedaan keduanya hanya untuk memilih satu
+             baris, padahal yang berlaku cuma satu aturan: Cash bisa dilunaskan
+             sendiri, sisanya menunggu Midtrans. Itu sudah tertulis di bawah. --}}
         <select name="payment_method" class="form-select" required>
-            <optgroup label="Manual">
-                <option value="cash" @selected(old('payment_method', $payment->payment_method ?? '') === 'cash')>Cash</option>
-                <option value="transfer" @selected(old('payment_method', $payment->payment_method ?? '') === 'transfer')>Transfer Bank</option>
-            </optgroup>
-            <optgroup label="Payment Gateway">
-                <option value="qris" @selected(old('payment_method', $payment->payment_method ?? '') === 'qris')>QRIS</option>
-                <option value="virtual_account" @selected(old('payment_method', $payment->payment_method ?? '') === 'virtual_account')>Virtual Account</option>
-            </optgroup>
+            <option value="cash" @selected(old('payment_method', $payment->payment_method ?? '') === 'cash')>Cash</option>
+            <option value="transfer" @selected(old('payment_method', $payment->payment_method ?? '') === 'transfer')>Transfer Bank</option>
+            {{-- Satu baris untuk QRIS dan seluruh dompet digital. 'ewallet'
+                 ikut dianggap terpilih supaya invoice peninggalan pemisahan
+                 lama tidak diam-diam berubah jadi Cash saat disimpan ulang. --}}
+            <option value="qris" @selected(in_array(old('payment_method', $payment->payment_method ?? ''), ['qris', 'ewallet'], true))>QRIS / E-Wallet (GoPay, DANA, OVO, ShopeePay, dll.)</option>
+            <option value="virtual_account" @selected(old('payment_method', $payment->payment_method ?? '') === 'virtual_account')>Virtual Account</option>
         </select>
         {{-- Penegasan penting: pilihan di sini TIDAK membatasi channel di Snap.
              Orang tua tetap bebas memilih apa pun di popup, dan nilai ini akan
              tertimpa channel sebenarnya begitu pembayaran online berhasil. --}}
-        <small class="text-muted">Catatan awal admin. Tidak membatasi pilihan orang tua di halaman bayar.</small>
+        <small class="text-muted">
+            Catatan awal admin. Tidak membatasi pilihan orang tua di halaman bayar.
+            Hanya <strong>Cash</strong> yang bisa dilunaskan lewat tombol <i class="bi bi-check2-circle"></i> Lunas.
+        </small>
     </div>
     <div class="col-md-3 mb-3">
         <label class="form-label">Status</label>
@@ -62,6 +68,9 @@
     Invoice <strong>Unpaid</strong> bisa dikirim ke WhatsApp wali murid lewat tombol <i class="bi bi-whatsapp"></i> di daftar
     pembayaran; pesannya membawa tautan bayar Midtrans, dan status invoice berubah lunas sendiri setelah pembayaran berhasil.
     Kolom <strong>Metode / Channel</strong> di atas hanya catatan awal — channel sebenarnya diisi otomatis dari gateway.
+    Tombol <i class="bi bi-check2-circle"></i> <strong>Lunas</strong> di daftar pembayaran hanya aktif untuk metode
+    <strong>Cash</strong>; selain itu pelunasannya ditunggu dari Midtrans agar tidak ada pemasukan yang tercatat
+    sebelum uangnya benar-benar masuk.
     <br>
     Invoice <strong>Unpaid</strong> yang belum jatuh tempo tidak menghalangi apa pun. Setelah lewat jatuh tempo, murid ditandai
     menunggak (kelas pengganti &amp; akses raport orang tua ditahan), dan setelah lewat

@@ -419,6 +419,9 @@ class MidtransSnapPaymentTest extends TestCase
     {
         $snap = app(MidtransSnap::class);
 
+        $this->assertSame('qris', $snap->methodFor('qris'));
+        $this->assertSame('qris', $snap->methodFor('other_qris'));
+        // QRIS & seluruh dompet digital dilaporkan sebagai satu kategori.
         $this->assertSame('qris', $snap->methodFor('dana'));
         $this->assertSame('qris', $snap->methodFor('gopay'));
         $this->assertSame('qris', $snap->methodFor('shopeepay'));
@@ -445,6 +448,8 @@ class MidtransSnapPaymentTest extends TestCase
         $this->assertSame('paid', $payment->payment_status);
         $this->assertSame('qris', $payment->payment_method);
         $this->assertSame('dana', $payment->gateway_payment_type);
+        // Satu kategori, satu label — di layar & pesan WhatsApp keduanya sama.
+        $this->assertSame('QRIS / E-Wallet', $payment->methodLabel());
     }
 
     /**
@@ -591,6 +596,86 @@ class MidtransSnapPaymentTest extends TestCase
 
         // Halaman daftar tidak boleh memanggil Midtrans sama sekali.
         Http::assertNothingSent();
+    }
+
+    /**
+     * Webhook bisa tiba saat halaman daftar sudah terbuka — tombol cek status
+     * masih tampil di layar admin, padahal invoicenya sudah lunas. Menekannya
+     * tidak boleh melaporkan "belum lunas".
+     */
+    public function test_cek_status_pada_invoice_yang_sudah_lunas_tidak_melaporkan_belum_lunas(): void
+    {
+        $this->fakeSnap();
+        $payment = $this->makePayment();
+        $this->get(route('pay.show', $payment->pay_token));
+        $payment->refresh();
+
+        // Webhook mendahului: invoice sudah lunas sebelum admin menekan tombol.
+        $this->postJson(route('midtrans.notification'), $this->notification($payment, 'settlement'))->assertOk();
+
+        Http::fake([
+            '*/v2/*/status' => Http::response([
+                'transaction_status' => 'settlement',
+                'payment_type' => 'qris',
+            ]),
+        ]);
+
+        $this->actingAs($this->makeUser())
+            ->patch(route('payments.sync-gateway', $payment))
+            ->assertRedirect()
+            ->assertSessionHasNoErrors()
+            ->assertSessionMissing('error')
+            ->assertSessionHas('success', fn ($pesan) => str_contains($pesan, 'sudah LUNAS'));
+
+        // Pemasukannya tetap satu — pengecekan ulang tidak mencatat ganda.
+        $this->assertDatabaseCount('transactions', 1);
+    }
+
+    /**
+     * Konfirmasi lunas manual hanya untuk pembayaran tunai. Menekannya pada
+     * invoice channel gateway berarti mencatat pemasukan atas uang yang belum
+     * tentu masuk — dan invoice yang sudah lunas tidak pernah dicek ulang.
+     */
+    public function test_konfirmasi_lunas_manual_ditolak_untuk_channel_gateway(): void
+    {
+        Http::fake();
+        $payment = $this->makePayment(['payment_method' => 'qris']);
+
+        $this->actingAs($this->makeUser())
+            ->patch(route('payments.confirm', $payment))
+            ->assertRedirect()
+            ->assertSessionHas('error');
+
+        $this->assertSame('unpaid', $payment->fresh()->payment_status);
+        $this->assertDatabaseCount('transactions', 0);
+    }
+
+    public function test_konfirmasi_lunas_manual_diterima_untuk_pembayaran_tunai(): void
+    {
+        Http::fake();
+        $payment = $this->makePayment(['payment_method' => 'cash']);
+
+        $this->actingAs($this->makeUser())
+            ->patch(route('payments.confirm', $payment))
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $this->assertSame('paid', $payment->fresh()->payment_status);
+        $this->assertDatabaseCount('transactions', 1);
+    }
+
+    public function test_tombol_lunas_dimatikan_untuk_invoice_non_tunai(): void
+    {
+        Http::fake();
+        $tunai = $this->makePayment(['payment_method' => 'cash']);
+        $gateway = $this->makePayment(['payment_method' => 'virtual_account']);
+
+        $halaman = $this->actingAs($this->makeUser())->get(route('payments.index'))->assertOk();
+
+        // Yang tunai punya form konfirmasi; yang gateway tidak.
+        $halaman->assertSee(route('payments.confirm', $tunai), false);
+        $halaman->assertDontSee(route('payments.confirm', $gateway), false);
+        $halaman->assertSee('Hanya pembayaran Cash yang bisa dilunaskan manual', false);
     }
 
     public function test_tanpa_kunci_midtrans_halaman_bayar_tetap_terbuka_tanpa_gateway(): void
