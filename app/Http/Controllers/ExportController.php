@@ -12,12 +12,13 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ExportController extends Controller
 {
-    /** Export data murid (F2). Menghormati filter search & status dari halaman index. */
+    /** Export data murid (F2). Menghormati filter search, status, kelas & "belum ditagih" dari halaman index. */
     public function students(Request $request)
     {
         $search = $request->string('search')->toString();
         $status = $request->string('status')->toString();
         $classId = $request->integer('class_id');
+        $unbilled = $request->boolean('unbilled');
 
         $students = Student::query()
             ->with('classes')
@@ -28,6 +29,7 @@ class ExportController extends Controller
             }))
             ->when(in_array($status, ['active', 'inactive'], true), fn ($q) => $q->where('status', $status))
             ->when($classId, fn ($q) => $q->whereHas('classes', fn ($c) => $c->where('classes.id', $classId)))
+            ->when($unbilled, fn ($q) => $q->unbilledFor())
             ->orderByDesc('id')
             ->get();
 
@@ -63,11 +65,12 @@ class ExportController extends Controller
             ->orderByDesc('id')
             ->get();
 
-        $headers = ['Invoice', 'Murid', 'Tanggal', 'Jumlah (Rp)', 'Metode', 'Status', 'Catatan'];
+        $headers = ['Invoice', 'Murid', 'Periode', 'Tanggal', 'Jumlah (Rp)', 'Metode', 'Status', 'Catatan'];
 
         $rows = $payments->map(fn ($p) => [
             $p->invoice_number,
             $p->student->name ?? '-',
+            $p->periodLabel() ?? '-',
             optional($p->payment_date)->format('d/m/Y'),
             number_format($p->payment_amount, 0, ',', '.'),
             $p->methodLabel(),

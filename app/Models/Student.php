@@ -190,18 +190,162 @@ class Student extends Model
         return "punya {$arrears->count()} invoice lewat jatuh tempo (terlama {$days} hari)";
     }
 
-    /** Label pendek untuk badge di daftar murid; null bila tidak perlu ditandai. */
-    public function paymentBadgeLabel(): ?string
+    // ─── Kelayakan ditagih untuk sebuah periode ────────────────────
+    //
+    // Satu-satunya sumber kebenaran untuk pertanyaan "murid ini perlu ditagih
+    // bulan ini atau tidak". Dipakai bersama oleh pratinjau Tagihan Bulanan dan
+    // badge di daftar murid — kalau keduanya punya aturan sendiri-sendiri,
+    // cepat atau lambat badge akan menuduh admin melewatkan murid yang memang
+    // sengaja tidak ditagih, dan badge yang salah lebih buruk daripada tidak ada.
+
+    /** Invoice murid ini untuk sebuah periode; memakai relasi yang sudah dimuat bila ada. */
+    public function invoiceForPeriod(string $period): ?Payment
     {
-        if ($this->hasArrears()) {
-            return 'Menunggak '.$this->arrearsDays().' hari';
+        if ($this->relationLoaded('payments')) {
+            return $this->payments->firstWhere('billing_period', $period);
         }
 
-        if (! $this->isActivated()) {
-            return 'Belum bayar pendaftaran';
+        return $this->payments()->forPeriod($period)->first();
+    }
+
+    /** Total biaya kelas yang diikuti — nominal bawaan satu invoice bulanan. */
+    public function billableFee(): float
+    {
+        return (float) $this->classes->sum('class_fee');
+    }
+
+    /**
+     * Alasan murid ini TIDAK ditagih untuk sebuah periode, beserta nada
+     * tampilannya. null berarti sebaliknya: layak ditagih, invoicenya belum ada.
+     *
+     * `tone` ikut ditentukan di sini, bukan disimpulkan ulang di Blade dengan
+     * mencocokkan kata "(Lunas)" pada kalimat alasannya. Menyimpulkan warna
+     * dari teks berarti mengubah kalimat suatu hari nanti diam-diam mematikan
+     * warnanya, dan warna yang salah pada angka uang lebih buruk daripada
+     * tidak berwarna sama sekali.
+     *
+     *   paid    → sudah ditagih & uangnya sudah masuk
+     *   unpaid  → sudah ditagih tapi belum dibayar
+     *   neutral → bukan soal pembayaran (nonaktif, ditangguhkan, tanpa kelas)
+     *
+     * @return array{reason: string, tone: string}|null
+     */
+    public function billingSkip(string $period): ?array
+    {
+        if ($this->status !== 'active') {
+            return ['reason' => 'murid tidak aktif', 'tone' => 'neutral'];
+        }
+
+        if ($invoice = $this->invoiceForPeriod($period)) {
+            $lunas = $invoice->payment_status === 'paid';
+
+            return [
+                'reason' => "sudah ditagih lewat {$invoice->invoice_number} (".($lunas ? 'Lunas' : 'Unpaid').')',
+                'tone' => $lunas ? 'paid' : 'unpaid',
+            ];
+        }
+
+        // Murid yang ditangguhkan sudah dicabut dari daftar kelas ke depan, jadi
+        // bulan ini ia tidak menerima pelajaran apa pun. Menagihnya hanya
+        // memperdalam tunggakan atas jasa yang tidak diberikan.
+        if ($this->isSuspended()) {
+            return [
+                'reason' => 'ditangguhkan karena tunggakan — di luar daftar kelas, jadi tidak ditagih',
+                'tone' => 'neutral',
+            ];
+        }
+
+        if ($this->billableFee() <= 0) {
+            return ['reason' => 'belum terdaftar di kelas berbiaya', 'tone' => 'neutral'];
         }
 
         return null;
+    }
+
+    /** Alasannya saja, tanpa nada tampilan. */
+    public function billingSkipReason(string $period): ?string
+    {
+        return $this->billingSkip($period)['reason'] ?? null;
+    }
+
+    /** Belum punya invoice untuk periode berjalan, padahal seharusnya ditagih. */
+    public function isUnbilledThisPeriod(): bool
+    {
+        return $this->billingSkip(Payment::periodFor()) === null;
+    }
+
+    /**
+     * Versi SQL dari billingSkipReason() === null, supaya daftar murid bisa
+     * disaring & dihitung tanpa memuat seluruh tabel ke memori.
+     *
+     * Dua bentuk aturan yang sama memang berisiko menyimpang; itu dijaga tes
+     * yang membandingkan hasil scope ini dengan billingSkipReason() satu per
+     * satu. "Punya kelas berbiaya" di sini berbentuk "ada satu kelas dengan
+     * class_fee > 0" — setara dengan jumlah biaya > 0 karena biaya kelas tidak
+     * pernah negatif (divalidasi min:0).
+     */
+    public function scopeUnbilledFor(Builder $query, ?string $period = null): Builder
+    {
+        $period ??= Payment::periodFor();
+
+        return $query->where('status', 'active')
+            ->whereNull('suspended_at')
+            ->whereDoesntHave('payments', fn ($q) => $q->forPeriod($period))
+            ->whereHas('classes', fn ($q) => $q->where('class_fee', '>', 0));
+    }
+
+    /**
+     * Penanda tagihan di daftar murid: label, warna, dan penjelasannya.
+     * null bila tidak ada yang perlu ditandai.
+     *
+     * Urutannya menurut apa yang paling perlu ditindaklanjuti lebih dulu.
+     * "Belum ditagih" berada di atas "Belum bayar tagihan" karena lebih
+     * spesifik dan lebih jujur: tidak masuk akal menagih pembayaran atas
+     * invoice yang memang belum pernah diterbitkan.
+     */
+    public function paymentBadge(): ?array
+    {
+        if ($this->hasArrears()) {
+            return [
+                'label' => 'Menunggak '.$this->arrearsDays().' hari',
+                'title' => 'Murid '.$this->paymentBlockReason().' — kelas pengganti & akses raport orang tua ditahan.',
+                'class' => 'bg-warning text-dark',
+                'icon' => 'bi-exclamation-triangle-fill',
+            ];
+        }
+
+        // Di awal bulan badge ini wajar muncul di hampir semua murid — memang
+        // belum ada yang ditagih. Justru itu gunanya: ia hilang satu per satu
+        // seiring invoice terbit, dan yang tersisa di akhir bulan adalah murid
+        // yang benar-benar terlewat. Warnanya biru, bukan kuning: ini pekerjaan
+        // admin yang belum selesai, bukan kesalahan murid.
+        if ($this->isUnbilledThisPeriod()) {
+            return [
+                'label' => 'Belum ditagih '.Payment::labelForPeriod(Payment::periodFor()),
+                'title' => 'Belum ada invoice untuk periode ini. Terbitkan lewat tombol Tagihan Bulanan di menu '.
+                    'Pembayaran. Tanpa invoice tidak ada yang bisa ditagih, dan murid ini tidak akan pernah '.
+                    'terhitung menunggak meski belum membayar.',
+                'class' => 'bg-info text-dark',
+                'icon' => 'bi-receipt',
+            ];
+        }
+
+        if (! $this->isActivated()) {
+            return [
+                'label' => 'Belum bayar tagihan',
+                'title' => 'Belum ada invoice yang dilunasi. Absensi tetap bisa dicatat.',
+                'class' => 'bg-warning text-dark',
+                'icon' => 'bi-exclamation-triangle-fill',
+            ];
+        }
+
+        return null;
+    }
+
+    /** Label pendek untuk badge di daftar murid; null bila tidak perlu ditandai. */
+    public function paymentBadgeLabel(): ?string
+    {
+        return $this->paymentBadge()['label'] ?? null;
     }
 
     public function classes(): BelongsToMany

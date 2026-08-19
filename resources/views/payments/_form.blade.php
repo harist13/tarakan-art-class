@@ -13,6 +13,23 @@
         </select>
         <small class="text-muted">Jumlah invoice terisi otomatis dari biaya kelas murid.</small>
     </div>
+    {{-- Periode tagihan menjawab "invoice ini UNTUK bulan apa", terpisah dari
+         Tanggal Invoice yang hanya mencatat kapan invoice diterbitkan. Keduanya
+         kerap berbeda: tagihan September lazim terbit akhir Agustus.
+
+         Ini juga kunci anti-dobel: satu murid hanya boleh punya satu invoice
+         per periode, dijaga unique index di database. Dikosongkan berarti
+         tagihan lepas — dan tagihan lepas memang boleh berulang dalam sebulan. --}}
+    <div class="col-md-3 mb-3">
+        <label class="form-label">Periode Tagihan</label>
+        <input type="month" name="billing_period" class="form-control"
+               value="{{ old('billing_period', isset($payment) ? $payment->billing_period : \App\Models\Payment::periodFor()) }}">
+        <small class="text-muted">Satu invoice per murid per bulan. Kosongkan untuk tagihan lepas di luar SPP.</small>
+    </div>
+    <div class="col-md-3 mb-3">
+        <label class="form-label">Jumlah Invoice (Rp)</label>
+        <input type="number" step="1000" min="0" name="payment_amount" id="paymentAmount" class="form-control" value="{{ old('payment_amount', $payment->payment_amount ?? '') }}" required>
+    </div>
     <div class="col-md-3 mb-3">
         <label class="form-label">Tanggal Invoice</label>
         <input type="date" name="payment_date" class="form-control" value="{{ old('payment_date', isset($payment) ? $payment->payment_date->format('Y-m-d') : now()->format('Y-m-d')) }}" required>
@@ -23,25 +40,15 @@
                value="{{ old('due_date', isset($payment) && $payment->due_date ? $payment->due_date->format('Y-m-d') : \App\Models\Payment::defaultDueDate()) }}">
         <small class="text-muted">Tunggakan baru dihitung setelah tanggal ini lewat.</small>
     </div>
-    <div class="col-md-6 mb-3">
-        <label class="form-label">Jumlah Invoice (Rp)</label>
-        <input type="number" step="1000" min="0" name="payment_amount" id="paymentAmount" class="form-control" value="{{ old('payment_amount', $payment->payment_amount ?? '') }}" required>
-    </div>
     <div class="col-md-3 mb-3">
         <label class="form-label">Metode / Channel</label>
         {{-- Satu daftar datar. Pengelompokan "Manual" vs "Payment Gateway"
              menuntut admin memahami perbedaan keduanya hanya untuk memilih satu
              baris, padahal yang berlaku cuma satu aturan: Cash bisa dilunaskan
              sendiri, sisanya menunggu Midtrans. Itu sudah tertulis di bawah. --}}
-        <select name="payment_method" class="form-select" required>
-            <option value="cash" @selected(old('payment_method', $payment->payment_method ?? '') === 'cash')>Cash</option>
-            <option value="transfer" @selected(old('payment_method', $payment->payment_method ?? '') === 'transfer')>Transfer Bank</option>
-            {{-- Satu baris untuk QRIS dan seluruh dompet digital. 'ewallet'
-                 ikut dianggap terpilih supaya invoice peninggalan pemisahan
-                 lama tidak diam-diam berubah jadi Cash saat disimpan ulang. --}}
-            <option value="qris" @selected(in_array(old('payment_method', $payment->payment_method ?? ''), ['qris', 'ewallet'], true))>QRIS / E-Wallet (GoPay, DANA, OVO, ShopeePay, dll.)</option>
-            <option value="virtual_account" @selected(old('payment_method', $payment->payment_method ?? '') === 'virtual_account')>Virtual Account</option>
-        </select>
+        @include('payments._method-select', [
+            'selected' => old('payment_method', $payment->payment_method ?? ''),
+        ])
         {{-- Penegasan penting: pilihan di sini TIDAK membatasi channel di Snap.
              Orang tua tetap bebas memilih apa pun di popup, dan nilai ini akan
              tertimpa channel sebenarnya begitu pembayaran online berhasil. --}}
@@ -71,6 +78,11 @@
     Tombol <i class="bi bi-check2-circle"></i> <strong>Lunas</strong> di daftar pembayaran hanya aktif untuk metode
     <strong>Cash</strong>; selain itu pelunasannya ditunggu dari Midtrans agar tidak ada pemasukan yang tercatat
     sebelum uangnya benar-benar masuk.
+    <br>
+    <strong>Periode Tagihan</strong> menjaga agar satu murid tidak tertagih dua kali untuk bulan yang sama — invoice kedua
+    akan ditolak dan menyebutkan nomor invoice yang sudah ada. Untuk menerbitkan tagihan sebulan penuh sekaligus,
+    pakai tombol <i class="bi bi-calendar-plus"></i> <strong>Tagihan Bulanan</strong> di daftar pembayaran;
+    murid yang sudah punya invoice periode itu otomatis dilewati.
     <br>
     Invoice <strong>Unpaid</strong> yang belum jatuh tempo tidak menghalangi apa pun. Setelah lewat jatuh tempo, murid ditandai
     menunggak (kelas pengganti &amp; akses raport orang tua ditahan), dan setelah lewat

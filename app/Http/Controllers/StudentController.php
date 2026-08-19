@@ -16,6 +16,7 @@ class StudentController extends Controller
         $search = $request->string('search')->toString();
         $status = $request->string('status')->toString();
         $classId = $request->integer('class_id');
+        $unbilled = $request->boolean('unbilled');
 
         $students = Student::query()
             // `payments` dimuat untuk menandai murid yang terkunci dari modul akademik.
@@ -27,13 +28,21 @@ class StudentController extends Controller
             }))
             ->when(in_array($status, ['active', 'inactive'], true), fn ($q) => $q->where('status', $status))
             ->when($classId, fn ($q) => $q->whereHas('classes', fn ($c) => $c->where('classes.id', $classId)))
+            ->when($unbilled, fn ($q) => $q->unbilledFor())
             ->orderByDesc('id')
             ->paginate(10)
             ->withQueryString();
 
+        // Dihitung lepas dari filter lain: angka pada tombolnya harus menjawab
+        // "berapa murid yang belum ditagih bulan ini" secara utuh, bukan
+        // "berapa yang belum ditagih di antara hasil pencarian saat ini".
+        $unbilledCount = Student::unbilledFor()->count();
+
         $classes = ClassRoom::orderBy('class_name')->get();
 
-        return view('students.index', compact('students', 'search', 'status', 'classId', 'classes'));
+        return view('students.index', compact(
+            'students', 'search', 'status', 'classId', 'classes', 'unbilled', 'unbilledCount'
+        ));
     }
 
     public function create()

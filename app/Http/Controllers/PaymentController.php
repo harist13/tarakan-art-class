@@ -10,6 +10,7 @@ use App\Support\MidtransSnap;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class PaymentController extends Controller
 {
@@ -43,26 +44,162 @@ class PaymentController extends Controller
         return view('payments.index', compact('payments', 'search', 'status', 'midtransActive', 'webhookUnreachable'));
     }
 
-    public function create()
+    /**
+     * Pratinjau penerbitan invoice — satu murid maupun sebulan penuh.
+     *
+     * Dulu ini dua halaman: "Buat Invoice" untuk satu murid dan "Tagihan
+     * Bulanan" untuk banyak. Keduanya menghasilkan baris yang sama persis di
+     * tabel payments, jadi yang dibedakan sebenarnya cuma banyaknya centang —
+     * dan dua menu yang menghasilkan benda yang sama membuat admin harus
+     * menebak harus klik yang mana.
+     *
+     * Sengaja dua langkah (pratinjau → simpan), bukan sekali klik atau cron
+     * harian: biaya kelas bisa berubah, murid bisa masuk tengah bulan, dan
+     * invoice salah yang terlanjur terbit harus di-void satu per satu.
+     */
+    public function create(Request $request)
     {
-        $students = Student::where('status', 'active')->with('classes')->orderBy('name')->get();
+        // Tagihan lepas: biaya di luar SPP bulanan. Tanpa periode, aturan satu
+        // invoice per murid per bulan tidak berlaku — memang harus begitu,
+        // sebab tagihan semacam ini boleh berulang dalam bulan yang sama.
+        $lepas = $request->boolean('lepas');
+        $period = $lepas ? null : $this->resolvePeriod($request->string('period')->toString());
 
-        return view('payments.create', compact('students'));
+        if ($lepas) {
+            // Tanpa periode tidak ada yang bisa dilewati: murid yang belum punya
+            // kelas berbiaya justru kasus utamanya (biaya pendaftaran), dan murid
+            // yang ditangguhkan tetap boleh ditagih hal di luar SPP. Jadi semua
+            // murid aktif ditampilkan, dan tidak ada yang dicentang lebih dulu —
+            // tagihan lepas selalu untuk beberapa orang tertentu, tidak pernah
+            // "semuanya".
+            $billable = Student::where('status', 'active')->with('classes')->orderBy('name')->get()
+                ->map(fn (Student $s) => ['student' => $s, 'amount' => $s->billableFee()])
+                ->all();
+
+            return view('payments.create', [
+                'period' => null,
+                'lepas' => true,
+                'preselect' => false,
+                'billable' => $billable,
+                'skipped' => [],
+            ]);
+        }
+
+        $students = Student::where('status', 'active')
+            ->with(['classes', 'payments' => fn ($q) => $q->forPeriod($period)])
+            ->orderBy('name')
+            ->get();
+
+        $billable = [];
+        $skipped = [];
+
+        // Aturan siapa yang layak ditagih tinggal di Student::billingSkip()
+        // supaya badge "Belum ditagih" di daftar murid menjawab pertanyaan yang
+        // sama persis dengan halaman ini. Dua salinan aturan akan menyimpang,
+        // dan badge yang menuduh admin melewatkan murid yang sebenarnya memang
+        // sengaja tidak ditagih lebih buruk daripada tidak ada badge sama sekali.
+        foreach ($students as $student) {
+            // Alasan sekaligus nadanya (hijau/merah/netral) — keduanya datang
+            // dari satu tempat, jadi Blade tidak perlu menebak warna dari teks.
+            if ($skip = $student->billingSkip($period)) {
+                $skipped[] = ['student' => $student] + $skip;
+
+                continue;
+            }
+
+            $billable[] = ['student' => $student, 'amount' => $student->billableFee()];
+        }
+
+        return view('payments.create', [
+            'period' => $period,
+            'lepas' => false,
+            'preselect' => true,
+            'billable' => $billable,
+            'skipped' => $skipped,
+        ]);
     }
 
     public function store(Request $request)
     {
-        $data = $this->validateData($request);
+        $data = $request->validate([
+            'billing_period' => ['nullable', 'regex:/^\d{4}-(0[1-9]|1[0-2])$/'],
+            'payment_date' => ['required', 'date'],
+            'due_date' => ['required', 'date', 'after_or_equal:payment_date'],
+            'payment_method' => ['required', Rule::in(Payment::methodValues())],
+            'payment_status' => ['required', Rule::in(['paid', 'unpaid'])],
+            'students' => ['required', 'array', 'min:1'],
+            'students.*' => ['exists:students,id'],
+            'amounts' => ['array'],
+            'amounts.*' => ['nullable', 'numeric', 'min:0'],
+        ], [
+            'students.required' => 'Tidak ada murid yang dicentang — tidak ada invoice yang bisa diterbitkan.',
+            'billing_period.regex' => 'Periode tagihan harus berupa bulan yang sah, mis. 2026-08.',
+        ]);
 
-        DB::transaction(function () use ($data) {
-            // Bila status "paid", PaymentObserver otomatis mencatatnya sebagai
-            // pemasukan di Financial Tracking (F7) / menu Laporan Keuangan.
-            $payment = Payment::create($data);
+        $period = $data['billing_period'] ?? null;
 
-            ActivityLog::record('created', $payment, "Mencatat pembayaran {$payment->invoice_number}");
+        // Nominal kosong tidak boleh diam-diam jadi Rp 0: itu invoice yang
+        // tampak lunas tanpa uang masuk. Muridnya disebut namanya supaya admin
+        // tahu baris mana yang perlu diisi, bukan hanya "ada yang salah".
+        $missing = collect($data['students'])
+            ->reject(fn ($id) => is_numeric($data['amounts'][$id] ?? null))
+            ->map(fn ($id) => Student::find($id)?->name)
+            ->filter();
+
+        if ($missing->isNotEmpty()) {
+            throw ValidationException::withMessages([
+                'amounts' => 'Nominal belum diisi untuk: '.$missing->implode(', ').'.',
+            ]);
+        }
+
+        $created = 0;
+        $skipped = 0;
+
+        DB::transaction(function () use ($data, $period, &$created, &$skipped) {
+            foreach ($data['students'] as $studentId) {
+                // Diperiksa ulang di sini, bukan cukup di pratinjau: halaman
+                // yang dibiarkan terbuka bisa ketinggalan invoice yang baru
+                // dibuat admin lain, dan unique index akan menolaknya sebagai
+                // error 500 alih-alih dilewati dengan tenang.
+                if (Payment::existingForPeriod((int) $studentId, $period)) {
+                    $skipped++;
+
+                    continue;
+                }
+
+                // Bila status "paid", PaymentObserver otomatis mencatatnya sebagai
+                // pemasukan di Financial Tracking (F7) / menu Laporan Keuangan.
+                $payment = Payment::create([
+                    'student_id' => $studentId,
+                    'payment_date' => $data['payment_date'],
+                    'due_date' => $data['due_date'],
+                    'billing_period' => $period,
+                    'payment_amount' => $data['amounts'][$studentId],
+                    'payment_method' => $data['payment_method'],
+                    'payment_status' => $data['payment_status'],
+                ]);
+
+                ActivityLog::record('created', $payment,
+                    "Menerbitkan invoice {$payment->invoice_number}".($period ? " periode {$period}" : ' (tagihan lepas)'));
+
+                $created++;
+            }
         });
 
-        return redirect()->route('payments.index')->with('success', 'Pembayaran berhasil dicatat.');
+        $label = $period ? 'periode '.Payment::labelForPeriod($period) : 'tagihan lepas';
+
+        if ($created === 0) {
+            return back()->with('error',
+                "Tidak ada invoice baru untuk {$label} — semua murid yang dipilih sudah punya invoice periode itu.");
+        }
+
+        $message = "{$created} invoice {$label} berhasil diterbitkan.";
+
+        if ($skipped > 0) {
+            $message .= " {$skipped} murid dilewati karena sudah punya invoice periode itu.";
+        }
+
+        return redirect()->route('payments.index')->with('success', $message);
     }
 
     public function edit(Payment $payment)
@@ -183,6 +320,7 @@ class PaymentController extends Controller
     public function update(Request $request, Payment $payment)
     {
         $data = $this->validateData($request);
+        $this->guardDuplicatePeriod($data, $payment);
 
         DB::transaction(function () use ($payment, $data) {
             // Observer menyinkronkan pemasukan: dibuat saat jadi "paid", nominal &
@@ -207,16 +345,52 @@ class PaymentController extends Controller
         return redirect()->route('payments.index')->with('success', 'Pembayaran berhasil dibatalkan (void).');
     }
 
+    /** Periode dari querystring; kembali ke bulan berjalan bila tidak masuk akal. */
+    private function resolvePeriod(string $period): string
+    {
+        return preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $period) ? $period : Payment::periodFor();
+    }
+
+    /**
+     * Tolak invoice kedua untuk murid & periode yang sama.
+     *
+     * Aturannya ada di database sebagai unique index; di sini hanya supaya
+     * penolakannya berbentuk pesan yang bisa ditindaklanjuti.
+     */
+    private function guardDuplicatePeriod(array $data, ?Payment $except = null): void
+    {
+        $existing = Payment::existingForPeriod(
+            (int) $data['student_id'],
+            $data['billing_period'] ?? null,
+            $except?->id
+        );
+
+        if ($existing === null) {
+            return;
+        }
+
+        $status = $existing->payment_status === 'paid' ? 'sudah LUNAS' : 'masih Unpaid';
+
+        throw ValidationException::withMessages([
+            'billing_period' => "Murid ini sudah punya invoice {$existing->invoice_number} ({$status}) untuk periode ".
+                Payment::labelForPeriod($data['billing_period']).'. Perbaiki invoice itu lewat Edit, '.
+                'atau kosongkan Periode Tagihan bila ini memang tagihan lepas di luar SPP bulanan.',
+        ]);
+    }
+
     private function validateData(Request $request): array
     {
         return $request->validate([
             'student_id' => ['required', 'exists:students,id'],
             'payment_date' => ['required', 'date'],
             'due_date' => ['nullable', 'date', 'after_or_equal:payment_date'],
+            'billing_period' => ['nullable', 'regex:/^\d{4}-(0[1-9]|1[0-2])$/'],
             'payment_amount' => ['required', 'numeric', 'min:0'],
-            'payment_method' => ['required', Rule::in(['cash', 'transfer', 'qris', 'virtual_account'])],
+            'payment_method' => ['required', Rule::in(Payment::methodValues())],
             'payment_status' => ['required', Rule::in(['paid', 'unpaid'])],
             'notes' => ['nullable', 'string'],
+        ], [
+            'billing_period.regex' => 'Periode tagihan harus berupa bulan yang sah, mis. 2026-08.',
         ]);
     }
 }

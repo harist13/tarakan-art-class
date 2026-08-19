@@ -122,7 +122,7 @@ class PaymentArrearsAccessTest extends TestCase
 
         $this->assertFalse($student->hasArrears(), 'Belum ada invoice bukan alasan mengunci akademik');
         $this->assertFalse($student->isActivated());
-        $this->assertSame('Belum bayar pendaftaran', $student->paymentBadgeLabel());
+        $this->assertSame('Belum bayar tagihan', $student->paymentBadgeLabel());
     }
 
     public function test_due_date_defaults_from_config(): void

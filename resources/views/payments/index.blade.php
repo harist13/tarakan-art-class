@@ -5,6 +5,10 @@
     <h1 class="h3 mb-0 text-gray-800 fw-bold">Pembayaran & Invoice</h1>
     <div class="d-flex flex-wrap gap-2">
         @include('partials.export-buttons', ['route' => 'export.payments'])
+        {{-- Satu pintu untuk keduanya: centang satu murid untuk satu invoice,
+             centang semua untuk sebulan penuh. Dulu ini dua tombol, dan karena
+             keduanya menghasilkan baris invoice yang sama persis, yang tersisa
+             hanyalah tebak-tebakan harus klik yang mana. --}}
         <a href="{{ route('payments.create') }}" class="btn btn-sm btn-primary shadow-sm text-nowrap"><i class="bi bi-receipt"></i> Buat Invoice</a>
     </div>
 </div>
@@ -89,7 +93,16 @@
                                 <div class="fw-bold text-nowrap">{{ $payment->invoice_number }}</div>
                                 <small class="text-muted text-nowrap">{{ $payment->payment_date->format('d M Y') }}</small>
                             </td>
-                            <td>{{ $payment->student->name ?? '-' }}</td>
+                            {{-- Murid + periode ditampilkan berdampingan karena
+                                 pasangan itulah yang unik: satu invoice per
+                                 murid per bulan. Invoice tanpa periode adalah
+                                 tagihan lepas dan sengaja tidak diberi label. --}}
+                            <td>
+                                <div>{{ $payment->student->name ?? '-' }}</div>
+                                @if($payment->periodLabel())
+                                    <small class="text-muted text-nowrap">Periode {{ $payment->periodLabel() }}</small>
+                                @endif
+                            </td>
                             <td class="text-end">
                                 <div class="fw-semibold text-nowrap">Rp {{ number_format($payment->payment_amount, 0, ',', '.') }}</div>
                                 <small class="text-muted text-nowrap">{{ $payment->methodLabel() }}</small>
@@ -116,6 +129,9 @@
                         <div style="min-width:0">
                             <div class="fw-bold">{{ $payment->invoice_number }}</div>
                             <div class="text-truncate">{{ $payment->student->name ?? '-' }}</div>
+                            @if($payment->periodLabel())
+                                <small class="text-muted">Periode {{ $payment->periodLabel() }}</small>
+                            @endif
                         </div>
                         @include('payments._status', ['statusAlign' => 'justify-content-end'])
                     </div>

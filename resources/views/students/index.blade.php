@@ -34,6 +34,14 @@
     <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
         <span>Daftar Murid</span>
         <form method="GET" data-live class="d-flex flex-wrap align-items-center gap-2">
+            {{-- Tombol saringnya berupa <a>, bukan checkbox: data-live hanya
+                 mengawasi teks, select, & tanggal, dan menambah checkbox ke
+                 pengawasan itu akan mengubah perilaku 11 halaman lain. Nilainya
+                 dititipkan sebagai hidden input supaya tidak hilang saat filter
+                 lain berubah dan form ini terkirim ulang. --}}
+            @if($unbilled)
+                <input type="hidden" name="unbilled" value="1">
+            @endif
             <div class="input-group input-group-sm" style="width:180px;">
                 <span class="input-group-text bg-transparent border-end-0"><i class="bi bi-search text-muted"></i></span>
                 <input type="text" name="search" value="{{ $search }}" class="form-control border-start-0 ps-0 py-2" placeholder="Cari nama / ID...">
@@ -49,12 +57,43 @@
                 <option value="active" @selected($status === 'active')>Aktif</option>
                 <option value="inactive" @selected($status === 'inactive')>Nonaktif</option>
             </select>
-            @if($search !== '' || $classId || $status !== '')
+            {{-- Saringan "belum ditagih". Angkanya dihitung dari seluruh murid,
+                 bukan dari halaman yang sedang tampil — badge yang tersebar di
+                 beberapa halaman paginasi tidak bisa dijumlahkan dengan mata. --}}
+            <a href="{{ route('students.index', array_merge(
+                    request()->except(['page', 'unbilled']),
+                    $unbilled ? [] : ['unbilled' => 1]
+               )) }}"
+               class="btn btn-sm {{ $unbilled ? 'btn-info' : ($unbilledCount > 0 ? 'btn-outline-info' : 'btn-outline-secondary') }} text-nowrap"
+               title="{{ $unbilled
+                   ? 'Tampilkan kembali semua murid.'
+                   : 'Saring murid yang belum punya invoice untuk '.\App\Models\Payment::labelForPeriod(\App\Models\Payment::periodFor()).'.' }}">
+                <i class="bi bi-receipt me-1"></i>Belum ditagih
+                <span class="badge {{ $unbilled ? 'bg-white text-info' : 'bg-secondary' }} ms-1">{{ $unbilledCount }}</span>
+            </a>
+            @if($search !== '' || $classId || $status !== '' || $unbilled)
                 <a href="{{ route('students.index') }}" class="btn btn-sm btn-outline-secondary" title="Reset filter"><i class="bi bi-x-lg"></i></a>
             @endif
         </form>
     </div>
     <div class="card-body">
+        {{-- Saringan ini menyisakan satu pertanyaan: lalu apa? Jawabannya
+             ditaruh di sini sebagai tautan langsung, bukan dibiarkan dicari
+             sendiri di menu Pembayaran. --}}
+        @if($unbilled)
+            <div class="alert alert-info small d-flex flex-wrap align-items-center justify-content-between gap-2">
+                <span>
+                    <i class="bi bi-receipt me-1"></i>
+                    Menampilkan murid yang belum punya invoice untuk
+                    <strong>{{ \App\Models\Payment::labelForPeriod(\App\Models\Payment::periodFor()) }}</strong>.
+                    Murid nonaktif, yang ditangguhkan, dan yang belum punya kelas berbiaya tidak dihitung.
+                </span>
+                <a href="{{ route('payments.create') }}" class="btn btn-sm btn-info text-nowrap">
+                    <i class="bi bi-calendar-plus me-1"></i> Terbitkan tagihan
+                </a>
+            </div>
+        @endif
+
         <div class="table-responsive">
             <table class="table table-hover align-middle students-table">
                 <thead>
@@ -106,13 +145,12 @@
                                         </span>
                                     @endif
                                     {{-- Penanda tagihan. Absensi & raport tetap jalan; yang ditahan hanya
-                                         kelas pengganti, pindah kelas, dan akses raport orang tua. --}}
-                                    @if($label = $student->paymentBadgeLabel())
-                                        <span class="badge bg-warning text-dark"
-                                              title="{{ $student->hasArrears()
-                                                  ? 'Murid '.$student->paymentBlockReason().' — kelas pengganti & akses raport orang tua ditahan.'
-                                                  : 'Belum ada invoice yang dilunasi. Absensi tetap bisa dicatat.' }}">
-                                            <i class="bi bi-exclamation-triangle-fill me-1"></i>{{ $label }}
+                                         kelas pengganti, pindah kelas, dan akses raport orang tua.
+                                         Label, warna, & penjelasannya ditentukan Student::paymentBadge()
+                                         — tiga keadaan berbeda tidak muat lagi dalam ternary di sini. --}}
+                                    @if($badge = $student->paymentBadge())
+                                        <span class="badge {{ $badge['class'] }}" title="{{ $badge['title'] }}">
+                                            <i class="bi {{ $badge['icon'] }} me-1"></i>{{ $badge['label'] }}
                                         </span>
                                     @endif
                                 </div>
@@ -128,7 +166,16 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="7" class="text-center text-muted">Tidak ada data murid.</td></tr>
+                        {{-- Kosong saat saringan "belum ditagih" aktif berarti kabar
+                             baik, bukan data yang hilang — jangan disamakan. --}}
+                        <tr><td colspan="7" class="text-center text-muted">
+                            @if($unbilled)
+                                <i class="bi bi-check-circle text-success me-1"></i>
+                                Semua murid sudah punya invoice untuk {{ \App\Models\Payment::labelForPeriod(\App\Models\Payment::periodFor()) }}.
+                            @else
+                                Tidak ada data murid.
+                            @endif
+                        </td></tr>
                     @endforelse
                 </tbody>
             </table>

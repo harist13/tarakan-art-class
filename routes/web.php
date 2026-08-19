@@ -114,8 +114,14 @@ Route::middleware('auth')->group(function () {
 
     // ─── Payment (F6) ──────────────────────────────────────────
     Route::get('payments', [PaymentController::class, 'index'])->name('payments.index');
+    // Satu halaman untuk menerbitkan invoice, lewat pratinjau: centang satu
+    // murid untuk satu invoice, centang semua untuk sebulan penuh.
     Route::get('payments/create', [PaymentController::class, 'create'])->name('payments.create');
     Route::post('payments', [PaymentController::class, 'store'])->name('payments.store');
+    // Alamat lama "Tagihan Bulanan", dipertahankan agar tautan yang terlanjur
+    // di-bookmark atau dibagikan tidak mati begitu saja.
+    Route::get('payments/bulk', fn () => redirect()->route('payments.create', request()->query()))
+        ->name('payments.bulk.create');
     Route::get('payments/{payment}/edit', [PaymentController::class, 'edit'])->name('payments.edit');
     Route::put('payments/{payment}', [PaymentController::class, 'update'])->name('payments.update');
     Route::patch('payments/{payment}/confirm', [PaymentController::class, 'confirmPaid'])->name('payments.confirm');

@@ -50,6 +50,7 @@ class PaymentIncomeSyncTest extends TestCase
         ]);
     }
 
+    /** Bentuk satu baris invoice — dipakai form Edit. */
     private function payload(Student $student, array $overrides = []): array
     {
         return array_merge([
@@ -62,13 +63,29 @@ class PaymentIncomeSyncTest extends TestCase
         ], $overrides);
     }
 
+    /**
+     * Bentuk kiriman halaman Buat Invoice: selalu sekumpulan murid, karena
+     * satu murid hanyalah satu centang di halaman yang sama.
+     */
+    private function formPayload(Student $student, array $overrides = []): array
+    {
+        return array_merge([
+            'payment_date' => now()->toDateString(),
+            'due_date' => now()->addDays(7)->toDateString(),
+            'payment_method' => 'transfer',
+            'payment_status' => 'paid',
+            'students' => [$student->id],
+            'amounts' => [$student->id => 250000],
+        ], $overrides);
+    }
+
     public function test_pembayaran_paid_otomatis_jadi_pemasukan(): void
     {
         $user = $this->makeUser();
         $student = $this->makeStudent();
 
         $this->actingAs($user)
-            ->post(route('payments.store'), $this->payload($student))
+            ->post(route('payments.store'), $this->formPayload($student))
             ->assertRedirect(route('payments.index'));
 
         $payment = Payment::firstOrFail();
@@ -92,7 +109,7 @@ class PaymentIncomeSyncTest extends TestCase
         $student = $this->makeStudent();
 
         // Cash: satu-satunya metode yang boleh dilunaskan lewat tombol "Lunas".
-        $this->actingAs($user)->post(route('payments.store'), $this->payload($student, [
+        $this->actingAs($user)->post(route('payments.store'), $this->formPayload($student, [
             'payment_status' => 'unpaid',
             'payment_method' => 'cash',
         ]));
@@ -116,7 +133,7 @@ class PaymentIncomeSyncTest extends TestCase
         $user = $this->makeUser();
         $student = $this->makeStudent();
 
-        $this->actingAs($user)->post(route('payments.store'), $this->payload($student));
+        $this->actingAs($user)->post(route('payments.store'), $this->formPayload($student));
         $payment = Payment::firstOrFail();
 
         $this->actingAs($user)->put(route('payments.update', $payment), $this->payload($student, [
@@ -135,7 +152,7 @@ class PaymentIncomeSyncTest extends TestCase
         $user = $this->makeUser();
         $student = $this->makeStudent();
 
-        $this->actingAs($user)->post(route('payments.store'), $this->payload($student));
+        $this->actingAs($user)->post(route('payments.store'), $this->formPayload($student));
         $payment = Payment::firstOrFail();
 
         $this->actingAs($user)->put(route('payments.update', $payment), $this->payload($student, [
@@ -150,7 +167,7 @@ class PaymentIncomeSyncTest extends TestCase
         $user = $this->makeUser();
         $student = $this->makeStudent();
 
-        $this->actingAs($user)->post(route('payments.store'), $this->payload($student));
+        $this->actingAs($user)->post(route('payments.store'), $this->formPayload($student));
         $payment = Payment::firstOrFail();
 
         $this->actingAs($user)->delete(route('payments.destroy', $payment));
@@ -163,7 +180,7 @@ class PaymentIncomeSyncTest extends TestCase
         $user = $this->makeUser();
         $student = $this->makeStudent();
 
-        $this->actingAs($user)->post(route('payments.store'), $this->payload($student));
+        $this->actingAs($user)->post(route('payments.store'), $this->formPayload($student));
         $payment = Payment::firstOrFail();
         $invoice = $payment->invoice_number;
 
@@ -195,7 +212,7 @@ class PaymentIncomeSyncTest extends TestCase
         $user = $this->makeUser();
         $student = $this->makeStudent();
 
-        $this->actingAs($user)->post(route('payments.store'), $this->payload($student, [
+        $this->actingAs($user)->post(route('payments.store'), $this->formPayload($student, [
             'payment_status' => 'unpaid',
         ]));
 
@@ -210,7 +227,7 @@ class PaymentIncomeSyncTest extends TestCase
         $user = $this->makeUser();
         $student = $this->makeStudent();
 
-        $this->actingAs($user)->post(route('payments.store'), $this->payload($student));
+        $this->actingAs($user)->post(route('payments.store'), $this->formPayload($student));
         $transaction = Transaction::firstOrFail();
 
         $this->actingAs($user)

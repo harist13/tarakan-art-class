@@ -19,6 +19,7 @@ class Payment extends Model
         'invoice_number',
         'payment_date',
         'due_date',
+        'billing_period',
         'payment_amount',
         'payment_method',
         'payment_status',
@@ -65,6 +66,62 @@ class Payment extends Model
         return Carbon::parse($paymentDate ?: now())
             ->addDays((int) config('academic.payment.due_days', 7))
             ->toDateString();
+    }
+
+    // ─── Periode tagihan ───────────────────────────────────────────
+    //
+    // billing_period ("YYYY-MM") menjawab "invoice ini untuk bulan apa",
+    // terpisah dari payment_date yang hanya mencatat kapan invoice diterbitkan.
+    // Kolomnya boleh kosong: itu berarti tagihan lepas di luar SPP bulanan
+    // (biaya pendaftaran, pembelian alat) yang memang boleh berulang.
+
+    /** Periode tagihan dari sebuah tanggal; tanpa argumen berarti bulan ini. */
+    public static function periodFor($date = null): string
+    {
+        return Carbon::parse($date ?: now())->format('Y-m');
+    }
+
+    /** "2026-08" → "Agustus 2026". */
+    public static function labelForPeriod(?string $period): string
+    {
+        if (empty($period)) {
+            return 'tanpa periode';
+        }
+
+        return Carbon::createFromFormat('Y-m-d', $period.'-01')
+            ->locale('id')
+            ->translatedFormat('F Y');
+    }
+
+    /** Label periode invoice ini; null bila tagihan lepas. */
+    public function periodLabel(): ?string
+    {
+        return empty($this->billing_period) ? null : self::labelForPeriod($this->billing_period);
+    }
+
+    public function scopeForPeriod(Builder $query, string $period): Builder
+    {
+        return $query->where('billing_period', $period);
+    }
+
+    /**
+     * Invoice lain milik murid yang sama untuk periode yang sama, bila ada.
+     *
+     * Unique index di database sudah menolak duplikatnya, tapi penolakan itu
+     * datang sebagai error SQL yang tidak bisa dibaca admin. Lewat sini
+     * duplikatnya ditemukan lebih dulu sehingga pesannya bisa menyebut invoice
+     * mana yang sudah ada dan apa statusnya.
+     */
+    public static function existingForPeriod(int $studentId, ?string $period, ?int $exceptId = null): ?self
+    {
+        if (empty($period)) {
+            return null;
+        }
+
+        return self::where('student_id', $studentId)
+            ->forPeriod($period)
+            ->when($exceptId, fn ($q) => $q->whereKeyNot($exceptId))
+            ->first();
     }
 
     // ─── Status jatuh tempo ────────────────────────────────────────
@@ -147,19 +204,61 @@ class Payment extends Model
         return $this->payment_status !== 'paid' && $this->payment_method === 'cash';
     }
 
+    // ─── Metode / channel pembayaran ───────────────────────────────
+
+    /**
+     * Metode yang bisa dipilih admin, beserta labelnya.
+     *
+     *   kunci   → nilai yang tersimpan di payments.payment_method
+     *   'form'  → label panjang untuk <select> di form pembuatan invoice
+     *   'short' → label pendek untuk daftar, laporan, & pesan WhatsApp
+     *
+     * Satu-satunya tempat daftar ini ditulis. Sebelumnya ia tersalin di empat
+     * tempat — dua <select> dan dua Rule::in — sehingga menambah satu metode
+     * berarti harus mengingat keempatnya sekaligus, dan yang terlewat baru
+     * ketahuan sebagai "pilihan ada di layar tapi ditolak saat disimpan".
+     */
+    public const METHODS = [
+        'cash' => ['form' => 'Cash', 'short' => 'Cash'],
+        'transfer' => ['form' => 'Transfer Bank', 'short' => 'Transfer'],
+        'qris' => ['form' => 'QRIS / E-Wallet (GoPay, DANA, OVO, ShopeePay, dll.)', 'short' => 'QRIS / E-Wallet'],
+        'virtual_account' => ['form' => 'Virtual Account', 'short' => 'Virtual Account'],
+    ];
+
+    /**
+     * Nilai warisan → metode yang berlaku sekarang.
+     *
+     * 'ewallet' sempat dipisah dari 'qris'; migrasi sudah menormalkan datanya.
+     * Peta ini jaring pengaman agar baris yang lolos tidak tampil sebagai
+     * "Ewallet" di layar dan tidak diam-diam berubah jadi Cash saat invoice
+     * lama dibuka lalu disimpan ulang.
+     */
+    public const LEGACY_METHODS = ['ewallet' => 'qris'];
+
+    /** Nilai metode yang sah — dipakai Rule::in di validasi. */
+    public static function methodValues(): array
+    {
+        return array_keys(self::METHODS);
+    }
+
+    /** Nilai → label panjang, untuk <select> di form. */
+    public static function methodFormOptions(): array
+    {
+        return array_map(fn (array $method) => $method['form'], self::METHODS);
+    }
+
+    /** Metode yang berlaku untuk sebuah nilai, termasuk nilai warisan. */
+    public static function normalizeMethod(?string $method): ?string
+    {
+        return self::LEGACY_METHODS[$method] ?? $method;
+    }
+
     /** Label metode pembayaran untuk layar & pesan WhatsApp. */
     public function methodLabel(): string
     {
-        return [
-            'cash' => 'Cash',
-            'transfer' => 'Transfer',
-            'qris' => 'QRIS / E-Wallet',
-            // Nilai peninggalan saat QRIS & e-wallet sempat dipisah. Migrasi
-            // sudah menormalkannya ke 'qris'; baris ini jaring pengaman agar
-            // data yang lolos tidak tampil sebagai "Ewallet".
-            'ewallet' => 'QRIS / E-Wallet',
-            'virtual_account' => 'Virtual Account',
-        ][$this->payment_method] ?? ucfirst((string) $this->payment_method);
+        $method = self::normalizeMethod($this->payment_method);
+
+        return self::METHODS[$method]['short'] ?? ucfirst((string) $this->payment_method);
     }
 
     /**
