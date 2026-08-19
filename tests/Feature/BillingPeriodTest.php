@@ -241,6 +241,47 @@ class BillingPeriodTest extends TestCase
         $this->assertMatchesRegularExpression('/text-muted[^"]*">\s*belum terdaftar di kelas berbiaya/', $html);
     }
 
+    /**
+     * Daftar panjang dilipat, BUKAN dipaginasi. Bedanya menentukan: baris yang
+     * terlipat masih ada di dalam form, jadi centangnya tetap terkirim. Kalau
+     * suatu hari ini diganti paginasi server, tes ini merah — dan memang harus,
+     * sebab pindah halaman akan diam-diam membuang pilihan di halaman sebelumnya.
+     */
+    public function test_long_list_is_folded_but_every_row_still_submits(): void
+    {
+        $class = $this->makeClass();
+
+        for ($i = 1; $i <= 28; $i++) {
+            $this->makeStudent(sprintf('Murid %02d', $i), $class);
+        }
+
+        $html = $this->actingAs($this->admin())
+            ->get(route('payments.create', ['period' => '2026-08']))
+            ->assertOk()
+            ->assertSee('Tampilkan 3 murid lainnya')
+            ->getContent();
+
+        // Ke-28 murid hadir sebagai checkbox; 3 di antaranya sekadar terlipat.
+        $this->assertSame(28, substr_count($html, 'class="form-check-input pick"'));
+        $this->assertSame(3, preg_match_all('/<tr[^>]*\bd-none\b/', $html), 'Hanya baris di atas batas yang terlipat');
+
+        $ids = Student::pluck('id')->all();
+
+        $this->actingAs($this->admin())
+            ->post(route('payments.store'), [
+                'billing_period' => '2026-08',
+                'payment_date' => '2026-08-01',
+                'due_date' => '2026-08-08',
+                'payment_method' => 'qris',
+                'payment_status' => 'unpaid',
+                'students' => $ids,
+                'amounts' => array_fill_keys($ids, 150000),
+            ])
+            ->assertRedirect(route('payments.index'));
+
+        $this->assertSame(28, Payment::count(), 'Murid yang terlipat tetap ikut diterbitkan invoicenya');
+    }
+
     public function test_skipped_list_is_searchable(): void
     {
         $class = $this->makeClass();
