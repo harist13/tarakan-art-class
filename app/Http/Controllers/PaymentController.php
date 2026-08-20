@@ -41,7 +41,47 @@ class PaymentController extends Controller
         // berhasil tapi invoice tetap Unpaid), maka disebutkan langsung di layar.
         $webhookUnreachable = $midtransActive && ! $snap->webhookReachable();
 
-        return view('payments.index', compact('payments', 'search', 'status', 'midtransActive', 'webhookUnreachable'));
+        // Halaman hanya perlu memantau bila masih ada yang ditunggu. Kalau semua
+        // invoice di layar sudah lunas, tidak ada perubahan yang mungkin datang,
+        // dan menjalankan pemantau hanya membuang permintaan tiap dua detik.
+        $hasPending = $payments->contains(fn (Payment $p) => $p->payment_status !== 'paid');
+
+        return view('payments.index', compact(
+            'payments', 'search', 'status', 'midtransActive', 'webhookUnreachable', 'hasPending'
+        ));
+    }
+
+    /**
+     * Status terkini sejumlah invoice, untuk pemantau di halaman daftar.
+     *
+     * Pembayaran online dilunasi oleh notifikasi Midtrans yang tiba di server,
+     * bukan oleh perbuatan admin — jadi tanpa ini layar admin tetap menampilkan
+     * "Unpaid" sampai ia menyegarkan halaman sendiri, padahal uangnya sudah masuk.
+     *
+     * Sengaja hanya mengembalikan pasangan id → status, bukan HTML atau seluruh
+     * baris: yang perlu diketahui halaman cuma "apakah ada yang berubah". Muatan
+     * sekecil ini aman ditanya tiap dua detik; membalas potongan halaman akan
+     * memaksa markup baris invoice ditulis ulang di JavaScript dan menyimpang
+     * dari Blade-nya sendiri.
+     */
+    public function statuses(Request $request)
+    {
+        // Dibatasi 50: halaman ini menampilkan 10 baris, jadi angka di atas itu
+        // bukan permintaan sah dan tidak perlu dilayani sebagai kueri besar.
+        $ids = collect(explode(',', $request->string('ids')->toString()))
+            ->map(fn ($id) => (int) trim($id))
+            ->filter()
+            ->unique()
+            ->take(50)
+            ->all();
+
+        if ($ids === []) {
+            return response()->json(['statuses' => (object) []]);
+        }
+
+        return response()->json([
+            'statuses' => Payment::whereIn('id', $ids)->pluck('payment_status', 'id'),
+        ]);
     }
 
     /**

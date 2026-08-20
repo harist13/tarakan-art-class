@@ -1,6 +1,12 @@
 @extends('layouts.app')
 
 @section('content')
+{{-- Diisi JavaScript setelah halaman memuat ulang sendiri karena ada pembayaran
+     masuk. Wadahnya kosong dan ada sejak awal supaya alertnya muncul di tempat
+     yang sama dengan flash message biasa (partials.alerts tepat di atas), bukan
+     tiba-tiba menyelip di tengah halaman. --}}
+<div id="paidAlert"></div>
+
 <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-4">
     <h1 class="h3 mb-0 text-gray-800 fw-bold">Pembayaran & Invoice</h1>
     <div class="d-flex flex-wrap gap-2">
@@ -42,7 +48,20 @@
 
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-        <span class="text-nowrap">Daftar Transaksi Pembayaran</span>
+        <span class="text-nowrap">
+            Daftar Transaksi Pembayaran
+            {{-- Halaman bisa menyegar sendiri, dan reload yang tiba-tiba tanpa
+                 keterangan membingungkan. Penanda ini menjelaskan sebabnya
+                 sebelum hal itu terjadi. Hanya tampil bila memang ada yang
+                 ditunggu — kalau semuanya sudah lunas, tidak ada yang dipantau. --}}
+            @if($hasPending)
+                <span class="badge bg-light text-secondary border fw-normal ms-1" id="paymentWatcher"
+                      title="Halaman memeriksa status pembayaran tiap 2 detik dan menyegar sendiri begitu ada yang lunas.">
+                    <span class="spinner-grow spinner-grow-sm me-1" style="width:.5rem;height:.5rem;" aria-hidden="true"></span>
+                    Memantau pembayaran
+                </span>
+            @endif
+        </span>
         {{-- Filter status lalu pencarian, selalu berdampingan dalam satu baris.
              flex-nowrap dipakai agar keduanya MENGECIL saat ruang menyempit,
              bukan patah ke baris berikutnya.
@@ -88,7 +107,12 @@
                 </thead>
                 <tbody>
                     @forelse($payments as $payment)
-                        <tr>
+                        {{-- Ditandai supaya pemantau tahu invoice mana yang masih
+                             ditunggu pelunasannya. Baris yang sama juga muncul di
+                             tampilan kartu di bawah — id-nya di-uniq-kan di JS. --}}
+                        <tr data-payment-id="{{ $payment->id }}" data-payment-status="{{ $payment->payment_status }}"
+                            data-payment-invoice="{{ $payment->invoice_number }}"
+                            data-payment-student="{{ $payment->student->name ?? '' }}">
                             <td>
                                 <div class="fw-bold text-nowrap">{{ $payment->invoice_number }}</div>
                                 <small class="text-muted text-nowrap">{{ $payment->payment_date->format('d M Y') }}</small>
@@ -123,7 +147,10 @@
              samping menyembunyikan kolom Aksi. Datanya disusun menurun. --}}
         <div class="d-xl-none d-flex flex-column gap-3">
             @forelse($payments as $payment)
-                <div class="border rounded-3 p-3">
+                <div class="border rounded-3 p-3"
+                     data-payment-id="{{ $payment->id }}" data-payment-status="{{ $payment->payment_status }}"
+                     data-payment-invoice="{{ $payment->invoice_number }}"
+                     data-payment-student="{{ $payment->student->name ?? '' }}">
                     <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
                         {{-- min-width:0 wajib agar text-truncate bekerja di dalam flex. --}}
                         <div style="min-width:0">
@@ -189,5 +216,155 @@
             done();
         });
     });
+
+    // ─── Kabar pembayaran masuk ─────────────────────────────────────
+    //
+    // Pemantau di bawah memuat ulang halaman begitu ada yang lunas, dan setelah
+    // reload jejaknya tinggal badge hijau di satu baris — mudah terlewat di
+    // antara sepuluh baris lain. Invoice yang baru lunas dititipkan lewat
+    // sessionStorage (per tab, hilang sendiri saat tab ditutup) lalu diumumkan
+    // di sini. Bukan flash session dari server: pelunasannya datang dari
+    // notifikasi Midtrans, bukan dari perbuatan admin, jadi tidak ada
+    // permintaan milik admin yang bisa dititipi pesan.
+    const KABAR = 'tac-pembayaran-masuk';
+
+    (function () {
+        let masuk;
+
+        try {
+            const simpanan = sessionStorage.getItem(KABAR);
+            if (!simpanan) return;
+            sessionStorage.removeItem(KABAR);
+            masuk = JSON.parse(simpanan);
+        } catch (e) {
+            return;
+        }
+
+        if (!Array.isArray(masuk) || !masuk.length) return;
+
+        const sebut = masuk
+            .map(p => p.invoice + (p.murid ? ' (' + p.murid + ')' : ''))
+            .join(', ');
+
+        const pesan = masuk.length === 1
+            ? 'Pembayaran ' + sebut + ' berhasil diterima dan sudah tercatat sebagai pemasukan.'
+            : masuk.length + ' pembayaran berhasil diterima dan sudah tercatat sebagai pemasukan: ' + sebut + '.';
+
+        const alert = document.createElement('div');
+        alert.className = 'alert alert-success alert-dismissible fade show shadow-sm border-0';
+        alert.setAttribute('role', 'alert');
+        alert.innerHTML = '<i class="bi bi-check-circle-fill me-2"></i>'
+            + '<span></span>'
+            + '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>';
+        // Nama murid diisi sebagai teks, bukan HTML: nama boleh mengandung
+        // karakter apa pun dan tidak boleh sampai menjadi markup.
+        alert.querySelector('span').textContent = pesan;
+
+        document.getElementById('paidAlert').appendChild(alert);
+    })();
+
+    // ─── Pemantau pelunasan ─────────────────────────────────────────
+    //
+    // Pembayaran online dilunasi oleh notifikasi Midtrans yang tiba di server,
+    // bukan oleh perbuatan admin di layar. Tanpa pemantau, badge tetap "Unpaid"
+    // sampai admin menyegarkan sendiri — padahal uangnya sudah masuk.
+    //
+    // Yang ditanya tiap dua detik hanya pasangan id → status (JSON kecil, satu
+    // kueri berindeks). Halaman baru benar-benar dimuat ulang ketika ada yang
+    // BERUBAH jadi lunas. Menyegarkan seluruh halaman tiap dua detik akan
+    // menghapus ketikan di kotak cari dan posisi gulir terus-menerus; dengan
+    // cara ini reload cuma terjadi saat memang ada kabar baru.
+    (function () {
+        const JEDA = 2000;
+        const url = @json(route('payments.statuses'));
+
+        const menunggu = () => Array.from(document.querySelectorAll('[data-payment-id]'))
+            .filter(el => el.dataset.paymentStatus !== 'paid');
+
+        if (!menunggu().length) return;
+
+        let timer = null;
+        let gagal = 0;
+
+        function berhenti(alasan) {
+            clearInterval(timer);
+            timer = null;
+            const badge = document.getElementById('paymentWatcher');
+            if (badge && alasan) {
+                badge.classList.replace('text-secondary', 'text-muted');
+                badge.textContent = alasan;
+            }
+        }
+
+        async function periksa() {
+            // Tab yang tidak terlihat tidak perlu dipantau — admin tidak sedang
+            // menatapnya, dan begitu kembali, pemeriksaan berikutnya menyusul.
+            if (document.hidden) return;
+
+            // Baris yang sama muncul dua kali (tabel & kartu), jadi id-nya diuniqkan.
+            const ids = [...new Set(menunggu().map(el => el.dataset.paymentId))];
+
+            if (!ids.length) {
+                berhenti('Semua lunas');
+                return;
+            }
+
+            try {
+                const res = await fetch(url + '?ids=' + ids.join(','), {
+                    headers: { 'Accept': 'application/json' },
+                    credentials: 'same-origin',
+                });
+
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+
+                // Sesi habis: aplikasi ini mengarahkan tamu ke halaman login
+                // alih-alih membalas 401 (lihat shouldRenderJsonWhen di
+                // bootstrap/app.php), jadi yang tiba adalah HTML dengan status
+                // 200. Dikenali dari tipe isinya, lalu berhenti seketika —
+                // mencobanya lima kali lagi tidak akan mengembalikan sesi.
+                if (!(res.headers.get('content-type') || '').includes('application/json')) {
+                    berhenti('Sesi berakhir — muat ulang halaman');
+                    return;
+                }
+
+                const data = await res.json();
+                gagal = 0;
+
+                // Invoice mana saja yang baru lunas — dicatat sebelum reload,
+                // sebab setelah halaman dimuat ulang tidak ada lagi yang tahu
+                // mana yang tadinya masih Unpaid.
+                const lunas = [];
+                const sudah = new Set();
+
+                menunggu().forEach(function (el) {
+                    const id = el.dataset.paymentId;
+                    // Baris yang sama muncul dua kali (tabel & kartu).
+                    if (data.statuses[id] !== 'paid' || sudah.has(id)) return;
+                    sudah.add(id);
+                    lunas.push({ invoice: el.dataset.paymentInvoice, murid: el.dataset.paymentStudent });
+                });
+
+                if (lunas.length) {
+                    berhenti();
+                    try { sessionStorage.setItem(KABAR, JSON.stringify(lunas)); } catch (e) { /* abaikan */ }
+                    // Muat ulang, bukan menambal badge sendiri: tombol aksi tiap
+                    // baris ikut berubah saat lunas (Lunas & cek status hilang,
+                    // bukti pembayaran muncul), dan menulis ulang markup itu di
+                    // JavaScript berarti dua sumber kebenaran untuk satu baris.
+                    location.reload();
+                }
+            } catch (e) {
+                // Server mati atau sesi habis: mundur teratur, jangan digempur
+                // tiap dua detik sampai tabnya ditutup.
+                if (++gagal >= 5) berhenti('Pemantauan berhenti');
+            }
+        }
+
+        timer = setInterval(periksa, JEDA);
+        // Begitu tab kembali dilihat, jangan tunggu giliran berikutnya.
+        document.addEventListener('visibilitychange', function () {
+            if (!document.hidden && timer) periksa();
+        });
+    })();
 </script>
 @endpush

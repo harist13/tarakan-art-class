@@ -118,6 +118,9 @@ Route::middleware('auth')->group(function () {
     // murid untuk satu invoice, centang semua untuk sebulan penuh.
     Route::get('payments/create', [PaymentController::class, 'create'])->name('payments.create');
     Route::post('payments', [PaymentController::class, 'store'])->name('payments.store');
+    // Dipanggil berkala oleh halaman daftar untuk menangkap pelunasan yang datang
+    // dari notifikasi Midtrans — perubahan yang terjadi di server, bukan di layar.
+    Route::get('payments/statuses', [PaymentController::class, 'statuses'])->name('payments.statuses');
     // Alamat lama "Tagihan Bulanan", dipertahankan agar tautan yang terlanjur
     // di-bookmark atau dibagikan tidak mati begitu saja.
     Route::get('payments/bulk', fn () => redirect()->route('payments.create', request()->query()))
