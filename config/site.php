@@ -26,7 +26,9 @@ return [
         'address' => env('SITE_ADDRESS', 'Jl. Yos Sudarso No. 12, Tarakan, Kalimantan Utara'),
         // URL embed peta studio. Ambil dari Google Maps → Bagikan → Sematkan peta,
         // lalu salin isi atribut src milik iframe-nya (bukan tautan biasa).
-        'maps_embed' => env('SITE_MAPS_EMBED', 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d828.2972771249796!2d117.57755015475615!3d3.3064980673986435!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x32138bcc85f4672d%3A0x7d07429db2e8ef8b!2sTarakan%20Art%20Class!5e0!3m2!1sid!2sid!4v1786198529973!5m2!1sid!2sid'),
+        // ?: dipakai karena SITE_MAPS_EMBED= (kosong di .env) dibaca sebagai string
+        // kosong, bukan null, sehingga argumen default env() tidak akan terpakai.
+        'maps_embed' => env('SITE_MAPS_EMBED') ?: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d828.2972771249796!2d117.57755015475615!3d3.3064980673986435!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x32138bcc85f4672d%3A0x7d07429db2e8ef8b!2sTarakan%20Art%20Class!5e0!3m2!1sid!2sid!4v1786198529973!5m2!1sid!2sid',
     ],
 
     // Ke mana notifikasi lead dikirim. Kosong = pakai contact.email.

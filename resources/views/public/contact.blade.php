@@ -63,7 +63,9 @@
                 </dl>
             </div>
 
-            {{-- Peta lokasi (embed tanpa API key) --}}
+            {{-- Peta lokasi (embed tanpa API key). Tanpa src yang terisi iframe hanya
+                 menyisakan kartu putih kosong, jadi blok ini dilewati saja. --}}
+            @if($contact['maps_embed'])
             <div class="tac-card overflow-hidden mt-4">
                 <iframe
                     title="Peta lokasi {{ config('site.name') }}"
@@ -74,6 +76,7 @@
                     referrerpolicy="strict-origin-when-cross-origin"
                     allowfullscreen></iframe>
             </div>
+            @endif
         </aside>
 
         {{-- ─── Form pendaftaran ──────────────────────────────────── --}}
@@ -149,10 +152,10 @@
                         </div>
                         <div class="col-md-6">
                             <label for="child_age" class="tac-label">
-                                Usia <span class="fw-normal tac-muted-soft">(opsional)</span>
+                                Usia <span class="fw-normal tac-muted-soft"></span>
                             </label>
                             <input type="number" id="child_age" name="child_age" min="1" max="99"
-                                   value="{{ old('child_age') }}" placeholder="7" class="tac-input">
+                                   value="{{ old('child_age') }}" placeholder="" class="tac-input">
                         </div>
                         <div class="col-md-6">
                             <label for="parent_name" class="tac-label">
