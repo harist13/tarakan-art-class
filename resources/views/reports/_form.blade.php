@@ -18,15 +18,11 @@
     </div>
     <div class="col-md-3 mb-3">
         <label class="form-label">Periode Mulai</label>
-        <input type="date" name="period_start" class="form-control" value="{{ old('period_start', isset($report) ? $report->period_start->format('Y-m-d') : '') }}" required>
+        <input type="date" name="period_start" class="form-control" value="{{ old('period_start', isset($report) ? $report->period_start->format('Y-m-d') : ($defaultStart ?? '')) }}" required>
     </div>
     <div class="col-md-3 mb-3">
         <label class="form-label">Periode Selesai</label>
-        <input type="date" name="period_end" class="form-control" value="{{ old('period_end', isset($report) ? $report->period_end->format('Y-m-d') : '') }}" required>
-    </div>
-    <div class="col-md-4 mb-3">
-        <label class="form-label">Nilai Pencapaian (0-100)</label>
-        <input type="number" min="0" max="100" name="achievement_score" class="form-control" value="{{ old('achievement_score', $report->achievement_score ?? '') }}" required>
+        <input type="date" name="period_end" class="form-control" value="{{ old('period_end', isset($report) ? $report->period_end->format('Y-m-d') : ($defaultEnd ?? '')) }}" required>
     </div>
     <div class="col-12 mb-3">
         <label class="form-label">Catatan Aktivitas / Perkembangan</label>

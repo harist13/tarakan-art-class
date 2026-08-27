@@ -12,7 +12,6 @@ class StudentReport extends Model
         'period_start',
         'period_end',
         'activity_notes',
-        'achievement_score',
         'tutor_notes',
         'photo_path',
         'credential_key',
@@ -22,7 +21,6 @@ class StudentReport extends Model
     protected $casts = [
         'period_start' => 'date',
         'period_end' => 'date',
-        'achievement_score' => 'integer',
     ];
 
     protected static function booted(): void
@@ -36,12 +34,11 @@ class StudentReport extends Model
 
     public static function generateCredentialKey(): string
     {
-        $year = now()->year;
-        $prefix = 'TAC-'.$year.'-';
+        $prefix = 'TAC-';
         $last = self::where('credential_key', 'like', $prefix.'%')
             ->orderByDesc('id')
             ->first();
-        $next = $last ? ((int) substr($last->credential_key, strlen($prefix))) + 1 : 1;
+        $next = $last ? ((int) preg_replace('/\D/', '', substr($last->credential_key, strlen($prefix)))) + 1 : 1;
 
         return $prefix.str_pad((string) $next, 3, '0', STR_PAD_LEFT);
     }

@@ -13,32 +13,58 @@ class ReportController extends Controller
 {
     public function index(Request $request)
     {
+        $month = $request->string('month')->toString();
         $search = $request->string('search')->toString();
-
-        $reports = StudentReport::query()
-            ->with(['student.payments', 'creator'])
-            // Raport tetap terlihat oleh admin apa pun status tagihannya; yang
-            // ditahan hanya akses orang tua lewat credential key (lihat guestShow).
-            ->when($search, fn ($q) => $q->where('credential_key', 'like', "%{$search}%")
-                ->orWhereHas('student', fn ($s) => $s->where('name', 'like', "%{$search}%")))
-            ->orderByDesc('id')
-            ->paginate(10)
-            ->withQueryString();
 
         // Jumlah raport yang tertahan dari orang tua karena muridnya menunggak.
         $withheldCount = StudentReport::whereHas('student', fn ($s) => $s->inArrears())->count();
 
-        return view('reports.index', compact('reports', 'search', 'withheldCount'));
+        // Mode detail bulan: tampilkan semua raport di bulan itu.
+        if ($month !== '' && preg_match('/^(\d{4})-(\d{2})$/', $month, $m)) {
+            $reports = StudentReport::query()
+                ->with(['student', 'creator'])
+                ->whereYear('period_start', $m[1])
+                ->whereMonth('period_start', $m[2])
+                ->when($search, fn ($q) => $q->where('credential_key', 'like', "%{$search}%")
+                    ->orWhereHas('student', fn ($s) => $s->where('name', 'like', "%{$search}%")))
+                ->orderBy(
+                    Student::select('name')
+                        ->whereColumn('students.id', 'student_reports.student_id')
+                        ->limit(1)
+                )
+                ->get();
+
+            return view('reports.index', compact('reports', 'month', 'search', 'withheldCount'));
+        }
+
+        // Mode default: daftar bulan beserta jumlah raport.
+        $months = StudentReport::query()
+            ->selectRaw("DATE_FORMAT(period_start, '%Y-%m') as month, COUNT(*) as total")
+            ->groupBy('month')
+            ->orderByDesc('month')
+            ->get();
+
+        return view('reports.index', compact('months', 'search', 'withheldCount'));
     }
 
-    public function create()
+    public function create(Request $request)
     {
         // Raport boleh disusun untuk semua murid yang masih ikut kelas — menahan
         // penulisannya hanya membuat pekerjaan tutor menumpuk. Yang tertahan saat
         // menunggak adalah akses orang tua ke hasilnya.
         $students = Student::attendable()->orderBy('name')->get();
 
-        return view('reports.create', compact('students'));
+        // Pre-fill periode berdasarkan folder bulan yang sedang dibuka.
+        $month = $request->string('month')->toString();
+        $defaultStart = '';
+        $defaultEnd = '';
+        if ($month !== '' && preg_match('/^\d{4}-\d{2}$/', $month)) {
+            $dt = \Carbon\Carbon::createFromFormat('Y-m', $month);
+            $defaultStart = $dt->copy()->startOfMonth()->format('Y-m-d');
+            $defaultEnd = $dt->copy()->endOfMonth()->format('Y-m-d');
+        }
+
+        return view('reports.create', compact('students', 'defaultStart', 'defaultEnd'));
     }
 
     public function store(Request $request)
@@ -65,7 +91,7 @@ class ReportController extends Controller
             throw $e;
         }
 
-        return redirect()->route('reports.index')
+        return redirect()->route('reports.index', ['month' => $report->period_start->format('Y-m')])
             ->with('success', "Raport berhasil dibuat. Credential key: {$report->credential_key}");
     }
 
@@ -90,7 +116,7 @@ class ReportController extends Controller
 
     public function update(Request $request, StudentReport $report)
     {
-        $data = $this->reportData($this->validateData($request));
+        $data = $this->reportData($this->validateData($request, $report->id));
 
         $oldPhoto = $report->photo_path;
         $newPhoto = null;
@@ -116,7 +142,7 @@ class ReportController extends Controller
             Storage::disk('public')->delete($oldPhoto);
         }
 
-        return redirect()->route('reports.index')->with('success', 'Raport berhasil diperbarui.');
+        return redirect()->route('reports.index', ['month' => $report->period_start->format('Y-m')])->with('success', 'Raport berhasil diperbarui.');
     }
 
     public function destroy(StudentReport $report)
@@ -133,7 +159,7 @@ class ReportController extends Controller
             Storage::disk('public')->delete($photo);
         }
 
-        return redirect()->route('reports.index')->with('success', 'Raport berhasil dihapus.');
+        return redirect()->route('reports.index', ['month' => $report->period_start->format('Y-m')])->with('success', 'Raport berhasil dihapus.');
     }
 
     // ─── Guest Report Access (F9) — tanpa login ──────────────────
@@ -168,17 +194,33 @@ class ReportController extends Controller
         return view('reports.guest', compact('report'));
     }
 
-    private function validateData(Request $request): array
+    private function validateData(Request $request, ?int $excludeId = null): array
     {
-        return $request->validate([
+        $data = $request->validate([
             'student_id' => ['required', 'exists:students,id'],
             'period_start' => ['required', 'date'],
             'period_end' => ['required', 'date', 'after_or_equal:period_start'],
             'activity_notes' => ['required', 'string'],
-            'achievement_score' => ['required', 'integer', 'min:0', 'max:100'],
             'tutor_notes' => ['nullable', 'string'],
             'photo' => ['nullable', 'image', 'mimes:jpeg,jpg,png', 'max:2048'], // foto pas 4x6, maks 2MB
         ]);
+
+        // Cek duplikat: murid yang sama di bulan periode yang sama.
+        $periodDate = \Carbon\Carbon::parse($data['period_start']);
+        $exists = StudentReport::query()
+            ->where('student_id', $data['student_id'])
+            ->whereYear('period_start', $periodDate->year)
+            ->whereMonth('period_start', $periodDate->month)
+            ->when($excludeId, fn ($q) => $q->where('id', '!=', $excludeId))
+            ->exists();
+
+        if ($exists) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'student_id' => 'Murid ini sudah memiliki raport di bulan ' . $periodDate->translatedFormat('F Y') . '.',
+            ]);
+        }
+
+        return $data;
     }
 
     /**
