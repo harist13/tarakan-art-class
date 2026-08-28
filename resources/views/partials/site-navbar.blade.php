@@ -4,7 +4,6 @@
         ['label' => 'Tentang', 'route' => 'public.about'],
         ['label' => 'Program', 'route' => 'public.programs'],
         ['label' => 'Galeri', 'route' => 'public.gallery'],
-        ['label' => 'Jadwal', 'route' => 'public.schedule'],
         ['label' => 'Kontak', 'route' => 'public.contact'],
     ];
 @endphp

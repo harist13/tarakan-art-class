@@ -124,6 +124,24 @@ return [
                 'Semua bahan disediakan',
             ],
         ],
+        [
+            'slug' => 'visit',
+            'category' => 'visit',
+            'name' => 'Kelas Visit',
+            'age' => '4 – 12 tahun / Sekolah & Komunitas',
+            'duration' => '60 – 90 menit / sesi',
+            'capacity' => 'Grup / Rombongan',
+            'price' => 'Hubungi kami',
+            'schedule_hint' => 'Sesuai kesepakatan & reservasi',
+            'color' => 'grape',
+            'icon' => 'visit',
+            'summary' => 'Layanan kelas seni kunjungan ke sekolah, komunitas, acara ulang tahun, atau instansi dengan materi dan durasi yang dapat disesuaikan.',
+            'highlights' => [
+                'Tutor hadir langsung ke lokasi Anda',
+                'Semua alat & bahan lukis disiapkan lengkap',
+                'Materi & tema disesuaikan kebutuhan acara',
+            ],
+        ],
     ],
 
     // ─── Tentang ───────────────────────────────────────────────────────
@@ -205,6 +223,7 @@ return [
         'coloring' => 'Coloring Class',
         'drawing' => 'Drawing Class',
         'holiday' => 'Holiday Class',
+        'visit' => 'Kelas Visit',
         'kegiatan' => 'Kegiatan & Pameran',
     ],
 
@@ -225,6 +244,10 @@ return [
         [
             'q' => 'Apakah bisa coba kelas dulu?',
             'a' => 'Bisa. Hubungi kami lewat WhatsApp untuk menjadwalkan satu sesi percobaan sebelum mendaftar.',
+        ],
+        [
+            'q' => 'Apakah menerima Kelas Visit ke sekolah atau acara ulang tahun?',
+            'a' => 'Ya, kami melayani Kelas Visit untuk kegiatan sekolah, playgroup, komunitas, hingga pesta ulang tahun. Tutor kami akan datang langsung ke lokasi membawa seluruh alat dan perlengkapan seni.',
         ],
         [
             'q' => 'Bagaimana cara pembayarannya?',

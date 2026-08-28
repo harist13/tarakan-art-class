@@ -13,7 +13,14 @@
     ];
     $accent = $accents[$program['color'] ?? 'coral'] ?? $accents['coral'];
 
-    $icons = ['sparkle' => '✨', 'palette' => '🎨', 'pencil' => '✏️', 'sun' => '🌞'];
+    $icons = [
+        'sparkle' => '✨',
+        'palette' => '🎨',
+        'pencil' => '✏️',
+        'sun' => '🌞',
+        'visit' => '🏫',
+        'backpack' => '🎒',
+    ];
     $icon = $icons[$program['icon'] ?? ''] ?? '🎨';
 
     $next = $program['next_class'] ?? null;

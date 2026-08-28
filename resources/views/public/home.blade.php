@@ -136,9 +136,9 @@
     <x-site.heading
         eyebrow="Program"
         title="Kelas yang tumbuh bersama anak"
-        subtitle="Empat program dengan materi bertingkat, dari mengenal warna sampai ilustrasi." />
+        subtitle="Pilihan program dengan materi bertingkat, dari pra-sekolah, menggambar, hingga kelas visit." />
 
-    <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-4 mt-3">
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-4 mt-3 justify-content-center">
         @foreach($programs as $program)
             <div class="col"><x-site.program-card :program="$program" /></div>
         @endforeach
@@ -149,8 +149,103 @@
     </div>
 </x-site.section>
 
-{{-- ─── 3. Kenapa Tarakan Art Class ────────────────────────────── --}}
+{{-- ─── 3. Pengumuman & Agenda Studio ─────────────────────────── --}}
+@php
+    $hari = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+    $bulan = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    $tanggalID = fn ($date) => $hari[(int) $date->format('w')].', '.$date->format('j').' '.$bulan[(int) $date->format('n')].' '.$date->format('Y');
+    $hasPengumuman = (isset($holidayClasses) && $holidayClasses->isNotEmpty())
+        || (isset($announcements) && $announcements->isNotEmpty())
+        || (isset($holidays) && $holidays->isNotEmpty());
+@endphp
+
 <x-site.section tone="paper-2">
+    <x-site.heading
+        eyebrow="Pengumuman"
+        title="Pengumuman & Agenda Terkini"
+        subtitle="Informasi kegiatan, sesi Holiday Class, jadwal libur, dan kabar terbaru dari Tarakan Art Class." />
+
+    @if($hasPengumuman)
+        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mt-3 justify-content-center">
+            @if(isset($holidayClasses))
+                @foreach($holidayClasses as $hc)
+                    <div class="col">
+                        <div class="tac-card tac-card-hover h-100 p-4 d-flex flex-column">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <span class="tac-badge tac-bg-leaf-soft fw-bold">Holiday Class</span>
+                                <span class="small tac-muted-soft">{{ $hc->schedule->format('H.i') }} WITA</span>
+                            </div>
+                            <h3 class="fs-5 mb-2">{{ $hc->class_name }}</h3>
+                            <p class="small tac-muted-soft mb-3">
+                                📅 {{ $tanggalID($hc->schedule) }}
+                            </p>
+                            <div class="tac-dashed-top mt-auto pt-3 d-flex justify-content-between align-items-center small">
+                                <span class="tac-muted">{{ $hc->capacity }} anak / sesi</span>
+                                <span class="tac-display fw-bolder tac-text-coral">Rp {{ number_format($hc->price, 0, ',', '.') }}</span>
+                            </div>
+                            <div class="mt-3">
+                                <x-site.btn :href="route('public.contact', ['kelas' => 'holiday'])" size="sm" class="w-100">
+                                    Daftar Holiday Class
+                                </x-site.btn>
+                            </div>
+                        </div>
+                    </div>
+                @endforeach
+            @endif
+
+            @if(isset($announcements))
+                @foreach($announcements as $event)
+                    <div class="col">
+                        <div class="tac-card tac-card-hover h-100 p-4 d-flex flex-column">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <span class="tac-badge tac-bg-coral-soft fw-bold">Agenda & Pengumuman</span>
+                                <span class="small tac-muted-soft">
+                                    @if(!$event->isAllDay()) {{ substr($event->start_time, 0, 5) }} WITA @else Seharian @endif
+                                </span>
+                            </div>
+                            <h3 class="fs-5 mb-2">{{ $event->title }}</h3>
+                            <p class="small tac-muted-soft mb-2">
+                                📅 {{ $tanggalID($event->date) }}
+                            </p>
+                            @if($event->description)
+                                <p class="small lh-lg tac-muted mt-2 mb-0">{{ $event->description }}</p>
+                            @endif
+                        </div>
+                    </div>
+                @endforeach
+            @endif
+
+            @if(isset($holidays))
+                @foreach($holidays as $holiday)
+                    <div class="col">
+                        <div class="tac-card tac-card-hover h-100 p-4 d-flex flex-column">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <span class="tac-badge tac-bg-sun-soft fw-bold">Info Libur</span>
+                                <span class="small tac-muted-soft">{{ $holiday->date->format('j') }} {{ $bulan[(int) $holiday->date->format('n')] }} {{ $holiday->date->format('Y') }}</span>
+                            </div>
+                            <h3 class="fs-5 mb-2">{{ $holiday->name ?: 'Kelas Ditiadakan' }}</h3>
+                            <p class="small lh-lg tac-muted mb-0">
+                                Studio dan kelas reguler ditiadakan pada tanggal ini. Sesi pengganti diatur sesuai kesepakatan.
+                            </p>
+                        </div>
+                    </div>
+                @endforeach
+            @endif
+        </div>
+    @else
+        <div class="tac-card text-center px-4 py-5 mt-4 mx-auto" style="max-width: 38rem;">
+            <span class="tac-icon tac-bg-sun fs-4 mx-auto mb-3" aria-hidden="true">📢</span>
+            <h3 class="fs-5 mb-2">Semua Kelas Berjalan Sesuai Jadwal</h3>
+            <p class="small tac-muted mb-4">
+                Saat ini belum ada pengumuman khusus atau libur. Seluruh kelas reguler berjalan seperti biasa.
+            </p>
+            <x-site.btn :href="route('public.contact')" size="sm" variant="coral">Tanya Info Pendaftaran</x-site.btn>
+        </div>
+    @endif
+</x-site.section>
+
+{{-- ─── 4. Kenapa Tarakan Art Class ────────────────────────────── --}}
+<x-site.section tone="paper">
     <x-site.heading
         eyebrow="Kenapa Kami"
         title="Bukan sekadar tempat menitipkan anak"
@@ -180,8 +275,8 @@
     </div>
 </x-site.section>
 
-{{-- ─── 4. Preview galeri ──────────────────────────────────────── --}}
-<x-site.section tone="paper">
+{{-- ─── 5. Preview galeri ──────────────────────────────────────── --}}
+<x-site.section tone="paper-2">
     <x-site.heading
         eyebrow="Galeri"
         title="Karya-karya kecil yang membanggakan"
@@ -223,8 +318,8 @@
     </div>
 </x-site.section>
 
-{{-- ─── 5. Testimoni ───────────────────────────────────────────── --}}
-<x-site.section tone="paper-2">
+{{-- ─── 6. Testimoni ───────────────────────────────────────────── --}}
+<x-site.section tone="paper">
     <x-site.heading
         eyebrow="Testimoni"
         title="Kata orang tua murid"

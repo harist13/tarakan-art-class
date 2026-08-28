@@ -330,6 +330,43 @@ class PublicSiteTest extends TestCase
         $this->assertSame('Drawing Class', $lead->programName());
     }
 
+    public function test_navbar_tidak_memuat_menu_jadwal(): void
+    {
+        $this->get(route('public.home'))
+            ->assertOk()
+            ->assertDontSee('<a class="nav-link tac-nav-link " href="'.route('public.schedule').'"', false)
+            ->assertSee('Program')
+            ->assertSee('Galeri')
+            ->assertSee('Kontak');
+    }
+
+    public function test_halaman_program_dan_kontak_memuat_kelas_visit(): void
+    {
+        $this->get(route('public.programs'))
+            ->assertOk()
+            ->assertSee('Kelas Visit');
+
+        $this->get(route('public.contact'))
+            ->assertOk()
+            ->assertSee('Kelas Visit');
+    }
+
+    public function test_halaman_kontak_memuat_faq_dropdown(): void
+    {
+        $this->get(route('public.contact'))
+            ->assertOk()
+            ->assertSee('FAQ Pendaftaran')
+            ->assertSee('tac-faq', false)
+            ->assertSee('Apakah anak saya harus sudah bisa menggambar?');
+    }
+
+    public function test_halaman_beranda_memuat_section_pengumuman(): void
+    {
+        $this->get(route('public.home'))
+            ->assertOk()
+            ->assertSee('Pengumuman & Agenda Terkini');
+    }
+
     private function makeClass(Carbon $date, int $capacity = 8): ClassRoom
     {
         $tutor = Tutor::create(['name' => 'Kak Ayu', 'status' => 'active']);

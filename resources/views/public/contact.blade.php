@@ -233,6 +233,28 @@
     </div>
 </x-site.section>
 
+{{-- ─── FAQ Pendaftaran (Dropdown / Accordion) ─────────────────── --}}
+@if(!empty($faq))
+<x-site.section tone="paper-2">
+    <x-site.heading
+        eyebrow="FAQ Pendaftaran"
+        title="Pertanyaan yang sering ditanyakan"
+        subtitle="Beberapa informasi umum seputar pendaftaran, alat & bahan, jadwal, dan kelas visit." />
+
+    <div class="mx-auto mt-4 d-grid gap-3" style="max-width: 46rem;">
+        @foreach($faq as $item)
+            <details class="tac-card tac-faq px-4 py-3">
+                <summary class="d-flex justify-content-between align-items-center gap-3 tac-display fw-bold">
+                    <span>{{ $item['q'] }}</span>
+                    <span class="tac-faq-toggle" aria-hidden="true">+</span>
+                </summary>
+                <p class="tac-dashed-top small lh-lg tac-muted mt-3 pt-3 mb-0">{{ $item['a'] }}</p>
+            </details>
+        @endforeach
+    </div>
+</x-site.section>
+@endif
+
 @push('scripts')
 <script>
 // Saat form dikirim: buka chat WhatsApp admin yang sudah terisi ringkasan

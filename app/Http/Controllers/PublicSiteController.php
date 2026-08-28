@@ -39,11 +39,16 @@ class PublicSiteController extends Controller
 
     public function home()
     {
+        $today = Carbon::today();
+
         return view('public.home', [
-            'programs' => $this->programsWithLiveData()->take(4),
+            'programs' => $this->programsWithLiveData(),
             'testimonials' => config('site.testimonials', []),
             'galleryPreview' => $this->galleryItems()->take(6),
             'stats' => config('site.about.stats', []),
+            'announcements' => CalendarEvent::where('date', '>=', $today)->orderBy('date')->limit(4)->get(),
+            'holidayClasses' => HolidayClass::upcoming()->limit(4)->get(),
+            'holidays' => Holiday::where('date', '>=', $today)->orderBy('date')->limit(4)->get(),
         ]);
     }
 
@@ -58,7 +63,6 @@ class PublicSiteController extends Controller
     {
         return view('public.programs', [
             'programs' => $this->programsWithLiveData(),
-            'faq' => config('site.faq', []),
         ]);
     }
 
@@ -118,6 +122,7 @@ class PublicSiteController extends Controller
         return view('public.contact', [
             'classOptions' => $classOptions,
             'hours' => config('site.hours', []),
+            'faq' => config('site.faq', []),
             // Pra-pilih kelas & tipenya bila datang dari tombol "Daftar kelas ini".
             'selected' => $selected,
             'selectedType' => $this->resolveSelectedType($classOptions, $wanted, $selected),
