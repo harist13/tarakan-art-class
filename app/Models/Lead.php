@@ -45,7 +45,6 @@ class Lead extends Model
         'coloring' => 'Coloring',
         'drawing' => 'Drawing',
         self::HOLIDAY_TYPE => 'Holiday Class',
-        'visit' => 'Kelas Visit',
     ];
 
     public function classTypeName(): ?string

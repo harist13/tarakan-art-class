@@ -21,12 +21,8 @@
             <span class="tac-brand-mark tac-logo-mark" aria-hidden="true">
                 <img src="{{ asset('images/ogo.jpg') }}" alt="" width="40" height="40" decoding="async">
             </span>
-            {{-- Tiap huruf diwarnai bergiliran meniru lettering pada logo.
-                 Perulangannya sengaja ditulis rapat dalam satu baris: baris baru
-                 di antara <span> akan terbaca sebagai spasi, dan nama merek ini
-                 memang ditulis tanpa spasi. --}}
-            <span class="tac-display fs-5 fw-bolder mb-0">
-                @foreach(mb_str_split('TarakanArtClass') as $i => $char)<span class="tac-brand-c{{ $i % 4 + 1 }}">{{ $char }}</span>@endforeach
+            <span class="tac-display fs-5 fw-bolder mb-0" style="color: #000000 !important;">
+                TarakanArtClass
             </span>
         </a>
 

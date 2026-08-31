@@ -136,7 +136,7 @@
     <x-site.heading
         eyebrow="Program"
         title="Kelas yang tumbuh bersama anak"
-        subtitle="Pilihan program dengan materi bertingkat, dari pra-sekolah, menggambar, hingga kelas visit." />
+        subtitle="Pilihan program dengan materi bertingkat, dari pra-sekolah hingga menggambar." />
 
     <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-4 mt-3 justify-content-center">
         @foreach($programs as $program)

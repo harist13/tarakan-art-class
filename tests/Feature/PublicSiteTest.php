@@ -340,15 +340,21 @@ class PublicSiteTest extends TestCase
             ->assertSee('Kontak');
     }
 
-    public function test_halaman_program_dan_kontak_memuat_kelas_visit(): void
+    public function test_card_program_memuat_dropdown_tipe_kelas(): void
     {
         $this->get(route('public.programs'))
             ->assertOk()
-            ->assertSee('Kelas Visit');
+            ->assertSee('Tipe Kelas')
+            ->assertSee('Reguler (Bulanan)')
+            ->assertSee('Kelas Visit (Sekali Datang)')
+            ->assertSee('Rp115.000 / visit')
+            ->assertSee('Rp105.000 / visit');
 
-        $this->get(route('public.contact'))
+        $this->get(route('public.home'))
             ->assertOk()
-            ->assertSee('Kelas Visit');
+            ->assertSee('Tipe Kelas')
+            ->assertSee('Reguler (Bulanan)')
+            ->assertSee('Kelas Visit (Sekali Datang)');
     }
 
     public function test_halaman_kontak_memuat_faq_dropdown(): void

@@ -1,7 +1,7 @@
 @extends('layouts.public')
 
 @section('title', 'Program & Kelas')
-@section('description', 'Preschool Art, Coloring Class, Drawing Class, Holiday Class, dan Kelas Visit di Tarakan. Lihat rentang usia, durasi, kapasitas, dan biaya tiap kelas.')
+@section('description', 'Preschool Art, Coloring Class, Drawing Class, dan Holiday Class di Tarakan. Lihat rentang usia, durasi, kapasitas, dan biaya tiap kelas.')
 
 @section('content')
 

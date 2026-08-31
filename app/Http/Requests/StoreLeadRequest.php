@@ -40,7 +40,7 @@ class StoreLeadRequest extends FormRequest
             'parent_phone' => ['required', 'string', 'max:25', 'regex:/^[0-9+\-\s()]+$/'],
             'parent_email' => ['required', 'email', 'max:150'],
             'address' => ['required', 'string', 'max:500'],
-            'program' => ['nullable', Rule::requiredIf(fn () => $this->classExistsForSelectedType()), Rule::in($allowedPrograms)],
+            'program' => ['nullable', Rule::in($allowedPrograms)],
             'message' => ['nullable', 'string', 'max:1000'],
             // Honeypot: harus tetap kosong. Bot cenderung mengisi semua field.
             'website' => ['prohibited'],

@@ -633,10 +633,13 @@ html { scroll-behavior: smooth; }
     padding: 0.55rem 1.25rem 0.55rem 0.55rem;
     border-radius: 999px;
     background-color: var(--tac-leaf-dark);
-    color: #fff;
+    color: #fff !important;
     text-decoration: none;
     box-shadow: var(--tac-shadow-pill);
     transition: transform 0.12s ease, box-shadow 0.2s ease;
+}
+.tac-wa-float .tac-display {
+    color: #fff !important;
 }
 /* Logo di dalam lingkaran putih — sama seperti .tac-icon-brand, pembesarannya
    lewat transform supaya logonya tetap tepat di tengah lingkaran. */

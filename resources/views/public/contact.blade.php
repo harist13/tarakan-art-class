@@ -178,7 +178,7 @@
                             <input type="email" id="parent_email" name="parent_email" required maxlength="150"
                                    value="{{ old('parent_email') }}" placeholder="nama@email.com" class="tac-input">
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-12">
                             <label for="class_type" class="tac-label">
                                 Tipe kelas <span class="tac-text-coral" aria-hidden="true">*</span>
                             </label>
@@ -190,20 +190,6 @@
                                     </option>
                                 @endforeach
                             </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="program" class="tac-label">
-                                Kelas yang diminati <span class="tac-text-coral" aria-hidden="true">*</span>
-                            </label>
-                            <select id="program" name="program" required class="tac-input">
-                                <option value="">— Pilih kelas —</option>
-                                @foreach($classOptions as $option)
-                                    <option value="{{ $option['value'] }}" @selected(old('program', $selected) === $option['value']) data-category="{{ $option['category'] }}">
-                                        {{ $option['label'] }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            <p class="tac-muted-soft mt-2 mb-0" style="font-size: 0.75rem;" data-class-hint hidden></p>
                         </div>
                         <div class="col-12">
                             <label for="address" class="tac-label">
@@ -229,31 +215,31 @@
                     </div>
                 </form>
             </div>
+
         </div>
     </div>
-</x-site.section>
 
-{{-- ─── FAQ Pendaftaran (Dropdown / Accordion) ─────────────────── --}}
-@if(!empty($faq))
-<x-site.section tone="paper-2">
-    <x-site.heading
-        eyebrow="FAQ Pendaftaran"
-        title="Pertanyaan yang sering ditanyakan"
-        subtitle="Beberapa informasi umum seputar pendaftaran, alat & bahan, jadwal, dan kelas visit." />
-
-    <div class="mx-auto mt-4 d-grid gap-3" style="max-width: 46rem;">
-        @foreach($faq as $item)
-            <details class="tac-card tac-faq px-4 py-3">
-                <summary class="d-flex justify-content-between align-items-center gap-3 tac-display fw-bold">
-                    <span>{{ $item['q'] }}</span>
-                    <span class="tac-faq-toggle" aria-hidden="true">+</span>
-                </summary>
-                <p class="tac-dashed-top small lh-lg tac-muted mt-3 pt-3 mb-0">{{ $item['a'] }}</p>
-            </details>
-        @endforeach
+    {{-- ─── FAQ Pendaftaran (Dropdown / Accordion) ─────────────────── --}}
+    @if(!empty($faq))
+    <div class="mt-5 pt-4">
+        <h3 class="fs-4 mb-2 text-center">Pertanyaan yang sering ditanyakan</h3>
+        <p class="small tac-muted mb-4 text-center">Beberapa informasi umum seputar pendaftaran, alat & bahan, dan jadwal kelas.</p>
+        <div class="mx-auto d-grid gap-3" style="max-width: 46rem;">
+            @foreach($faq as $item)
+                <details class="tac-card tac-faq px-4 py-3">
+                    <summary class="d-flex justify-content-between align-items-center gap-3 tac-display fw-bold">
+                        <span>{{ $item['q'] }}</span>
+                        <span class="tac-faq-toggle" aria-hidden="true">+</span>
+                    </summary>
+                    <p class="tac-dashed-top small lh-lg tac-muted mt-3 pt-3 mb-0">{{ $item['a'] }}</p>
+                </details>
+            @endforeach
+        </div>
     </div>
+    @endif
 </x-site.section>
-@endif
+
+
 
 @push('scripts')
 <script>
@@ -274,72 +260,23 @@
         return select.options[select.selectedIndex].text.trim();
     }
 
-    // Tipe kelas → menyaring daftar "Kelas yang diminati". Opsi disimpan sekali
-    // di awal, lalu select dibangun ulang tiap tipe berubah (option[hidden]
-    // tidak konsisten di semua browser, terutama di ponsel).
     var typeSelect = form.elements['class_type'];
-    var programSelect = form.elements['program'];
-    var hint = form.querySelector('[data-class-hint]');
 
-    if (typeSelect && programSelect) {
-        var placeholder = programSelect.options[0].text;
-        var allClasses = Array.prototype.slice.call(programSelect.options, 1).map(function (option) {
-            return {
-                value: option.value,
-                label: option.text.trim(),
-                // Opsi tanpa kategori cocok untuk semua tipe kelas. Holiday Class
-                // punya kategorinya sendiri ('holiday'), jadi hanya muncul saat
-                // tipe itu dipilih.
-                category: option.dataset.category || ''
-            };
-        });
-
-        function renderClasses() {
-            var type = typeSelect.value;
-            var previous = programSelect.value;
-            var matches = allClasses.filter(function (item) {
-                return !type || !item.category || item.category === type;
-            });
-
-            programSelect.innerHTML = '';
-            programSelect.add(new Option(placeholder, ''));
-            matches.forEach(function (item) {
-                programSelect.add(new Option(item.label, item.value));
-            });
-
-            // Pertahankan pilihan lama bila masih relevan dengan tipe baru.
-            programSelect.value = matches.some(function (item) { return item.value === previous; })
-                ? previous
-                : '';
-
-            // Tipe kelas yang belum punya jadwal tidak boleh membuat form buntu:
-            // pilihan kelas dilonggarkan, sisi server memakai aturan yang sama.
-            var empty = type && matches.length === 0;
-            programSelect.required = !empty;
-
-            if (hint) {
-                hint.hidden = !empty;
-                hint.textContent = empty
-                    ? 'Belum ada jadwal kelas ' + selectedLabel('class_type').toLowerCase() + '. Kirim saja formnya, admin akan mengabari begitu kelas dibuka.'
-                    : '';
-            }
+    function applyAgeFilter(age) {
+        if (!typeSelect) return;
+        if (age >= 1 && age <= 4) {
+            typeSelect.value = 'preschool';
+        } else if (age >= 5 && age <= 7) {
+            typeSelect.value = 'coloring';
+        } else if (age >= 8) {
+            typeSelect.value = 'drawing';
         }
-
-        // Kebalikannya: memilih kelas ikut mengisi tipe kelas yang belum diisi,
-        // supaya data yang masuk ke admin tidak saling bertentangan.
-        programSelect.addEventListener('change', function () {
-            if (typeSelect.value || !programSelect.value) return;
-
-            var picked = allClasses.filter(function (item) { return item.value === programSelect.value; })[0];
-            if (picked && picked.category) typeSelect.value = picked.category;
-        });
-
-        typeSelect.addEventListener('change', renderClasses);
-        renderClasses();
     }
 
     // Tanggal lahir → usia, supaya orang tua tidak perlu menghitung sendiri.
     var birthField = form.elements['date_of_birth'];
+    var ageField = form.elements['child_age'];
+    
     if (birthField) {
         birthField.addEventListener('change', function () {
             // Dipecah manual: new Date('2018-05-17') dibaca sebagai UTC, bisa
@@ -356,7 +293,19 @@
 
             // Di luar rentang input usia (mis. bayi < 1 tahun) field dibiarkan
             // kosong — usia opsional, jadi lebih baik kosong daripada invalid.
-            if (age >= 1 && age <= 99) form.elements['child_age'].value = age;
+            if (age >= 1 && age <= 99) {
+                if (ageField) ageField.value = age;
+                applyAgeFilter(age);
+            }
+        });
+    }
+
+    if (ageField) {
+        ageField.addEventListener('input', function () {
+            var age = parseInt(this.value, 10);
+            if (!isNaN(age)) {
+                applyAgeFilter(age);
+            }
         });
     }
 
@@ -374,7 +323,6 @@
             ['Nomor WhatsApp', value('parent_phone')],
             ['Email', value('parent_email')],
             ['Tipe kelas', selectedLabel('class_type')],
-            ['Kelas yang diminati', selectedLabel('program')],
             ['Alamat', value('address')],
             ['Pesan', value('message')]
         ].filter(function (row) {

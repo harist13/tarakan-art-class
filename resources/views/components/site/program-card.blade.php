@@ -18,7 +18,6 @@
         'palette' => '🎨',
         'pencil' => '✏️',
         'sun' => '🌞',
-        'visit' => '🏫',
         'backpack' => '🎒',
     ];
     $icon = $icons[$program['icon'] ?? ''] ?? '🎨';
@@ -27,9 +26,17 @@
     // Sesi Holiday Class terdekat — jadwal, kapasitas, & biaya di atas sudah ikut
     // diisi dari sesi ini, yang tersisa hanyalah temanya (tidak ada di config).
     $nextHoliday = $program['next_holiday'] ?? null;
+
+    $visitPrices = [
+        'preschool' => 'Rp115.000 / visit',
+        'coloring' => 'Rp105.000 / visit',
+        'drawing' => 'Rp105.000 / visit',
+    ];
+    $visitPrice = $program['visit_price'] ?? ($visitPrices[$program['slug'] ?? ''] ?? null);
+    $selectId = 'select-type-' . ($program['slug'] ?? 'pkg') . '-' . ($detailed ? 'detailed' : 'brief') . '-' . substr(md5($program['name'] ?? 'program'), 0, 6);
 @endphp
 
-<article {{ $attributes->class('tac-card tac-card-hover h-100 d-flex flex-column overflow-hidden') }}>
+<article {{ $attributes->class('tac-card tac-card-hover h-100 d-flex flex-column overflow-hidden tac-program-card') }}>
     <div class="{{ $accent['bar'] }}" style="height: 0.5rem;"></div>
 
     <div class="p-4 d-flex flex-column flex-grow-1">
@@ -68,11 +75,48 @@
                 <dt class="fw-normal tac-muted-soft">Jadwal</dt>
                 <dd class="mb-0 text-end fw-semibold">{{ $program['schedule_hint'] }}</dd>
             </div>
-            <div class="d-flex justify-content-between gap-3">
+            <div class="d-flex justify-content-between gap-3 align-items-center">
                 <dt class="fw-normal tac-muted-soft">Biaya</dt>
-                <dd class="mb-0 text-end tac-display fw-bolder fs-6">{{ $program['price'] }}</dd>
+                <dd class="mb-0 text-end tac-display fw-bolder fs-6 tac-program-price" style="color: var(--tac-ink);">{{ $program['price'] }}</dd>
             </div>
         </dl>
+
+        {{-- Dropdown Tipe Kelas (Reguler / Kelas Visit) --}}
+        @if($visitPrice)
+            <div class="mt-3 pt-3 tac-dashed-top">
+                <label for="{{ $selectId }}" class="form-label small fw-bold tac-text-ink mb-1 d-flex justify-content-between align-items-center">
+                    <span>Tipe Kelas</span>
+                    <span class="tac-badge tac-badge-outline" style="font-size: 0.6875rem; background-color: var(--tac-paper-light); color: var(--tac-ink-soft);">Pilih Paket</span>
+                </label>
+                <select id="{{ $selectId }}"
+                        class="form-select form-select-sm tac-input tac-program-type-select"
+                        data-regular-price="{{ $program['price'] }}"
+                        data-visit-price="{{ $visitPrice }}"
+                        data-regular-btn="Daftar kelas ini"
+                        data-visit-btn="Daftar Visit Ini"
+                        data-regular-url="{{ route('public.contact', ['kelas' => $program['slug']]) }}"
+                        data-visit-url="{{ route('public.contact', ['kelas' => $program['slug'], 'tipe' => 'visit']) }}"
+                        onchange="
+                            var card = this.closest('article');
+                            if (!card) return;
+                            var isVisit = this.value === 'visit';
+                            var priceEl = card.querySelector('.tac-program-price');
+                            var btnEl = card.querySelector('.tac-program-btn');
+                            if (priceEl) {
+                                priceEl.textContent = isVisit ? this.dataset.visitPrice : this.dataset.regularPrice;
+                            }
+                            if (btnEl) {
+                                btnEl.textContent = isVisit ? this.dataset.visitBtn : this.dataset.regularBtn;
+                                btnEl.href = isVisit ? this.dataset.visitUrl : this.dataset.regularUrl;
+                            }
+                        "
+                        aria-label="Pilih tipe kelas untuk {{ $program['name'] }}"
+                        style="background-color: #ffffff; color: var(--tac-ink); border: 1.5px solid var(--tac-line-strong); border-radius: 0.75rem; font-size: 0.84rem; font-weight: 600; padding: 0.45rem 0.75rem; cursor: pointer;">
+                    <option value="regular" selected>Reguler (Bulanan)</option>
+                    <option value="visit">Kelas Visit (Sekali Datang)</option>
+                </select>
+            </div>
+        @endif
 
         {{-- Data live dari sistem: slot terdekat yang masih dibuka. --}}
         @if($next)
@@ -99,7 +143,7 @@
         @endif
 
         <div class="mt-auto pt-4">
-            <x-site.btn :href="route('public.contact', ['kelas' => $program['slug']])" size="sm" class="w-100">
+            <x-site.btn :href="route('public.contact', ['kelas' => $program['slug']])" size="sm" class="w-100 tac-program-btn">
                 Daftar kelas ini
             </x-site.btn>
         </div>
