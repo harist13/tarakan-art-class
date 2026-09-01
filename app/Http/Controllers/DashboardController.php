@@ -41,23 +41,114 @@ class DashboardController extends Controller
         $studentsInArrears = Student::inArrears()->count();
         $suspendedStudents = Student::whereNotNull('suspended_at')->count();
 
-        // Grafik pertumbuhan murid 6 bulan terakhir (kumulatif murid aktif,
-        // konsisten dengan scorecard "Total Murid" yang membedakan aktif/nonaktif).
+        // Metrik pelengkap untuk visual scorecard (Opsi 2)
+        $studentActiveRate = $totalStudents > 0 ? round(($activeStudents / $totalStudents) * 100) : 0;
+        $monthNet = $monthIncome - $monthExpense;
+        $totalCapacity = (int) ClassRoom::where('status', 'open')->sum('capacity');
+        $enrolledStudentsCount = (int) \Illuminate\Support\Facades\DB::table('student_class')->where('status', 'active')->count();
+        $classOccupancyRate = $totalCapacity > 0 ? min(100, round(($enrolledStudentsCount / $totalCapacity) * 100)) : 0;
+        $arrearsRate = $totalStudents > 0 ? round(($studentsInArrears / $totalStudents) * 100) : 0;
+
+        // Grafik pertumbuhan murid 1 tahun terakhir (12 bulan secara realtime,
+        // kumulatif murid aktif, konsisten dengan scorecard "Total Murid").
         $growthLabels = [];
+        $growthFullLabels = [];
         $growthData = [];
-        for ($i = 5; $i >= 0; $i--) {
-            $month = now()->subMonths($i);
-            $growthLabels[] = $month->translatedFormat('M Y');
+        $baseDate = now()->startOfMonth();
+        for ($i = 11; $i >= 0; $i--) {
+            $month = $baseDate->copy()->subMonths($i);
+            $growthLabels[] = $month->translatedFormat('M \'y');
+            $growthFullLabels[] = $month->translatedFormat('F Y');
             $growthData[] = Student::where('status', 'active')
                 ->whereDate('join_date', '<=', $month->copy()->endOfMonth())
                 ->count();
         }
 
-        // Kelas terlaris (berdasarkan jumlah murid).
-        $topClasses = ClassRoom::withCount('students')
-            ->orderByDesc('students_count')
-            ->limit(5)
-            ->get();
+        // Jumlah murid per tipe kelas (realtime)
+        $typeDefinitions = [
+            'preschool' => [
+                'label' => 'Preschool',
+                'badge' => 'bg-primary text-white',
+                'icon' => 'bi bi-easel2-fill',
+                'bg_subtle' => '#E0F2FE',
+                'text_color' => '#0284C7',
+            ],
+            'coloring' => [
+                'label' => 'Coloring',
+                'badge' => 'bg-primary text-white',
+                'icon' => 'bi bi-easel2-fill',
+                'bg_subtle' => '#E0F2FE',
+                'text_color' => '#0284C7',
+            ],
+            'drawing' => [
+                'label' => 'Drawing',
+                'badge' => 'bg-primary text-white',
+                'icon' => 'bi bi-easel2-fill',
+                'bg_subtle' => '#E0F2FE',
+                'text_color' => '#0284C7',
+            ],
+        ];
+
+        $rawTypeCounts = Student::select('class_type')
+            ->selectRaw('count(*) as total')
+            ->selectRaw('sum(case when status = "active" then 1 else 0 end) as active_count')
+            ->selectRaw('sum(case when status = "inactive" then 1 else 0 end) as inactive_count')
+            ->groupBy('class_type')
+            ->get()
+            ->keyBy(fn ($item) => strtolower($item->class_type ?? 'other'));
+
+        $tutorCounts = ClassRoom::whereNotNull('tutor_id')
+            ->select('class_category')
+            ->selectRaw('count(distinct tutor_id) as total_tutors')
+            ->groupBy('class_category')
+            ->pluck('total_tutors', 'class_category')
+            ->mapWithKeys(fn ($count, $key) => [strtolower($key) => (int) $count]);
+
+        $studentsPerClassType = [];
+        foreach ($typeDefinitions as $key => $meta) {
+            $stat = $rawTypeCounts->get($key);
+            $total = $stat ? (int) $stat->total : 0;
+            $active = $stat ? (int) $stat->active_count : 0;
+            $inactive = $stat ? (int) $stat->inactive_count : 0;
+            $tutorCount = $tutorCounts->get($key, 0);
+
+            $studentsPerClassType[$key] = [
+                'key' => $key,
+                'label' => $meta['label'],
+                'badge' => $meta['badge'],
+                'icon' => $meta['icon'],
+                'bg_subtle' => $meta['bg_subtle'],
+                'text_color' => $meta['text_color'],
+                'total' => $total,
+                'active' => $active,
+                'inactive' => $inactive,
+                'tutor_count' => $tutorCount,
+                'percentage' => $totalStudents > 0 ? round(($total / $totalStudents) * 100) : 0,
+            ];
+        }
+
+        foreach ($rawTypeCounts as $key => $stat) {
+            if (!isset($studentsPerClassType[$key])) {
+                $total = (int) $stat->total;
+                $active = (int) $stat->active_count;
+                $inactive = (int) $stat->inactive_count;
+                $tutorCount = $tutorCounts->get($key, 0);
+
+                $studentsPerClassType[$key] = [
+                    'key' => $key,
+                    'label' => ucfirst($key),
+                    'badge' => 'bg-primary text-white',
+                    'icon' => 'bi bi-easel2-fill',
+                    'bg_subtle' => '#E0F2FE',
+                    'text_color' => '#0284C7',
+                    'total' => $total,
+                    'active' => $active,
+                    'inactive' => $inactive,
+                    'tutor_count' => $tutorCount,
+                    'percentage' => $totalStudents > 0 ? round(($total / $totalStudents) * 100) : 0,
+                ];
+            }
+        }
 
         $recentPayments = Payment::with('student')->orderByDesc('id')->limit(5)->get();
 
@@ -74,9 +165,16 @@ class DashboardController extends Controller
             'suspendedStudents',
             'pendingReplacements',
             'todayAttendance',
+            'studentActiveRate',
+            'monthNet',
+            'totalCapacity',
+            'enrolledStudentsCount',
+            'classOccupancyRate',
+            'arrearsRate',
             'growthLabels',
+            'growthFullLabels',
             'growthData',
-            'topClasses',
+            'studentsPerClassType',
             'recentPayments'
         ));
     }
