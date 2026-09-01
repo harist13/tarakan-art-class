@@ -23,21 +23,21 @@
     <div class="col-xl-3 col-md-6 mb-3 mb-xl-0">
         <div class="card h-100 border-0 shadow-sm rounded-4 position-relative overflow-hidden"
              style="background: var(--surface); border: 1px solid var(--border) !important;">
-            <div class="position-absolute top-0 start-0 end-0" style="height: 4px; background: linear-gradient(90deg, #0EA5E9, #38BDF8);"></div>
-            <div class="card-body p-3 px-4">
+            <div class="position-absolute top-0 start-0 end-0" style="height: 3.5px; background: #0EA5E9;"></div>
+            <div class="card-body p-3 px-3 py-3">
                 <div class="d-flex align-items-center justify-content-between mb-2">
-                    <span class="text-uppercase fw-bold text-muted" style="font-size: 0.72rem; letter-spacing: 0.8px;">Total Murid</span>
+                    <span class="text-muted fw-semibold" style="font-size: 0.84rem;">Total Murid</span>
                     <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                         style="width: 40px; height: 40px; background: rgba(14, 165, 233, 0.12); color: #0EA5E9;">
-                        <i class="bi bi-people-fill fs-5"></i>
+                         style="width: 34px; height: 34px; background: #E0F2FE; color: #0284C7;">
+                        <i class="bi bi-people fs-6"></i>
                     </div>
                 </div>
-                <h3 class="fw-bolder mb-2 text-gray-800" style="font-size: 1.85rem; line-height: 1;">{{ number_format($totalStudents) }}</h3>
-                <div class="d-flex flex-wrap gap-1 align-items-center">
-                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2 py-1" style="font-size: 0.72rem;">
-                        <i class="bi bi-check-circle-fill me-1"></i>{{ $activeStudents }} Aktif
+                <h3 class="fw-bold mb-3 text-gray-900" style="font-size: 1.75rem; line-height: 1.1;">{{ number_format($totalStudents) }}</h3>
+                <div class="d-flex flex-wrap gap-2 align-items-center">
+                    <span class="badge rounded-pill px-2 py-1 fw-semibold" style="font-size: 0.75rem; background: #E0F2FE; color: #0284C7;">
+                        {{ $activeStudents }} Aktif
                     </span>
-                    <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle rounded-pill px-2 py-1" style="font-size: 0.72rem;">
+                    <span class="badge rounded-pill px-2 py-1" style="font-size: 0.75rem; background: #F1F5F9; color: #374151; border: 1px solid #E2E8F0;">
                         {{ $inactiveStudents }} Nonaktif
                     </span>
                 </div>
@@ -49,23 +49,22 @@
     <div class="col-xl-3 col-md-6 mb-3 mb-xl-0">
         <div class="card h-100 border-0 shadow-sm rounded-4 position-relative overflow-hidden"
              style="background: var(--surface); border: 1px solid var(--border) !important;">
-            <div class="position-absolute top-0 start-0 end-0" style="height: 4px; background: linear-gradient(90deg, #10B981, #34D399);"></div>
-            <div class="card-body p-3 px-4">
+            <div class="position-absolute top-0 start-0 end-0" style="height: 3.5px; background: #10B981;"></div>
+            <div class="card-body p-3 px-3 py-3">
                 <div class="d-flex align-items-center justify-content-between mb-2">
-                    <span class="text-uppercase fw-bold text-muted" style="font-size: 0.72rem; letter-spacing: 0.8px;">Total Pendapatan</span>
+                    <span class="text-muted fw-semibold" style="font-size: 0.84rem;">Total Pendapatan</span>
                     <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                         style="width: 40px; height: 40px; background: rgba(16, 185, 129, 0.12); color: #10B981;">
-                        <i class="bi bi-cash-stack fs-5"></i>
+                         style="width: 34px; height: 34px; background: #DCFCE7; color: #16A34A;">
+                        <i class="bi bi-cash-stack fs-6"></i>
                     </div>
                 </div>
-                <h3 class="fw-bolder mb-2 text-gray-800" style="font-size: 1.35rem; line-height: 1.2;">Rp {{ number_format($totalIncome, 0, ',', '.') }}</h3>
-                <div class="d-flex flex-wrap gap-1 align-items-center" style="font-size: 0.73rem;">
-                    <span class="text-success fw-semibold" title="Pendapatan bulan ini">
-                        <i class="bi bi-arrow-up-circle-fill me-1"></i>Rp {{ number_format($monthIncome, 0, ',', '.') }}
+                <h3 class="fw-bold mb-3 text-gray-900" style="font-size: 1.55rem; line-height: 1.1;">Rp {{ number_format($totalIncome, 0, ',', '.') }}</h3>
+                <div class="d-flex flex-wrap gap-2 align-items-center">
+                    <span class="badge rounded-pill px-2 py-1 fw-semibold" style="font-size: 0.75rem; background: #DCFCE7; color: #16A34A;" title="Pendapatan bulan ini">
+                        &uarr; Rp {{ number_format($monthIncome, 0, ',', '.') }}
                     </span>
-                    <span class="text-muted mx-1">&middot;</span>
-                    <span class="text-danger" title="Pengeluaran bulan ini">
-                        <i class="bi bi-arrow-down-circle me-1"></i>Rp {{ number_format($monthExpense, 0, ',', '.') }}
+                    <span class="badge rounded-pill px-2 py-1" style="font-size: 0.75rem; background: #F1F5F9; color: #374151; border: 1px solid #E2E8F0;" title="Pengeluaran bulan ini">
+                        &darr; Rp {{ number_format($monthExpense, 0, ',', '.') }}
                     </span>
                 </div>
             </div>
@@ -76,20 +75,22 @@
     <div class="col-xl-3 col-md-6 mb-3 mb-xl-0">
         <div class="card h-100 border-0 shadow-sm rounded-4 position-relative overflow-hidden"
              style="background: var(--surface); border: 1px solid var(--border) !important;">
-            <div class="position-absolute top-0 start-0 end-0" style="height: 4px; background: linear-gradient(90deg, #6366F1, #818CF8);"></div>
-            <div class="card-body p-3 px-4">
+            <div class="position-absolute top-0 start-0 end-0" style="height: 3.5px; background: #6366F1;"></div>
+            <div class="card-body p-3 px-3 py-3">
                 <div class="d-flex align-items-center justify-content-between mb-2">
-                    <span class="text-uppercase fw-bold text-muted" style="font-size: 0.72rem; letter-spacing: 0.8px;">Total Kelas</span>
+                    <span class="text-muted fw-semibold" style="font-size: 0.84rem;">Total Kelas</span>
                     <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                         style="width: 40px; height: 40px; background: rgba(99, 102, 241, 0.12); color: #6366F1;">
-                        <i class="bi bi-easel2-fill fs-5"></i>
+                         style="width: 34px; height: 34px; background: #EDE9FE; color: #6366F1;">
+                        <i class="bi bi-display fs-6"></i>
                     </div>
                 </div>
-                <h3 class="fw-bolder mb-2 text-gray-800" style="font-size: 1.85rem; line-height: 1;">{{ number_format($totalClasses) }}</h3>
-                <div class="d-flex align-items-center">
-                    <span class="badge border rounded-pill px-2 py-1"
-                          style="font-size: 0.72rem; background: rgba(99, 102, 241, 0.1); color: #4F46E5; border-color: rgba(99, 102, 241, 0.25) !important;">
-                        <i class="bi bi-calendar2-check-fill me-1"></i>{{ $todayAttendance }} Hadir Hari Ini
+                <h3 class="fw-bold mb-3 text-gray-900" style="font-size: 1.75rem; line-height: 1.1;">{{ number_format($totalClasses) }}</h3>
+                <div class="d-flex flex-wrap gap-2 align-items-center">
+                    <span class="badge rounded-pill px-2 py-1 fw-semibold" style="font-size: 0.75rem; background: #EDE9FE; color: #6366F1;">
+                        {{ $activeClasses }} Aktif
+                    </span>
+                    <span class="badge rounded-pill px-2 py-1" style="font-size: 0.75rem; background: #F1F5F9; color: #374151; border: 1px solid #E2E8F0;">
+                        {{ $todayAttendance }} Hadir Hari Ini
                     </span>
                 </div>
             </div>
@@ -100,32 +101,23 @@
     <div class="col-xl-3 col-md-6 mb-3 mb-xl-0">
         <div class="card h-100 border-0 shadow-sm rounded-4 position-relative overflow-hidden"
              style="background: var(--surface); border: 1px solid var(--border) !important;">
-            <div class="position-absolute top-0 start-0 end-0" style="height: 4px; background: linear-gradient(90deg, #F59E0B, #EF4444);"></div>
-            <div class="card-body p-3 px-4">
+            <div class="position-absolute top-0 start-0 end-0" style="height: 3.5px; background: #F59E0B;"></div>
+            <div class="card-body p-3 px-3 py-3">
                 <div class="d-flex align-items-center justify-content-between mb-2">
-                    <span class="text-uppercase fw-bold text-warning-emphasis" style="font-size: 0.72rem; letter-spacing: 0.8px;">Perlu Perhatian</span>
+                    <span class="text-muted fw-semibold" style="font-size: 0.84rem;">Perlu Perhatian</span>
                     <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                         style="width: 40px; height: 40px; background: rgba(245, 158, 11, 0.12); color: #D97706;">
-                        <i class="bi bi-exclamation-triangle-fill fs-5"></i>
+                         style="width: 34px; height: 34px; background: #FEF3C7; color: #D97706;">
+                        <i class="bi bi-exclamation-triangle fs-6"></i>
                     </div>
                 </div>
-                <h3 class="fw-bolder mb-2 text-gray-800" style="font-size: 1.85rem; line-height: 1;">{{ $studentsInArrears }}</h3>
-                <div>
-                    <div class="d-flex flex-wrap gap-1 align-items-center">
-                        <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-2 py-1" style="font-size: 0.75rem;">
-                            {{ $unpaidCount }} tagihan pending
-                        </span>
-                        @if($pendingReplacements > 0)
-                            <span class="badge bg-light text-muted border rounded-pill px-2 py-1" style="font-size: 0.75rem;">
-                                {{ $pendingReplacements }} replacement
-                            </span>
-                        @endif
-                    </div>
-                    @if($suspendedStudents > 0)
-                        <div class="small text-danger fw-semibold mt-1" style="font-size: 0.72rem;">
-                            <i class="bi bi-slash-circle me-1"></i>{{ $suspendedStudents }} murid ditangguhkan
-                        </div>
-                    @endif
+                <h3 class="fw-bold mb-3 text-gray-900" style="font-size: 1.75rem; line-height: 1.1;">{{ $studentsInArrears }}</h3>
+                <div class="d-flex flex-wrap gap-2 align-items-center">
+                    <span class="badge rounded-pill px-2 py-1 fw-semibold" style="font-size: 0.75rem; background: #FEF3C7; color: #B45309;">
+                        {{ $unpaidCount }} Tagihan Pending
+                    </span>
+                    <span class="badge rounded-pill px-2 py-1" style="font-size: 0.75rem; background: #F1F5F9; color: #374151; border: 1px solid #E2E8F0;">
+                        {{ $pendingReplacements }} Replacement
+                    </span>
                 </div>
             </div>
         </div>

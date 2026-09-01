@@ -64,7 +64,7 @@
                     request()->except(['page', 'unbilled']),
                     $unbilled ? [] : ['unbilled' => 1]
                )) }}"
-               class="btn btn-sm {{ $unbilled ? 'btn-info' : ($unbilledCount > 0 ? 'btn-outline-info' : 'btn-outline-secondary') }} text-nowrap"
+               class="btn btn-sm {{ $unbilled ? 'btn-info text-white' : ($unbilledCount > 0 ? 'btn-outline-info' : 'btn-outline-secondary') }} text-nowrap"
                title="{{ $unbilled
                    ? 'Tampilkan kembali semua murid.'
                    : 'Saring murid yang belum punya invoice untuk '.\App\Models\Payment::labelForPeriod(\App\Models\Payment::periodFor()).'.' }}">
@@ -88,7 +88,7 @@
                     <strong>{{ \App\Models\Payment::labelForPeriod(\App\Models\Payment::periodFor()) }}</strong>.
                     Murid nonaktif, yang ditangguhkan, dan yang belum punya kelas berbiaya tidak dihitung.
                 </span>
-                <a href="{{ route('payments.create') }}" class="btn btn-sm btn-info text-nowrap">
+                <a href="{{ route('payments.create') }}" class="btn btn-sm btn-info text-white text-nowrap">
                     <i class="bi bi-calendar-plus me-1"></i> Terbitkan tagihan
                 </a>
             </div>
@@ -123,7 +123,7 @@
                             <td>
                                 <div class="d-flex flex-wrap gap-1">
                                     @forelse($student->classes as $class)
-                                        <span class="badge bg-light text-dark border">{{ $class->class_name }}</span>
+                                        <span class="badge bg-light text-secondary border rounded-pill px-2 py-1">{{ $class->class_name }}</span>
                                     @empty
                                         <span class="text-muted small">Belum ada kelas</span>
                                     @endforelse
@@ -136,10 +136,18 @@
                             <td class="text-nowrap">{{ optional($student->join_date)->format('d/m/Y') ?? '-' }}</td>
                             <td>
                                 <div class="d-flex flex-column align-items-start gap-1">
-                                    <span class="badge bg-{{ $student->status === 'active' ? 'success' : 'secondary' }}">{{ ucfirst($student->status) }}</span>
+                                    @if($student->status === 'active')
+                                        <span class="badge rounded-pill px-3 py-1 text-white fw-semibold" style="background-color: #15803D;">
+                                            Active
+                                        </span>
+                                    @else
+                                        <span class="badge rounded-pill px-3 py-1 text-white fw-semibold" style="background-color: #475569;">
+                                            {{ ucfirst($student->status) }}
+                                        </span>
+                                    @endif
                                     {{-- Penangguhan sistem: murid keluar dari daftar kelas ke depan, datanya tetap utuh. --}}
                                     @if($student->isSuspended())
-                                        <span class="badge bg-danger"
+                                        <span class="badge rounded-pill px-3 py-1 text-white fw-semibold" style="background-color: #DC2626;"
                                               title="{{ $student->suspended_reason }} — tidak masuk daftar kelas berikutnya sampai tunggakan lunas.">
                                             <i class="bi bi-pause-circle-fill me-1"></i>Ditangguhkan
                                         </span>
@@ -149,7 +157,7 @@
                                          Label, warna, & penjelasannya ditentukan Student::paymentBadge()
                                          — tiga keadaan berbeda tidak muat lagi dalam ternary di sini. --}}
                                     @if($badge = $student->paymentBadge())
-                                        <span class="badge {{ $badge['class'] }}" title="{{ $badge['title'] }}">
+                                        <span class="badge {{ $badge['class'] }}" style="{{ $badge['style'] ?? '' }}" title="{{ $badge['title'] }}">
                                             <i class="bi {{ $badge['icon'] }} me-1"></i>{{ $badge['label'] }}
                                         </span>
                                     @endif

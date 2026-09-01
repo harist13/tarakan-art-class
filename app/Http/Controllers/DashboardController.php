@@ -17,6 +17,7 @@ class DashboardController extends Controller
         $activeStudents = Student::where('status', 'active')->count();
         $inactiveStudents = $totalStudents - $activeStudents;
         $totalClasses = ClassRoom::count();
+        $activeClasses = ClassRoom::where('status', 'open')->count();
 
         $totalIncome = Transaction::where('type', 'income')->sum('amount');
 
@@ -157,6 +158,7 @@ class DashboardController extends Controller
             'activeStudents',
             'inactiveStudents',
             'totalClasses',
+            'activeClasses',
             'totalIncome',
             'monthIncome',
             'monthExpense',

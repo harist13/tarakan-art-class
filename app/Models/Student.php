@@ -309,8 +309,9 @@ class Student extends Model
             return [
                 'label' => 'Menunggak '.$this->arrearsDays().' hari',
                 'title' => 'Murid '.$this->paymentBlockReason().' — kelas pengganti & akses raport orang tua ditahan.',
-                'class' => 'bg-warning text-dark',
-                'icon' => 'bi-exclamation-triangle-fill',
+                'class' => 'rounded-pill px-3 py-1 text-white fw-semibold',
+                'style' => 'background-color: #BA5203;',
+                'icon' => 'bi-exclamation-triangle',
             ];
         }
 
@@ -325,7 +326,8 @@ class Student extends Model
                 'title' => 'Belum ada invoice untuk periode ini. Terbitkan lewat tombol Tagihan Bulanan di menu '.
                     'Pembayaran. Tanpa invoice tidak ada yang bisa ditagih, dan murid ini tidak akan pernah '.
                     'terhitung menunggak meski belum membayar.',
-                'class' => 'bg-info text-dark',
+                'class' => 'rounded-pill px-3 py-1 text-white fw-semibold',
+                'style' => 'background-color: #0369A1;',
                 'icon' => 'bi-receipt',
             ];
         }
@@ -334,8 +336,9 @@ class Student extends Model
             return [
                 'label' => 'Belum bayar tagihan',
                 'title' => 'Belum ada invoice yang dilunasi. Absensi tetap bisa dicatat.',
-                'class' => 'bg-warning text-dark',
-                'icon' => 'bi-exclamation-triangle-fill',
+                'class' => 'rounded-pill px-3 py-1 text-white fw-semibold',
+                'style' => 'background-color: #BA5203;',
+                'icon' => 'bi-exclamation-triangle',
             ];
         }
 
