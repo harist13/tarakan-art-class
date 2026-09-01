@@ -437,13 +437,13 @@ class ClassRoom extends Model
         if ($this->isClosed()) {
             $text = $this->closed_reason ? 'Ditutup — '.$this->closed_reason : 'Ditutup';
 
-            return ['text' => $text, 'color' => 'secondary'];
+            return ['text' => $text, 'color' => 'secondary', 'bg' => '#475569'];
         }
         if (! $this->hasTutor()) {
-            return ['text' => 'Tutor kosong', 'color' => 'warning'];
+            return ['text' => 'Tutor kosong', 'color' => 'warning', 'bg' => 'rgba(245, 136, 12, 1)'];
         }
         if ($this->isFull()) {
-            return ['text' => 'Penuh', 'color' => 'danger'];
+            return ['text' => 'Penuh', 'color' => 'danger', 'bg' => '#DC2626'];
         }
         if ($this->nextOccurrence() === null) {
             // Kelas sekali jalan memang kedaluwarsa setelah sesinya lewat. Kelas
@@ -451,10 +451,10 @@ class ClassRoom extends Model
             // libur — praktis tak pernah terjadi, tapi tetap perlu labelnya sendiri
             // agar tidak salah tampil "kursi tersisa".
             return $this->is_recurring
-                ? ['text' => 'Belum ada sesi', 'color' => 'dark']
-                : ['text' => 'Sudah lewat', 'color' => 'dark'];
+                ? ['text' => 'Belum ada sesi', 'color' => 'dark', 'bg' => '#475569']
+                : ['text' => 'Sudah lewat', 'color' => 'dark', 'bg' => '#475569'];
         }
 
-        return ['text' => $this->remainingSeats().' kursi tersisa', 'color' => 'success'];
+        return ['text' => $this->remainingSeats().' kursi tersisa', 'color' => 'success', 'bg' => '#15803D'];
     }
 }

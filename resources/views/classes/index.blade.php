@@ -77,7 +77,7 @@
                             <td>{{ $class->enrolledCount() }} / {{ $class->capacity }}</td>
                             <td>
                                 @php $av = $class->availability(); @endphp
-                                <span class="badge bg-{{ $av['color'] }} rounded-pill px-2 py-1">{{ $av['text'] }}</span>
+                                <span class="badge rounded-pill px-3 py-1 text-white fw-semibold" style="background-color: {{ $av['bg'] ?? '#475569' }};">{{ $av['text'] }}</span>
                             </td>
                             <td>
                                 {{ $class->scheduleLabel() }}

@@ -32,7 +32,7 @@
                                     <td>{{ $item->item_name }}</td>
                                     <td>Rp {{ number_format($item->purchase_price, 0, ',', '.') }}</td>
                                     <td>Rp {{ number_format($item->selling_price, 0, ',', '.') }}</td>
-                                    <td><span class="badge bg-{{ $item->remaining_stock > 0 ? 'success' : 'danger' }}">{{ $item->remaining_stock }}</span></td>
+                                    <td><span class="badge rounded-pill px-3 py-1 text-white fw-semibold" style="background-color: {{ $item->remaining_stock > 0 ? '#15803D' : '#DC2626' }};">{{ $item->remaining_stock }}</span></td>
                                     <td class="text-end">
                                         <a href="{{ route('inventory.edit', $item) }}" class="btn btn-sm btn-info text-white"><i class="bi bi-pencil"></i></a>
                                         <form action="{{ route('inventory.destroy', $item) }}" method="POST" class="d-inline" onsubmit="return confirm('Hapus barang ini?')">
@@ -61,7 +61,7 @@
                             <div class="fw-bold small">{{ $mv->item->item_name ?? '-' }}</div>
                             <div class="text-muted" style="font-size:.75rem;">{{ $mv->movement_date->format('d M Y') }}</div>
                         </div>
-                        <span class="badge bg-{{ $mv->type === 'in' ? 'success' : 'warning' }}">
+                        <span class="badge rounded-pill px-3 py-1 text-white fw-semibold" style="background-color: {{ $mv->type === 'in' ? '#15803D' : 'rgba(245, 136, 12, 1)' }};">
                             {{ $mv->type === 'in' ? '+' : '-' }}{{ $mv->quantity }}
                         </span>
                     </div>

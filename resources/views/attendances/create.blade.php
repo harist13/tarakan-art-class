@@ -8,6 +8,72 @@
     $jumlahTercatat = $rows->filter(fn ($row) => $existing->has($row['student']->id))->count();
 @endphp
 
+@push('styles')
+<style>
+/* Segmented Radio Group & Buttons */
+.btn-outline-permit {
+    color: rgba(245, 136, 12, 1) !important;
+    border-color: rgba(245, 136, 12, 1) !important;
+    background-color: transparent;
+}
+.btn-outline-permit:hover,
+.btn-outline-permit:focus,
+.btn-outline-permit:active {
+    color: #FFFFFF !important;
+    background-color: rgba(245, 136, 12, 1) !important;
+    border-color: rgba(245, 136, 12, 1) !important;
+}
+.btn-check:checked + .btn-outline-permit,
+.btn-check:active + .btn-outline-permit,
+.btn-check:focus + .btn-outline-permit {
+    color: #FFFFFF !important;
+    background-color: rgba(245, 136, 12, 1) !important;
+    border-color: rgba(245, 136, 12, 1) !important;
+    font-weight: 600;
+}
+
+.btn-outline-success {
+    color: #15803D !important;
+    border-color: #15803D !important;
+}
+.btn-outline-success:hover,
+.btn-outline-success:focus,
+.btn-outline-success:active {
+    color: #FFFFFF !important;
+    background-color: #15803D !important;
+    border-color: #15803D !important;
+}
+.btn-check:checked + .btn-outline-success,
+.btn-check:active + .btn-outline-success,
+.btn-check:focus + .btn-outline-success {
+    color: #FFFFFF !important;
+    background-color: #15803D !important;
+    border-color: #15803D !important;
+    font-weight: 600;
+}
+
+.btn-outline-danger {
+    color: #DC2626 !important;
+    border-color: #DC2626 !important;
+}
+.btn-outline-danger:hover,
+.btn-outline-danger:focus,
+.btn-outline-danger:active {
+    color: #FFFFFF !important;
+    background-color: #DC2626 !important;
+    border-color: #DC2626 !important;
+}
+.btn-check:checked + .btn-outline-danger,
+.btn-check:active + .btn-outline-danger,
+.btn-check:focus + .btn-outline-danger {
+    color: #FFFFFF !important;
+    background-color: #DC2626 !important;
+    border-color: #DC2626 !important;
+    font-weight: 600;
+}
+</style>
+@endpush
+
 <div class="d-sm-flex align-items-center justify-content-between mb-4">
     <div>
         <h1 class="h3 mb-1 text-gray-800 fw-bold">Input Absensi</h1>
@@ -139,7 +205,7 @@
                     <span class="small text-muted">Tandai semua:</span>
                     <button type="button" class="btn btn-sm btn-outline-success" data-bulk="present"><i class="bi bi-check-lg me-1"></i>Hadir</button>
                     <button type="button" class="btn btn-sm btn-outline-danger" data-bulk="absent"><i class="bi bi-x-lg me-1"></i>Absen</button>
-                    <button type="button" class="btn btn-sm btn-outline-warning" data-bulk="permit"><i class="bi bi-envelope me-1"></i>Izin</button>
+                    <button type="button" class="btn btn-sm btn-outline-permit" data-bulk="permit"><i class="bi bi-envelope me-1"></i>Izin</button>
                 </div>
 
                 <div class="table-responsive">
@@ -177,7 +243,7 @@
                                         {{-- Penanda tagihan saja — kehadirannya tetap dicatat seperti biasa. --}}
                                         @if($student->hasArrears())
                                             <div class="mt-1">
-                                                <span class="badge bg-warning text-dark fw-normal"
+                                                <span class="badge rounded-pill px-3 py-1 text-white fw-semibold" style="background-color: rgba(245, 136, 12, 1);"
                                                       title="Murid {{ $student->paymentBlockReason() }}. Kehadiran tetap bisa dicatat; ingatkan orang tuanya.">
                                                     <i class="bi bi-cash-coin me-1"></i>Menunggak {{ $student->arrearsDays() }} hari
                                                 </span>
@@ -195,7 +261,7 @@
                                             <input type="radio" class="btn-check" name="records[{{ $i }}][status]" id="absen-{{ $i }}" value="absent" @checked($status === 'absent')>
                                             <label class="btn btn-outline-danger" for="absen-{{ $i }}">Absen</label>
                                             <input type="radio" class="btn-check" name="records[{{ $i }}][status]" id="izin-{{ $i }}" value="permit" @checked($status === 'permit')>
-                                            <label class="btn btn-outline-warning" for="izin-{{ $i }}">Izin</label>
+                                            <label class="btn btn-outline-permit" for="izin-{{ $i }}">Izin</label>
                                         </div>
                                     </td>
                                     <td><input type="text" name="records[{{ $i }}][notes]" class="form-control form-control-sm" placeholder="opsional" value="{{ old("records.$i.notes", $tercatat->notes ?? '') }}"></td>

@@ -33,11 +33,11 @@
                     </div>
                 </div>
                 <h3 class="fw-bold mb-3 text-gray-900" style="font-size: 1.75rem; line-height: 1.1;">{{ number_format($totalStudents) }}</h3>
-                <div class="d-flex flex-wrap gap-2 align-items-center">
-                    <span class="badge rounded-pill px-2 py-1 fw-semibold" style="font-size: 0.75rem; background: #E0F2FE; color: #0284C7;">
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <span class="badge rounded-pill px-2 py-1 fw-semibold text-nowrap" style="font-size: 0.76rem; background: #E0F2FE; color: #0284C7;">
                         {{ $activeStudents }} Aktif
                     </span>
-                    <span class="badge rounded-pill px-2 py-1" style="font-size: 0.75rem; background: #F1F5F9; color: #374151; border: 1px solid #E2E8F0;">
+                    <span class="badge rounded-pill px-2 py-1 text-nowrap" style="font-size: 0.76rem; background: #F1F5F9; color: #374151; border: 1px solid #E2E8F0;">
                         {{ $inactiveStudents }} Nonaktif
                     </span>
                 </div>
@@ -59,11 +59,11 @@
                     </div>
                 </div>
                 <h3 class="fw-bold mb-3 text-gray-900" style="font-size: 1.55rem; line-height: 1.1;">Rp {{ number_format($totalIncome, 0, ',', '.') }}</h3>
-                <div class="d-flex flex-wrap gap-2 align-items-center">
-                    <span class="badge rounded-pill px-2 py-1 fw-semibold" style="font-size: 0.75rem; background: #DCFCE7; color: #16A34A;" title="Pendapatan bulan ini">
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <span class="badge rounded-pill px-2 py-1 fw-semibold text-nowrap" style="font-size: 0.76rem; background: #DCFCE7; color: #16A34A;" title="Pendapatan bulan ini">
                         &uarr; Rp {{ number_format($monthIncome, 0, ',', '.') }}
                     </span>
-                    <span class="badge rounded-pill px-2 py-1" style="font-size: 0.75rem; background: #F1F5F9; color: #374151; border: 1px solid #E2E8F0;" title="Pengeluaran bulan ini">
+                    <span class="badge rounded-pill px-2 py-1 text-nowrap" style="font-size: 0.76rem; background: #F1F5F9; color: #374151; border: 1px solid #E2E8F0;" title="Pengeluaran bulan ini">
                         &darr; Rp {{ number_format($monthExpense, 0, ',', '.') }}
                     </span>
                 </div>
@@ -85,11 +85,11 @@
                     </div>
                 </div>
                 <h3 class="fw-bold mb-3 text-gray-900" style="font-size: 1.75rem; line-height: 1.1;">{{ number_format($totalClasses) }}</h3>
-                <div class="d-flex flex-wrap gap-2 align-items-center">
-                    <span class="badge rounded-pill px-2 py-1 fw-semibold" style="font-size: 0.75rem; background: #EDE9FE; color: #6366F1;">
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <span class="badge rounded-pill px-2 py-1 fw-semibold text-nowrap" style="font-size: 0.76rem; background: #EDE9FE; color: #6366F1;">
                         {{ $activeClasses }} Aktif
                     </span>
-                    <span class="badge rounded-pill px-2 py-1" style="font-size: 0.75rem; background: #F1F5F9; color: #374151; border: 1px solid #E2E8F0;">
+                    <span class="badge rounded-pill px-2 py-1 text-nowrap" style="font-size: 0.76rem; background: #F1F5F9; color: #374151; border: 1px solid #E2E8F0;">
                         {{ $todayAttendance }} Hadir Hari Ini
                     </span>
                 </div>
@@ -111,11 +111,11 @@
                     </div>
                 </div>
                 <h3 class="fw-bold mb-3 text-gray-900" style="font-size: 1.75rem; line-height: 1.1;">{{ $studentsInArrears }}</h3>
-                <div class="d-flex flex-wrap gap-2 align-items-center">
-                    <span class="badge rounded-pill px-2 py-1 fw-semibold" style="font-size: 0.75rem; background: #FEF3C7; color: rgba(245, 136, 12, 1);">
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <span class="badge rounded-pill px-2 py-1 fw-semibold text-nowrap" style="font-size: 0.76rem; background: #FEF3C7; color: rgba(245, 136, 12, 1);">
                         {{ $unpaidCount }} Tagihan Pending
                     </span>
-                    <span class="badge rounded-pill px-2 py-1" style="font-size: 0.75rem; background: #F1F5F9; color: #374151; border: 1px solid #E2E8F0;">
+                    <span class="badge rounded-pill px-2 py-1 text-nowrap" style="font-size: 0.76rem; background: #F1F5F9; color: #374151; border: 1px solid #E2E8F0;">
                         {{ $pendingReplacements }} Replacement
                     </span>
                 </div>

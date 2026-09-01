@@ -96,17 +96,17 @@
     <input type="radio" class="btn-check" name="panelToggle" id="toggleRequests" autocomplete="off" @checked($tab === 'requests')>
     <label class="btn btn-outline-primary" for="toggleRequests">
         <i class="bi bi-arrow-left-right me-1"></i>Request Replacement
-        @if($pendingCount)<span class="badge bg-warning text-dark ms-1">{{ $pendingCount }}</span>@endif
+        @if($pendingCount)<span class="badge rounded-pill ms-1 fw-bold" style="background-color: rgba(245, 136, 12, 1); color: #FFFFFF !important;">{{ $pendingCount }}</span>@endif
     </label>
     <input type="radio" class="btn-check" name="panelToggle" id="toggleSlots" autocomplete="off" @checked($tab === 'slots')>
     <label class="btn btn-outline-primary" for="toggleSlots">
         <i class="bi bi-toggles me-1"></i>Ketersediaan Slot
-        <span class="badge bg-success ms-1">{{ $availableSlots }}</span>
+        <span class="badge rounded-pill ms-1 fw-bold" style="background-color: #15803D; color: #FFFFFF !important;">{{ $availableSlots }}</span>
     </label>
     <input type="radio" class="btn-check" name="panelToggle" id="toggleMarkers" autocomplete="off" @checked($tab === 'markers')>
     <label class="btn btn-outline-primary" for="toggleMarkers">
         <i class="bi bi-calendar-week me-1"></i>Hari Libur &amp; Acara
-        <span class="badge bg-info ms-1">{{ $holidays->count() + $calendarEvents->count() }}</span>
+        <span class="badge rounded-pill ms-1 fw-bold" style="background-color: #0891B2; color: #FFFFFF !important;">{{ $holidays->count() + $calendarEvents->count() }}</span>
     </label>
 </div>
 
@@ -168,8 +168,15 @@
                             </td>
                             <td class="small">{{ $req->reason ?: '—' }}</td>
                             <td>
-                                @php $colors = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'danger']; @endphp
-                                <span class="badge bg-{{ $colors[$req->request_status] }}">{{ ucfirst($req->request_status) }}</span>
+                                @php
+                                    $reqStyles = [
+                                        'pending'  => ['bg' => 'rgba(245, 136, 12, 1)', 'label' => 'Pending'],
+                                        'approved' => ['bg' => '#15803D',               'label' => 'Approved'],
+                                        'rejected' => ['bg' => '#DC2626',               'label' => 'Rejected'],
+                                    ];
+                                    $st = $reqStyles[$req->request_status] ?? ['bg' => '#475569', 'label' => ucfirst($req->request_status)];
+                                @endphp
+                                <span class="badge rounded-pill px-3 py-1 text-white fw-semibold" style="background-color: {{ $st['bg'] }};">{{ $st['label'] }}</span>
                                 @if($req->approver)<br><small class="text-muted">oleh {{ $req->approver->full_name }}</small>@endif
                             </td>
                             <td class="text-end text-nowrap">

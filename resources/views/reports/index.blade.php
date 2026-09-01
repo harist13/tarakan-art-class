@@ -52,11 +52,11 @@
                                 <td class="small">{{ $report->period_start->format('d M Y') }} — {{ $report->period_end->format('d M Y') }}</td>
                                 <td class="small">{{ $report->creator->full_name ?? '-' }}</td>
                                 <td class="text-end">
-                                    <a href="{{ route('reports.show', $report) }}" class="btn btn-sm btn-secondary"><i class="bi bi-eye"></i></a>
-                                    <a href="{{ route('reports.edit', $report) }}" class="btn btn-sm btn-info text-white"><i class="bi bi-pencil"></i></a>
+                                    <a href="{{ route('reports.show', $report) }}" class="btn btn-sm btn-outline-primary" title="Lihat raport"><i class="bi bi-eye"></i></a>
+                                    <a href="{{ route('reports.edit', $report) }}" class="btn btn-sm btn-info text-white" title="Edit raport"><i class="bi bi-pencil"></i></a>
                                     <form action="{{ route('reports.destroy', $report) }}" method="POST" class="d-inline" onsubmit="return confirm('Hapus raport ini?')">
                                         @csrf @method('DELETE')
-                                        <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                                        <button class="btn btn-sm btn-outline-danger" title="Hapus raport"><i class="bi bi-trash"></i></button>
                                     </form>
                                 </td>
                             </tr>

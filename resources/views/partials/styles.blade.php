@@ -24,6 +24,15 @@
         --warning-color: #F59E0B;
         --danger-color: #EF4444;
 
+        /* High Contrast UI Badge Tokens (WCAG Compliant) */
+        --badge-success-bg: #15803D;
+        --badge-warning-bg: rgba(245, 136, 12, 1);
+        --badge-danger-bg:  #DC2626;
+        --badge-info-bg:    #0891B2;
+        --badge-primary-bg: #4F46E5;
+        --badge-neutral-bg: #475569;
+        --badge-text-light: #FFFFFF;
+
         /* Light theme surfaces */
         --bg: #EFF6FF;
         --bg-accent: #DBEAFE;
