@@ -29,12 +29,12 @@
                             <td>{{ $user->username }}</td>
                             <td>{{ $user->email }}</td>
                             <td>
-                                <span class="badge bg-{{ $user->role === 'super_admin' ? 'primary' : 'info' }}">
+                                <span class="badge rounded-pill px-3 py-1 text-white fw-semibold" style="background-color: {{ $user->role === 'super_admin' ? '#4F46E5' : '#0891B2' }};">
                                     {{ $user->role === 'super_admin' ? 'Super Admin' : 'Admin' }}
                                 </span>
                             </td>
                             <td>
-                                <span class="badge bg-{{ $user->status === 'active' ? 'success' : 'secondary' }}">
+                                <span class="badge rounded-pill px-3 py-1 text-white fw-semibold" style="background-color: {{ $user->status === 'active' ? '#15803D' : '#475569' }};">
                                     {{ ucfirst($user->status) }}
                                 </span>
                             </td>

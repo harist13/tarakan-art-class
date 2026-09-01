@@ -72,18 +72,18 @@
                         <tr>
                             <td class="fw-bold">{{ $class->class_code }}</td>
                             <td>{{ $class->class_name }}</td>
-                            <td><span class="badge bg-light text-dark border text-capitalize">{{ $class->class_category }}</span></td>
+                            <td><span class="badge bg-light text-dark border text-capitalize rounded-pill px-2 py-1 fw-semibold">{{ $class->class_category }}</span></td>
                             <td>{{ $class->tutor->name ?? '-' }}</td>
                             <td>{{ $class->enrolledCount() }} / {{ $class->capacity }}</td>
                             <td>
                                 @php $av = $class->availability(); @endphp
-                                <span class="badge bg-{{ $av['color'] }}">{{ $av['text'] }}</span>
+                                <span class="badge bg-{{ $av['color'] }} rounded-pill px-2 py-1">{{ $av['text'] }}</span>
                             </td>
                             <td>
                                 {{ $class->scheduleLabel() }}
                                 <br><small class="text-muted">
                                     @if(! $class->is_recurring)
-                                        <span class="badge bg-light text-dark border">Sekali jalan</span>
+                                        <span class="badge bg-light text-dark border rounded-pill px-2 py-1 fw-semibold">Sekali jalan</span>
                                     @elseif($next = $class->nextOccurrence())
                                         Sesi berikutnya {{ $next->format('d M Y') }}
                                     @else

@@ -64,12 +64,12 @@
                     request()->except(['page', 'unbilled']),
                     $unbilled ? [] : ['unbilled' => 1]
                )) }}"
-               class="btn btn-sm {{ $unbilled ? 'btn-info text-white' : ($unbilledCount > 0 ? 'btn-outline-info' : 'btn-outline-secondary') }} text-nowrap"
+               class="btn btn-sm {{ $unbilled ? 'btn-info text-white shadow-sm' : ($unbilledCount > 0 ? 'btn-outline-info' : 'btn-outline-secondary') }} text-nowrap rounded-pill px-3 py-1 fw-semibold"
                title="{{ $unbilled
                    ? 'Tampilkan kembali semua murid.'
                    : 'Saring murid yang belum punya invoice untuk '.\App\Models\Payment::labelForPeriod(\App\Models\Payment::periodFor()).'.' }}">
                 <i class="bi bi-receipt me-1"></i>Belum ditagih
-                <span class="badge {{ $unbilled ? 'bg-white text-info' : 'bg-secondary' }} ms-1">{{ $unbilledCount }}</span>
+                <span class="badge rounded-pill ms-1 fw-bold" style="background-color: rgba(245, 136, 12, 1); color: #FFFFFF !important; font-size: 0.75rem; padding: 0.2rem 0.55rem;">{{ $unbilledCount }}</span>
             </a>
             @if($search !== '' || $classId || $status !== '' || $unbilled)
                 <a href="{{ route('students.index') }}" class="btn btn-sm btn-outline-secondary" title="Reset filter"><i class="bi bi-x-lg"></i></a>
@@ -123,7 +123,7 @@
                             <td>
                                 <div class="d-flex flex-wrap gap-1">
                                     @forelse($student->classes as $class)
-                                        <span class="badge bg-light text-secondary border rounded-pill px-2 py-1">{{ $class->class_name }}</span>
+                                        <span class="badge bg-light text-dark border rounded-pill px-2 py-1 fw-semibold">{{ $class->class_name }}</span>
                                     @empty
                                         <span class="text-muted small">Belum ada kelas</span>
                                     @endforelse

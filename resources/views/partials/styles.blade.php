@@ -355,6 +355,28 @@
         color: #fff;
     }
 
+    .btn-info {
+        background-color: #0891B2 !important;
+        border-color: #0891B2 !important;
+        color: #fff !important;
+    }
+    .btn-info:hover, .btn-info:focus, .btn-info:active {
+        background-color: #0E7490 !important;
+        border-color: #0E7490 !important;
+        color: #fff !important;
+        transform: translateY(-1px);
+    }
+
+    .btn-outline-info {
+        color: #0891B2 !important;
+        border-color: #0891B2 !important;
+    }
+    .btn-outline-info:hover, .btn-outline-info:focus, .btn-outline-info:active {
+        background-color: #0891B2 !important;
+        border-color: #0891B2 !important;
+        color: #fff !important;
+    }
+
     .btn-sm {
         padding: 0.3rem 0.7rem;
     }

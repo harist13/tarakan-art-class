@@ -87,9 +87,9 @@
                             <td>Rp {{ number_format($class->price, 0, ',', '.') }}</td>
                             <td>
                                 @if($class->hasPassed())
-                                    <span class="badge bg-secondary">Sudah lewat</span>
+                                    <span class="badge rounded-pill px-3 py-1 text-white fw-semibold" style="background-color: #475569;">Sudah lewat</span>
                                 @else
-                                    <span class="badge bg-success">Tampil di website</span>
+                                    <span class="badge rounded-pill px-3 py-1 text-white fw-semibold" style="background-color: #15803D;">Tampil di website</span>
                                 @endif
                             </td>
                             <td class="text-end">

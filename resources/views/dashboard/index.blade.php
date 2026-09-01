@@ -101,18 +101,18 @@
     <div class="col-xl-3 col-md-6 mb-3 mb-xl-0">
         <div class="card h-100 border-0 shadow-sm rounded-4 position-relative overflow-hidden"
              style="background: var(--surface); border: 1px solid var(--border) !important;">
-            <div class="position-absolute top-0 start-0 end-0" style="height: 3.5px; background: #F59E0B;"></div>
+            <div class="position-absolute top-0 start-0 end-0" style="height: 3.5px; background: rgba(245, 136, 12, 1);"></div>
             <div class="card-body p-3 px-3 py-3">
                 <div class="d-flex align-items-center justify-content-between mb-2">
                     <span class="text-muted fw-semibold" style="font-size: 0.84rem;">Perlu Perhatian</span>
                     <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                         style="width: 34px; height: 34px; background: #FEF3C7; color: #D97706;">
+                         style="width: 34px; height: 34px; background: #FEF3C7; color: rgba(245, 136, 12, 1);">
                         <i class="bi bi-exclamation-triangle fs-6"></i>
                     </div>
                 </div>
                 <h3 class="fw-bold mb-3 text-gray-900" style="font-size: 1.75rem; line-height: 1.1;">{{ $studentsInArrears }}</h3>
                 <div class="d-flex flex-wrap gap-2 align-items-center">
-                    <span class="badge rounded-pill px-2 py-1 fw-semibold" style="font-size: 0.75rem; background: #FEF3C7; color: #B45309;">
+                    <span class="badge rounded-pill px-2 py-1 fw-semibold" style="font-size: 0.75rem; background: #FEF3C7; color: rgba(245, 136, 12, 1);">
                         {{ $unpaidCount }} Tagihan Pending
                     </span>
                     <span class="badge rounded-pill px-2 py-1" style="font-size: 0.75rem; background: #F1F5F9; color: #374151; border: 1px solid #E2E8F0;">

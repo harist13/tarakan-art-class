@@ -91,13 +91,17 @@
                     @forelse($transactions as $trx)
                         <tr>
                             <td>{{ $trx->transaction_date->format('d M Y') }}</td>
-                            <td><span class="badge bg-{{ $trx->type === 'income' ? 'success' : 'warning' }}">{{ $trx->type === 'income' ? 'Masuk' : 'Keluar' }}</span></td>
+                            <td>
+                                <span class="badge rounded-pill px-3 py-1 text-white fw-semibold" style="background-color: {{ $trx->type === 'income' ? '#15803D' : 'rgba(245, 136, 12, 1)' }};">
+                                    {{ $trx->type === 'income' ? 'Masuk' : 'Keluar' }}
+                                </span>
+                            </td>
                             <td>
                                 {{ $trx->category }}
                                 @if($trx->payment_id)
-                                    <span class="badge bg-light text-secondary border ms-1" title="Tercatat otomatis dari invoice lunas"><i class="bi bi-lightning-charge-fill"></i> Dari Invoice</span>
+                                    <span class="badge bg-light text-dark border ms-1 rounded-pill px-2 py-1 fw-semibold" title="Tercatat otomatis dari invoice lunas"><i class="bi bi-lightning-charge-fill"></i> Dari Invoice</span>
                                 @elseif($trx->inventory_item_id)
-                                    <span class="badge bg-light text-secondary border ms-1" title="Tercatat otomatis saat barang ditambahkan"><i class="bi bi-lightning-charge-fill"></i> Dari Inventaris</span>
+                                    <span class="badge bg-light text-dark border ms-1 rounded-pill px-2 py-1 fw-semibold" title="Tercatat otomatis saat barang ditambahkan"><i class="bi bi-lightning-charge-fill"></i> Dari Inventaris</span>
                                 @endif
                             </td>
                             <td class="small">{{ $trx->description ?: '-' }}</td>

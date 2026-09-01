@@ -5,10 +5,10 @@
 @section('content')
 @php
     $actionMeta = [
-        'created' => ['label' => 'Dibuat',    'badge' => 'success', 'icon' => 'bi-plus-circle'],
-        'updated' => ['label' => 'Diperbarui', 'badge' => 'info',    'icon' => 'bi-pencil-square'],
-        'deleted' => ['label' => 'Dihapus',   'badge' => 'danger',  'icon' => 'bi-trash'],
-        'sent'    => ['label' => 'Dikirim',   'badge' => 'primary', 'icon' => 'bi-send'],
+        'created' => ['label' => 'Dibuat',    'bg' => '#15803D', 'icon' => 'bi-plus-circle'],
+        'updated' => ['label' => 'Diperbarui', 'bg' => '#0891B2', 'icon' => 'bi-pencil-square'],
+        'deleted' => ['label' => 'Dihapus',   'bg' => '#DC2626', 'icon' => 'bi-trash'],
+        'sent'    => ['label' => 'Dikirim',   'bg' => '#4F46E5', 'icon' => 'bi-send'],
     ];
     $subjectLabels = [
         'Student'            => 'Murid',
@@ -30,7 +30,7 @@
         <h1 class="h3 mb-0 text-gray-800 fw-bold">Log Aktivitas</h1>
         <p class="text-muted small mb-0">Jejak aktivitas seluruh pengguna sistem (F15).</p>
     </div>
-    <span class="badge bg-primary align-self-center"><i class="bi bi-clock-history me-1"></i>{{ $logs->total() }} aktivitas</span>
+    <span class="badge rounded-pill px-3 py-1 text-white fw-semibold align-self-center" style="background-color: #0891B2;"><i class="bi bi-clock-history me-1"></i>{{ $logs->total() }} aktivitas</span>
 </div>
 
 <div class="card">
@@ -93,11 +93,13 @@
                                 @endif
                             </td>
                             <td>
-                                <span class="badge bg-{{ $meta['badge'] }}"><i class="bi {{ $meta['icon'] }} me-1"></i>{{ $meta['label'] }}</span>
+                                <span class="badge rounded-pill px-3 py-1 text-white fw-semibold" style="background-color: {{ $meta['bg'] ?? '#475569' }};">
+                                    <i class="bi {{ $meta['icon'] }} me-1"></i>{{ $meta['label'] }}
+                                </span>
                             </td>
                             <td>
                                 @if($subjectLabel)
-                                    <span class="badge bg-light text-dark border">{{ $subjectLabel }}{{ $log->subject_id ? ' #'.$log->subject_id : '' }}</span>
+                                    <span class="badge bg-light text-dark border rounded-pill px-2 py-1 fw-semibold">{{ $subjectLabel }}{{ $log->subject_id ? ' #'.$log->subject_id : '' }}</span>
                                 @else
                                     <span class="text-muted small">-</span>
                                 @endif

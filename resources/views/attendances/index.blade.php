@@ -42,8 +42,17 @@
                             <td class="fw-bold">{{ $att->student->name ?? '-' }}</td>
                             <td>{{ $att->classRoom->class_name ?? '-' }}</td>
                             <td>
-                                @php $c = ['present' => 'success', 'absent' => 'danger', 'permit' => 'warning']; @endphp
-                                <span class="badge bg-{{ $c[$att->status] }}">{{ ucfirst($att->status) }}</span>
+                                @php
+                                    $attStyles = [
+                                        'present' => ['bg' => '#15803D', 'label' => 'Hadir'],
+                                        'absent'  => ['bg' => '#DC2626', 'label' => 'Alfa'],
+                                        'permit'  => ['bg' => 'rgba(245, 136, 12, 1)', 'label' => 'Izin'],
+                                    ];
+                                    $st = $attStyles[$att->status] ?? ['bg' => '#475569', 'label' => ucfirst($att->status)];
+                                @endphp
+                                <span class="badge rounded-pill px-3 py-1 text-white fw-semibold" style="background-color: {{ $st['bg'] }};">
+                                    {{ $st['label'] }}
+                                </span>
                             </td>
                             <td class="small">{{ $att->notes ?: '-' }}</td>
                             <td class="text-end">
