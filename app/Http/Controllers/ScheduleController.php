@@ -144,7 +144,7 @@ class ScheduleController extends Controller
                     'extendedProps' => [
                         'type' => 'Kelas Reguler',
                         'tutor' => $class->tutor->name ?? '-',
-                        'category' => ucfirst($class->class_category),
+                        'category' => $class->class_category,
                         'cat' => $class->class_category, // nilai mentah untuk pencocokan level murid
                         'classId' => $class->id,
                         'code' => $class->class_code,

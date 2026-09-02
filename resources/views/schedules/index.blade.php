@@ -114,7 +114,7 @@
                             </td>
                             <td>
                                 <i class="bi bi-arrow-right-short text-success"></i>{{ $req->classRoom->class_category ?? '-' }}
-                                @if($req->classRoom)<br><small class="text-muted">{{ ucfirst($req->classRoom->class_category) }}</small>@endif
+                                @if($req->classRoom)<br><small class="text-muted">{{ $req->classRoom->scheduleLabel() }}</small>@endif
                             </td>
                             {{-- Jam ditampilkan 12 jam seperti di form pengajuan,
                                  supaya tidak ada dua konvensi waktu dalam satu alur. --}}

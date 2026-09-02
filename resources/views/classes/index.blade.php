@@ -71,7 +71,7 @@
                     @forelse($classes as $class)
                         <tr>
                             <td class="fw-bold">{{ $class->class_code }}</td>
-                            <td><span class="badge bg-light text-dark border text-capitalize rounded-pill px-2 py-1 fw-semibold">{{ $class->class_category }}</span></td>
+                            <td><span class="badge bg-light text-dark border rounded-pill px-2 py-1 fw-semibold">{{ $class->class_category }}</span></td>
                             <td>{{ $class->tutor->name ?? '-' }}</td>
                             <td>{{ $class->enrolledCount() }} / {{ $class->capacity }}</td>
                             <td>
@@ -217,7 +217,7 @@
                                             @foreach($tutor->classes as $cls)
                                                 <div class="mb-3">
                                                     <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
-                                                        <span class="badge bg-light text-dark border text-capitalize rounded-pill px-2 py-1 fw-semibold">{{ $cls->class_category }}</span>
+                                                        <span class="badge bg-light text-dark border rounded-pill px-2 py-1 fw-semibold">{{ $cls->class_category }}</span>
                                                         <span class="small text-muted">{{ $cls->class_code }} &middot; {{ $cls->scheduleLabel() }}</span>
                                                         <span class="badge bg-white text-dark border">{{ $cls->students->count() }} / {{ $cls->capacity }} murid</span>
                                                         <a href="{{ route('students.index', ['class_id' => $cls->id]) }}" class="small ms-auto text-decoration-none">

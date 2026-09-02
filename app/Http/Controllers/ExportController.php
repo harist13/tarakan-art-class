@@ -43,7 +43,7 @@ class ExportController extends Controller
             $s->parent_name,
             $s->phone_number,
             $s->classes->pluck('class_category')->implode(', ') ?: '-',
-            ucfirst($s->class_type),
+            $s->class_type,
             $s->status === 'active' ? 'Aktif' : 'Nonaktif',
             optional($s->join_date)->format('d/m/Y'),
         ]);

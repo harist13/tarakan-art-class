@@ -209,7 +209,7 @@
                             <select id="class_type" name="class_type" required
                                     @class(['tac-input', 'is-invalid border-danger' => $errors->has('class_type')])>
                                 <option value="">— Pilih tipe kelas —</option>
-                                @foreach(\App\Models\Lead::CLASS_TYPES as $value => $label)
+                                @foreach(\App\Models\Lead::classTypeOptions() as $value => $label)
                                     <option value="{{ $value }}" @selected(old('class_type', $selectedType) === $value)>
                                         {{ $label }}
                                     </option>
@@ -294,15 +294,31 @@
 
     var typeSelect = form.elements['class_type'];
 
+    // Usia → tipe kelas yang disarankan. Rentangnya diambil dari daftar program di
+    // config, bukan ditulis ulang di sini: nilai tipe kelas sekarang berupa kategori
+    // yang diketik admin, jadi slug yang dipatok di JS akan langsung basi begitu
+    // kategorinya berganti nama. Urut menaik menurut usia minimum.
+    var ageRanges = @json($ageSuggestions);
+
     function applyAgeFilter(age) {
-        if (!typeSelect) return;
-        if (age >= 1 && age <= 4) {
-            typeSelect.value = 'preschool';
-        } else if (age >= 5 && age <= 7) {
-            typeSelect.value = 'coloring';
-        } else if (age >= 8) {
-            typeSelect.value = 'drawing';
+        if (!typeSelect || !ageRanges.length) return;
+
+        // Rentang pertama yang menampung usia ini; di atas rentang terakhir dipakai
+        // program tertua, di bawah rentang pertama dipakai program termuda — sama
+        // seperti sebelumnya, supaya usia di luar rentang brosur tetap dapat saran.
+        var match = null;
+        for (var i = 0; i < ageRanges.length; i++) {
+            if (age <= ageRanges[i].max) { match = ageRanges[i]; break; }
         }
+        if (!match) match = ageRanges[ageRanges.length - 1];
+
+        // Kategori yang disarankan belum tentu ada di dropdown (mis. admin belum
+        // membuat kelasnya). Menyetel value yang tak ada justru mengosongkan pilihan,
+        // jadi pilihan orang tua dibiarkan apa adanya.
+        var exists = Array.prototype.some.call(typeSelect.options, function (opt) {
+            return opt.value === match.value;
+        });
+        if (exists) typeSelect.value = match.value;
     }
 
     // Tanggal lahir → usia, supaya orang tua tidak perlu menghitung sendiri.

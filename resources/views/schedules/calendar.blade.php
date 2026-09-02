@@ -53,7 +53,7 @@
                 <select id="replacementStudent" class="form-select form-select-sm" style="width:220px;">
                     <option value="">— Pilih murid —</option>
                     @foreach($students as $student)
-                        <option value="{{ $student->id }}" data-name="{{ $student->name }}" data-category="{{ $student->class_type }}">{{ $student->name }} ({{ ucfirst($student->class_type) }})</option>
+                        <option value="{{ $student->id }}" data-name="{{ $student->name }}" data-category="{{ $student->class_type }}">{{ $student->name }} ({{ $student->class_type }})</option>
                     @endforeach
                 </select>
             </div>

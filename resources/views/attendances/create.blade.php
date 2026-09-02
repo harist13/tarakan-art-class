@@ -154,7 +154,9 @@
                                 <strong>{{ $moved['student']->name }}</strong> ({{ $moved['student']->student_id }}) — pindah ke
                                 {{ $moved['replacement']->classRoom->class_category ?? 'kelas lain' }},
                                 {{ $moved['replacement']->replacement_date->locale('id')->translatedFormat('l, j F Y') }}
-                                pukul {{ \Illuminate\Support\Str::of($moved['replacement']->replacement_time)->substr(0, 5) }}.
+                                pukul {{ \Illuminate\Support\Str::of($moved['replacement']->replacement_time)->substr(0, 5) }}@if($moved['lainnya'] > 0) (+{{ $moved['lainnya'] }} sesi pengganti lain)@endif.
+                                <a href="{{ route('schedules.edit', $moved['replacement']) }}" class="alert-link ms-1"
+                                   title="Ubah jadwal pengganti {{ $moved['student']->name }} di Manajemen Jadwal"><i class="bi bi-pencil"></i> ubah</a>
                             </li>
                         @endforeach
                     </ul>
@@ -187,7 +189,7 @@
                     @endif
                 </p>
             @else
-            <form action="{{ route('attendances.store') }}" method="POST">
+            <form action="{{ route('attendances.store') }}" method="POST" data-attendance-form>
                 @csrf
                 <input type="hidden" name="class_id" value="{{ $selectedClass->id }}">
                 {{-- Tanggalnya sudah ditetapkan di langkah 1; kalau bisa diubah lagi
@@ -211,7 +213,13 @@
                 <div class="table-responsive">
                     <table class="table align-middle">
                         <thead class="text-muted small text-uppercase">
-                            <tr><th>Murid</th><th style="width:260px;">Status</th><th>Catatan</th></tr>
+                            <tr>
+                                <th>Murid</th>
+                                <th style="width:110px;" class="text-center">Sesi Bulan Ini</th>
+                                <th style="width:260px;">Status</th>
+                                <th>Catatan</th>
+                                <th style="width:170px;">Replacement?</th>
+                            </tr>
                         </thead>
                         <tbody>
                             @foreach($rows as $i => $row)
@@ -220,6 +228,28 @@
                                     $replacement = $row['replacement'];
                                     $tercatat = $existing->get($student->id);
                                     $status = old("records.$i.status", $tercatat->status ?? 'present');
+
+                                    // Sesi bulan ini yang sudah dihadiri, dari jatah bulanan.
+                                    $sesiHadir = (int) ($sessionCounts[$student->id] ?? 0);
+                                    $sesiPenuh = $sesiHadir >= $sessionQuota;
+
+                                    // Request pengganti yang sudah ada untuk murid ini: entah ia
+                                    // datang ke sini sebagai pengganti, atau justru sudah mengajukan
+                                    // pindah dari sesi ini dan menunggu persetujuan. Keduanya sudah
+                                    // punya barisnya sendiri di Manajemen Jadwal, jadi pensilnya
+                                    // mengarah ke sana — bukan membuat pengajuan baru.
+                                    // Dropdown terbuka di "Ya" untuk murid yang memang punya jadwal
+                                    // pengganti — apa pun bentuknya: datang ke sesi ini sebagai
+                                    // pengganti, mengajukan pindah dari sesi ini, atau punya sesi
+                                    // pengganti lain yang belum lewat.
+                                    $requestPengganti = $replacement ?: ($row['pending'] ?: $row['others']->first());
+                                    $tautanJadwal = $requestPengganti
+                                        ? route('schedules.edit', $requestPengganti)
+                                        : route('schedules.create', [
+                                            'student_id' => $student->id,
+                                            'origin_class_id' => $selectedClass->id,
+                                            'missed_date' => $date,
+                                        ]);
                                 @endphp
                                 <tr @class(['table-info bg-opacity-10' => (bool) $replacement])>
                                     <td>
@@ -236,6 +266,11 @@
                                                 <i class="bi bi-box-arrow-in-right me-1"></i>Murid pengganti dari
                                                 <strong>{{ $replacement->originClass->class_category ?? 'kelas lain' }}</strong>,
                                                 pukul {{ \Illuminate\Support\Str::of($replacement->replacement_time)->substr(0, 5) }}
+                                                {{-- Sesi yang digantikan: tanpa ini "pengganti" tidak
+                                                     menjelaskan sesi mana yang sedang disusulnya. --}}
+                                                @if($replacement->missed_date)
+                                                    <span class="text-muted">· menggantikan sesi {{ $replacement->missed_date->locale('id')->translatedFormat('j M Y') }}</span>
+                                                @endif
                                                 @if($replacement->reason)<span class="text-muted">· {{ $replacement->reason }}</span>@endif
                                             </div>
                                         @endif
@@ -252,6 +287,15 @@
 
                                         <input type="hidden" name="records[{{ $i }}][student_id]" value="{{ $student->id }}">
                                     </td>
+                                    {{-- Jatah sesi bulan ini. Dihitung dari kehadiran yang sudah
+                                         tersimpan, jadi sesi yang sedang diisi baru ikut terhitung
+                                         setelah absensinya disimpan. --}}
+                                    <td class="text-center">
+                                        <span class="badge rounded-pill {{ $sesiPenuh ? 'bg-success-subtle text-success-emphasis' : 'bg-secondary-subtle text-secondary-emphasis' }}"
+                                              title="{{ $student->name }} sudah hadir {{ $sesiHadir }} dari {{ $sessionQuota }} sesi pada {{ $tanggal->locale('id')->translatedFormat('F Y') }} (termasuk sesi pengganti di kelas lain).">
+                                            {{ $sesiHadir }}/{{ $sessionQuota }}
+                                        </span>
+                                    </td>
                                     <td>
                                         {{-- Tombol pilihan, bukan dropdown: mengabsen satu kelas berarti
                                              puluhan kali memilih, dan tombol cukup sekali klik. --}}
@@ -265,11 +309,93 @@
                                         </div>
                                     </td>
                                     <td><input type="text" name="records[{{ $i }}][notes]" class="form-control form-control-sm" placeholder="opsional" value="{{ old("records.$i.notes", $tercatat->notes ?? '') }}"></td>
+                                    {{-- Replacement? — pintasan ke Manajemen Jadwal, bukan data
+                                         absensi: jadwal pengganti hidup di ReplacementRequest, dan
+                                         menyimpannya lagi di sini hanya akan jadi dua sumber
+                                         kebenaran. Karena itu "Tidak" memang tidak berbuat apa-apa,
+                                         dan "Ya" menahan penyimpanan sampai tanggal penggantinya
+                                         benar-benar diatur (lihat assertReplacementsScheduled).
+                                         Nilainya diisi dari request yang sudah ada, supaya pilihan
+                                         "Ya" tidak hilang begitu halaman dimuat ulang. --}}
+                                    @php $pilihanPengganti = old("records.$i.replacement", $requestPengganti ? 'ya' : 'tidak'); @endphp
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <select name="records[{{ $i }}][replacement]" class="form-select form-select-sm"
+                                                    data-replacement-toggle
+                                                    data-has-request="{{ $requestPengganti ? 1 : 0 }}"
+                                                    data-student="{{ $student->name }}"
+                                                    data-schedule-url="{{ $tautanJadwal }}"
+                                                    aria-label="Replacement untuk {{ $student->name }}">
+                                                <option value="tidak" @selected($pilihanPengganti !== 'ya')>Tidak</option>
+                                                <option value="ya" @selected($pilihanPengganti === 'ya')>Ya</option>
+                                            </select>
+                                            <a href="{{ $tautanJadwal }}"
+                                               class="btn btn-sm btn-outline-primary flex-shrink-0 {{ $pilihanPengganti === 'ya' ? '' : 'd-none' }}"
+                                               data-replacement-edit
+                                               title="{{ $requestPengganti ? 'Ubah tanggal & kelas pengganti '.$student->name.' di Manajemen Jadwal' : 'Atur jadwal pengganti '.$student->name.' di Manajemen Jadwal' }}">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                        </div>
+                                        {{-- Satu badge saja, bukan daftar jadwal: merinci setiap sesi
+                                             pengganti membuat kolom ini tak terbaca, sementara yang
+                                             perlu diketahui admin cuma "anak ini replacement" dan sesi
+                                             terdekatnya. Rinciannya ada di tooltip & Manajemen Jadwal. --}}
+                                        @php
+                                            $jamPengganti = fn ($req) => \Illuminate\Support\Str::of($req->replacement_time)->substr(0, 5);
+                                            $sesiPengganti = fn ($req) => $req->replacement_date->locale('id')->translatedFormat('j M Y').' · '.$jamPengganti($req)
+                                                .' ('.($req->classRoom->class_category ?? 'kelas lain').')';
+
+                                            $badge = match (true) {
+                                                (bool) $replacement => [
+                                                    'warna' => 'bg-info-subtle text-info-emphasis',
+                                                    'teks' => 'Sesi pengganti · '.$jamPengganti($replacement),
+                                                    'judul' => 'Hadir di sesi ini sebagai pengganti sesi '
+                                                        .($replacement->missed_date?->locale('id')->translatedFormat('j M Y') ?? 'sebelumnya')
+                                                        .' dari '.($replacement->originClass->class_category ?? 'kelas lain').'.',
+                                                ],
+                                                (bool) $row['pending'] => [
+                                                    'warna' => 'bg-warning-subtle text-warning-emphasis',
+                                                    'teks' => $row['pending']->request_status === 'rejected'
+                                                        ? 'Pengajuan ditolak'
+                                                        : 'Menunggu persetujuan · '.$row['pending']->replacement_date->locale('id')->translatedFormat('j M Y'),
+                                                    'judul' => 'Diminta pindah ke '.$sesiPengganti($row['pending']).'. Sesinya belum berpindah sampai disetujui.',
+                                                ],
+                                                $row['others']->isNotEmpty() => [
+                                                    'warna' => 'bg-secondary-subtle text-secondary-emphasis',
+                                                    'teks' => 'Replacement · '.$row['others']->first()->replacement_date->locale('id')->translatedFormat('j M Y')
+                                                        .($row['others']->count() > 1 ? ' +'.($row['others']->count() - 1) : ''),
+                                                    'judul' => 'Jadwal pengganti: '.$row['others']->map($sesiPengganti)->implode('; ').'.',
+                                                ],
+                                                default => null,
+                                            };
+                                        @endphp
+                                        @if($badge)
+                                            <div class="mt-1">
+                                                <span class="badge rounded-pill {{ $badge['warna'] }}" title="{{ $badge['judul'] }}">
+                                                    <i class="bi bi-arrow-left-right me-1"></i>{{ $badge['teks'] }}
+                                                </span>
+                                            </div>
+                                        @endif
+                                    </td>
                                 </tr>
                             @endforeach
                         </tbody>
                     </table>
                 </div>
+                {{-- Penjaga di layar untuk aturan yang juga ditegakkan server:
+                     absensi tidak bisa disimpan selama masih ada "Replacement: Ya"
+                     yang tanggal penggantinya belum ada. Muncul begitu Ya dipilih,
+                     bukan menunggu tombol simpan ditekan. --}}
+                <div class="alert alert-warning d-none" id="replacementGuard" role="alert">
+                    <div class="fw-bold mb-1"><i class="bi bi-exclamation-triangle-fill me-1"></i>Jadwal pengganti belum diatur</div>
+                    <p class="small mb-2">
+                        <span id="replacementGuardNames"></span> ditandai <strong>Replacement: Ya</strong>, tapi tanggal penggantinya belum ada.
+                        Atur dulu jadwalnya lewat tombol pensil di kolom Replacement — absensinya baru bisa disimpan setelah itu.
+                        <span class="d-block mt-1 text-muted">Pilihan hadir/absen yang belum disimpan akan hilang saat berpindah halaman.</span>
+                    </p>
+                    <a href="#" class="btn btn-sm btn-warning" id="replacementGuardLink"><i class="bi bi-pencil me-1"></i>Atur jadwal pengganti sekarang</a>
+                </div>
+
                 <button type="submit" class="btn btn-primary"><i class="bi bi-save me-1"></i>Simpan Absensi</button>
             </form>
             @endif
@@ -290,6 +416,77 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         });
     });
+
+    // Kolom "Replacement?": memilih Ya memunculkan tombol pensilnya. Pilihannya
+    // sendiri tidak disimpan sebagai data absensi — yang menyimpan keadaan adalah
+    // request pengganti yang dibuat lewat tombol itu, dan itulah yang dibaca ulang
+    // saat halaman ini dibuka lagi.
+    var toggles = document.querySelectorAll('[data-replacement-toggle]');
+    var guard = document.getElementById('replacementGuard');
+    var guardNames = document.getElementById('replacementGuardNames');
+    var guardLink = document.getElementById('replacementGuardLink');
+
+    // "Ya" yang jadwal penggantinya belum ada — inilah yang menahan penyimpanan.
+    function belumTerjadwal() {
+        return Array.prototype.filter.call(toggles, function (select) {
+            return select.value === 'ya' && select.dataset.hasRequest === '0';
+        });
+    }
+
+    // Peringatannya baru muncul setelah tombol simpan ditekan: memilih "Ya" saja
+    // belum keliru — admin memang sedang menuju tombol pensilnya. Setelah tampil,
+    // isinya terus mengikuti pilihan di tabel dan hilang sendiri begitu semuanya
+    // beres.
+    var penjagaTampil = false;
+
+    function perbaruiPenjaga() {
+        var tertunda = belumTerjadwal();
+
+        if (! guard || ! penjagaTampil) {
+            return tertunda;
+        }
+
+        guard.classList.toggle('d-none', tertunda.length === 0);
+
+        if (tertunda.length) {
+            guardNames.textContent = tertunda.map(function (select) {
+                return select.dataset.student;
+            }).join(', ');
+            // Tautan ke murid pertama; sisanya diurus lewat pensil di barisnya.
+            guardLink.href = tertunda[0].dataset.scheduleUrl;
+        }
+
+        return tertunda;
+    }
+
+    toggles.forEach(function (select) {
+        select.addEventListener('change', function () {
+            var link = select.parentElement.querySelector('[data-replacement-edit]');
+            if (link) {
+                link.classList.toggle('d-none', select.value !== 'ya');
+            }
+            perbaruiPenjaga();
+        });
+    });
+
+    // Server memeriksa hal yang sama saat menyimpan; ini hanya supaya admin tidak
+    // perlu menunggu satu putaran request untuk tahu.
+    var form = document.querySelector('[data-attendance-form]');
+    if (form) {
+        form.addEventListener('submit', function (event) {
+            if (belumTerjadwal().length === 0) {
+                return;
+            }
+
+            event.preventDefault();
+            penjagaTampil = true;
+            perbaruiPenjaga();
+
+            if (guard) {
+                guard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        });
+    }
 });
 </script>
 @endpush

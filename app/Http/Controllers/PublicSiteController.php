@@ -120,7 +120,42 @@ class PublicSiteController extends Controller
             // Pra-pilih kelas & tipenya bila datang dari tombol "Daftar kelas ini".
             'selected' => $selected,
             'selectedType' => $this->resolveSelectedType($classOptions, $wanted, $selected),
+            'ageSuggestions' => $this->ageSuggestions(),
         ]);
+    }
+
+    /**
+     * Rentang usia tiap program beserta tipe kelas yang disarankan, untuk mengisi
+     * otomatis dropdown "Tipe kelas" begitu orang tua mengisi tanggal lahir.
+     *
+     * Diturunkan dari `age` di config supaya saran usianya selalu sama dengan yang
+     * tertulis di brosur program — dulu batasnya ditulis ulang di JavaScript dan
+     * sempat melenceng dari config. Program tanpa kategori (mis. Holiday Class) tidak
+     * ikut disarankan: sesi liburan terbuka untuk segala usia.
+     *
+     * @return list<array{max: int, value: string}> urut menaik menurut usia minimum
+     */
+    private function ageSuggestions(): array
+    {
+        return collect(config('site.programs', []))
+            ->filter(fn (array $program) => filled($program['category'] ?? null))
+            ->map(function (array $program) {
+                // "3 – 5 tahun" → [3, 5]. Program dengan satu angka saja dianggap
+                // batas bawah sekaligus batas atasnya.
+                preg_match_all('/\d+/', (string) ($program['age'] ?? ''), $angka);
+                $bounds = array_map('intval', $angka[0]);
+
+                return $bounds === [] ? null : [
+                    'min' => $bounds[0],
+                    'max' => end($bounds),
+                    'value' => $program['category'],
+                ];
+            })
+            ->filter()
+            ->sortBy('min')
+            ->map(fn (array $range) => ['max' => $range['max'], 'value' => $range['value']])
+            ->values()
+            ->all();
     }
 
     /**

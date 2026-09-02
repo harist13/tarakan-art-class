@@ -42,7 +42,6 @@
       "PowerShell(php artisan tinker --execute=\"echo app\\(\\)->getLocale\\(\\), ' | ', \\\\Illuminate\\\\Support\\\\Carbon::parse\\('2026-07-17 12:00'\\)->translatedFormat\\('l, j F Y'\\), ' | ', \\\\Illuminate\\\\Support\\\\Carbon::parse\\('2026-07-17 12:00'\\)->format\\('g.i A'\\);\")",
       "PowerShell(php artisan tinker --execute=\"`$d = \\\\Illuminate\\\\Support\\\\Carbon::parse\\('2026-07-20 12:00'\\); echo `$d->locale\\('id'\\)->translatedFormat\\('l, j F Y'\\), ' - ', `$d->format\\('g.i A'\\);\")",
       "PowerShell(php artisan view:clear)",
-      "PowerShell(php artisan tinker --execute=\"foreach \\(\\\\App\\\\Models\\\\ClassRoom::orderBy\\('class_name'\\)->take\\(6\\)->get\\(\\) as `$c\\) { echo str_pad\\(`$c->class_name, 26\\), ' | recurring=', \\(int\\) `$c->is_recurring, ' | ', str_pad\\(`$c->scheduleLabel\\(\\), 26\\), ' -> ', \\(`$c->sessionLabel\\(\\) ?? '\\(null\\)'\\), PHP_EOL\\); }\")",
       "PowerShell(php artisan tinker \"C:\\\\Users\\\\LENOVO\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--laragon-www-tarakan-art-class\\\\97a53768-5a6a-4f75-ae9b-62ed95f79c79\\\\scratchpad\\\\preview.php\")",
       "PowerShell(php artisan test --filter=\"SlotAvailabilityTest|PaymentArrearsAccessTest|ClassRoom\")",
       "PowerShell(php artisan test --filter=\"SlotAvailabilityTest|PaymentArrearsAccessTest\")",

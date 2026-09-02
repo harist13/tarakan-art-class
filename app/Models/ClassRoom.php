@@ -158,14 +158,20 @@ class ClassRoom extends Model
     }
 
     /**
-     * Kategori kelas cocok dengan tipe kelas murid (mis. murid coloring → slot coloring).
+     * Kategori kelas cocok dengan tipe kelas murid (mis. murid Coloring → slot Coloring).
+     *
+     * Perbandingannya mengabaikan besar-kecil huruf: kategori kini diketik bebas oleh
+     * admin, jadi "Coloring" dan "coloring" harus dianggap tipe yang sama — sama seperti
+     * pencocokan di StudentController.
      *
      * Bersifat informatif: murid boleh mengambil replacement lintas tipe, jadi hasil
      * false hanya dipakai untuk menandai "beda tipe" di UI, bukan untuk menolak.
      */
     public function matchesLevel(?string $studentType): bool
     {
-        return $studentType !== null && $this->class_category === $studentType;
+        return filled($studentType)
+            && filled($this->class_category)
+            && mb_strtolower($this->class_category) === mb_strtolower($studentType);
     }
 
     /**

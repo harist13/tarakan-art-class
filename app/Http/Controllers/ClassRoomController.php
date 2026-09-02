@@ -42,7 +42,7 @@ class ClassRoomController extends Controller
     {
         $search = $request->string('search')->toString();
         $status = $request->string('status')->toString();     // tersedia | penuh | tanpa-tutor | ditutup
-        $category = $request->string('category')->toString();  // preschool | coloring | drawing
+        $category = $request->string('category')->toString();  // salah satu class_category yang ada; '' = semua
         // Hari mingguan slot; '' = semua. '0' valid (Minggu), jadi dibandingkan sebagai string.
         $day = $request->string('day')->toString();
 

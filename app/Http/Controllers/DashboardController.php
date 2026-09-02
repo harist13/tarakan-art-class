@@ -65,31 +65,16 @@ class DashboardController extends Controller
                 ->count();
         }
 
-        // Jumlah murid per tipe kelas (realtime)
-        $typeDefinitions = [
-            'preschool' => [
-                'label' => 'Preschool',
-                'badge' => 'bg-primary text-white',
-                'icon' => 'bi bi-easel2-fill',
-                'bg_subtle' => '#E0F2FE',
-                'text_color' => '#0284C7',
-            ],
-            'coloring' => [
-                'label' => 'Coloring',
-                'badge' => 'bg-primary text-white',
-                'icon' => 'bi bi-easel2-fill',
-                'bg_subtle' => '#E0F2FE',
-                'text_color' => '#0284C7',
-            ],
-            'drawing' => [
-                'label' => 'Drawing',
-                'badge' => 'bg-primary text-white',
-                'icon' => 'bi bi-easel2-fill',
-                'bg_subtle' => '#E0F2FE',
-                'text_color' => '#0284C7',
-            ],
-        ];
-
+        // Jumlah murid per tipe kelas (realtime).
+        //
+        // Kategorinya tidak lagi tetap: sejak `classes.class_category` menjadi teks
+        // bebas, daftar tipe di sini diturunkan dari data — gabungan tipe kelas yang
+        // dipakai murid dan kategori yang ada di Class Management. Kategori yang baru
+        // dibuat admin langsung muncul (walau belum ada muridnya), dan kategori yang
+        // tak lagi dipakai hilang sendiri, bukan tersisa sebagai baris nol permanen.
+        //
+        // Pengelompokan memakai kunci huruf kecil supaya "Drawing" dan "drawing"
+        // terhitung satu, tapi labelnya memakai ejaan asli seperti yang diketik admin.
         $rawTypeCounts = Student::select('class_type')
             ->selectRaw('count(*) as total')
             ->selectRaw('sum(case when status = "active" then 1 else 0 end) as active_count')
@@ -103,53 +88,40 @@ class DashboardController extends Controller
             ->selectRaw('count(distinct tutor_id) as total_tutors')
             ->groupBy('class_category')
             ->pluck('total_tutors', 'class_category')
-            ->mapWithKeys(fn ($count, $key) => [strtolower($key) => (int) $count]);
+            ->mapWithKeys(fn ($count, $key) => [strtolower((string) $key) => (int) $count]);
+
+        // Ejaan asli per kunci. Kategori di tabel `classes` didahulukan karena itulah
+        // yang diketik admin; `students.class_type` hanya jadi cadangan untuk tipe
+        // lama yang kelasnya sudah dihapus.
+        $typeLabels = Student::query()->distinct()->pluck('class_type')
+            ->concat(ClassRoom::query()->distinct()->pluck('class_category'))
+            ->filter(fn ($label) => filled($label))
+            ->mapWithKeys(fn ($label) => [strtolower($label) => $label])
+            ->all();
 
         $studentsPerClassType = [];
-        foreach ($typeDefinitions as $key => $meta) {
+        foreach ($typeLabels as $key => $label) {
             $stat = $rawTypeCounts->get($key);
             $total = $stat ? (int) $stat->total : 0;
-            $active = $stat ? (int) $stat->active_count : 0;
-            $inactive = $stat ? (int) $stat->inactive_count : 0;
-            $tutorCount = $tutorCounts->get($key, 0);
 
             $studentsPerClassType[$key] = [
                 'key' => $key,
-                'label' => $meta['label'],
-                'badge' => $meta['badge'],
-                'icon' => $meta['icon'],
-                'bg_subtle' => $meta['bg_subtle'],
-                'text_color' => $meta['text_color'],
+                'label' => $label,
+                'badge' => 'bg-primary text-white',
+                'icon' => 'bi bi-easel2-fill',
+                'bg_subtle' => '#E0F2FE',
+                'text_color' => '#0284C7',
                 'total' => $total,
-                'active' => $active,
-                'inactive' => $inactive,
-                'tutor_count' => $tutorCount,
+                'active' => $stat ? (int) $stat->active_count : 0,
+                'inactive' => $stat ? (int) $stat->inactive_count : 0,
+                'tutor_count' => $tutorCounts->get($key, 0),
                 'percentage' => $totalStudents > 0 ? round(($total / $totalStudents) * 100) : 0,
             ];
         }
 
-        foreach ($rawTypeCounts as $key => $stat) {
-            if (!isset($studentsPerClassType[$key])) {
-                $total = (int) $stat->total;
-                $active = (int) $stat->active_count;
-                $inactive = (int) $stat->inactive_count;
-                $tutorCount = $tutorCounts->get($key, 0);
-
-                $studentsPerClassType[$key] = [
-                    'key' => $key,
-                    'label' => ucfirst($key),
-                    'badge' => 'bg-primary text-white',
-                    'icon' => 'bi bi-easel2-fill',
-                    'bg_subtle' => '#E0F2FE',
-                    'text_color' => '#0284C7',
-                    'total' => $total,
-                    'active' => $active,
-                    'inactive' => $inactive,
-                    'tutor_count' => $tutorCount,
-                    'percentage' => $totalStudents > 0 ? round(($total / $totalStudents) * 100) : 0,
-                ];
-            }
-        }
+        // Tipe yang paling banyak muridnya di atas; nama sebagai pemecah seri agar
+        // urutannya tidak berubah-ubah antar-permintaan.
+        uasort($studentsPerClassType, fn (array $a, array $b) => [$b['total'], $a['label']] <=> [$a['total'], $b['label']]);
 
         $recentPayments = Payment::with('student')->orderByDesc('id')->limit(5)->get();
 
