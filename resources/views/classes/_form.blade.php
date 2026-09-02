@@ -1,20 +1,25 @@
 <div class="row">
     <div class="col-md-6 mb-3">
         <label class="form-label">Kategori</label>
-        <input type="text" name="class_category" class="form-control" value="{{ old('class_category', $class->class_category ?? '') }}" placeholder="Contoh: Preschool, Coloring, Drawing" required>
+        <input type="text" name="class_category" class="form-control @error('class_category') is-invalid @enderror" value="{{ old('class_category', $class->class_category ?? '') }}" placeholder="Contoh: Preschool, Coloring, Drawing" required>
+        @error('class_category')
+            <div class="invalid-feedback">{{ $message }}</div>
+        @enderror
     </div>
     <div class="col-md-6 mb-3">
         <label class="form-label">Tutor</label>
-        <select name="tutor_id" class="form-select" required>
+        <select name="tutor_id" class="form-select @error('tutor_id') is-invalid @enderror" required>
             <option value="">— Pilih Tutor —</option>
             @foreach($tutors as $tutor)
                 <option value="{{ $tutor->id }}" @selected(old('tutor_id', $class->tutor_id ?? '') == $tutor->id)>{{ $tutor->name }}</option>
             @endforeach
         </select>
+        @error('tutor_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
     </div>
     <div class="col-md-6 mb-3">
         <label class="form-label">Kapasitas</label>
-        <input type="number" name="capacity" min="1" class="form-control" value="{{ old('capacity', $class->capacity ?? '') }}" required>
+        <input type="number" name="capacity" min="1" class="form-control @error('capacity') is-invalid @enderror" value="{{ old('capacity', $class->capacity ?? '') }}" required>
+        @error('capacity')<div class="invalid-feedback">{{ $message }}</div>@enderror
     </div>
     <div class="col-md-4 mb-3">
         <label class="form-label">Tanggal Kelas</label>
@@ -25,7 +30,8 @@
     </div>
     <div class="col-md-4 mb-3">
         <label class="form-label">Jam</label>
-        <input type="time" name="schedule_time" class="form-control" value="{{ old('schedule_time', isset($class) ? \Illuminate\Support\Str::of($class->schedule_time)->substr(0,5) : '') }}" required>
+        <input type="time" name="schedule_time" class="form-control @error('schedule_time') is-invalid @enderror" value="{{ old('schedule_time', isset($class) ? \Illuminate\Support\Str::of($class->schedule_time)->substr(0,5) : '') }}" required>
+        @error('schedule_time')<div class="invalid-feedback">{{ $message }}</div>@enderror
     </div>
     <div class="col-md-4 mb-3">
         <label class="form-label d-block">Pengulangan</label>
@@ -41,7 +47,8 @@
     </div>
     <div class="col-md-4 mb-3">
         <label class="form-label">Biaya Kelas (Rp)</label>
-        <input type="number" step="1000" min="0" name="class_fee" class="form-control" value="{{ old('class_fee', $class->class_fee ?? '') }}" required>
+        <input type="number" step="1000" min="0" name="class_fee" class="form-control @error('class_fee') is-invalid @enderror" value="{{ old('class_fee', $class->class_fee ?? '') }}" required>
+        @error('class_fee')<div class="invalid-feedback">{{ $message }}</div>@enderror
     </div>
 </div>
 

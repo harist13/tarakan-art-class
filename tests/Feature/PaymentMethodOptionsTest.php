@@ -48,7 +48,7 @@ class PaymentMethodOptionsTest extends TestCase
 
     private function makeStudent(string $name): Student
     {
-        $tutor = Tutor::create(['name' => 'Kak Tutor', 'status' => 'active']);
+        $tutor = Tutor::create(['name' => 'Kak Tutor', 'status' => 'full-time']);
         $class = ClassRoom::create([
             'class_category' => 'drawing',
             'tutor_id' => $tutor->id,

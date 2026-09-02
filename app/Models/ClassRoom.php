@@ -187,11 +187,13 @@ class ClassRoom extends Model
     }
 
     /**
-     * Tutor tersedia untuk slot ini (ada & berstatus aktif).
+     * Tutor tersedia untuk slot ini (ada & terdaftar).
+     *
+     * Baik full-time maupun part-time dianggap tersedia.
      */
     public function hasTutor(): bool
     {
-        return $this->tutor && $this->tutor->status === 'active';
+        return $this->tutor !== null;
     }
 
     /**

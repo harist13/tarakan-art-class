@@ -45,7 +45,7 @@ class AttendanceReplacementTest extends TestCase
 
     private function makeClass(string $name, int $dayOffset = 1): ClassRoom
     {
-        $tutor = Tutor::create(['name' => 'Kak '.$name, 'status' => 'active']);
+        $tutor = Tutor::create(['name' => 'Kak '.$name, 'status' => 'full-time']);
 
         return ClassRoom::create([
             'class_category' => $name,

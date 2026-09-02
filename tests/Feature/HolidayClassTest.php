@@ -269,7 +269,7 @@ class HolidayClassTest extends TestCase
 
     private function regularClass(): ClassRoom
     {
-        $tutor = Tutor::create(['name' => 'Kak Ayu', 'status' => 'active']);
+        $tutor = Tutor::create(['name' => 'Kak Ayu', 'status' => 'full-time']);
 
         return ClassRoom::create([
             'class_category' => 'coloring',

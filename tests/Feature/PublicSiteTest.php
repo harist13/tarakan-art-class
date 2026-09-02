@@ -373,7 +373,7 @@ class PublicSiteTest extends TestCase
 
     private function makeClass(Carbon $date, int $capacity = 8): ClassRoom
     {
-        $tutor = Tutor::create(['name' => 'Kak Ayu', 'status' => 'active']);
+        $tutor = Tutor::create(['name' => 'Kak Ayu', 'status' => 'full-time']);
 
         return ClassRoom::create([
             'class_category' => 'coloring',

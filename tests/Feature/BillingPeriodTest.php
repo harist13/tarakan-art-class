@@ -51,7 +51,7 @@ class BillingPeriodTest extends TestCase
 
     private function makeClass(int $fee = 150000): ClassRoom
     {
-        $tutor = Tutor::create(['name' => 'Kak Tutor', 'status' => 'active']);
+        $tutor = Tutor::create(['name' => 'Kak Tutor', 'status' => 'full-time']);
 
         return ClassRoom::create([
             'class_category' => 'drawing',

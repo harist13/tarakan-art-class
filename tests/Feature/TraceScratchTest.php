@@ -26,7 +26,7 @@ class TraceScratchTest extends TestCase
         ]);
         $user->assignRole('super_admin');
 
-        $tutor = Tutor::create(['name' => 'Kak T', 'status' => 'active']);
+        $tutor = Tutor::create(['name' => 'Kak T', 'status' => 'full-time']);
         ClassRoom::create([
             'class_category' => 'drawing', 'tutor_id' => $tutor->id,
             'capacity' => 5, 'schedule_date' => now()->toDateString(), 'schedule_time' => '09:00',

@@ -64,12 +64,12 @@ class ClassRoomController extends Controller
             // Tidak ada lagi status "sudah lewat": slot mingguan tidak kedaluwarsa.
             ->when($status === 'ditutup', fn ($q) => $q->where('classes.status', 'closed'))
             ->when($status === 'tanpa-tutor', fn ($q) => $q->where('classes.status', '!=', 'closed')
-                ->whereHas('tutor', fn ($t) => $t->where('status', '!=', 'active')))
+                ->whereDoesntHave('tutor'))
             ->when($status === 'penuh', fn ($q) => $q->where('classes.status', '!=', 'closed')
-                ->whereHas('tutor', fn ($t) => $t->where('status', 'active'))
+                ->whereHas('tutor')
                 ->whereRaw("{$enrolledSql} >= classes.capacity", ['active']))
             ->when($status === 'tersedia', fn ($q) => $q->where('classes.status', '!=', 'closed')
-                ->whereHas('tutor', fn ($t) => $t->where('status', 'active'))
+                ->whereHas('tutor')
                 ->whereRaw("{$enrolledSql} < classes.capacity", ['active']))
             // Kelas yang baru dibuat tampil paling atas; id menurun jadi pemecah
             // kalau ada beberapa kelas yang dibuat pada detik yang sama.
@@ -107,7 +107,7 @@ class ClassRoomController extends Controller
                 $sub->where('name', 'like', "%{$tutorSearch}%")
                     ->orWhere('phone_number', 'like', "%{$tutorSearch}%");
             }))
-            ->when(in_array($tutorStatus, ['active', 'inactive'], true), fn ($q) => $q->where('status', $tutorStatus))
+            ->when(in_array($tutorStatus, ['full-time', 'part-time'], true), fn ($q) => $q->where('status', $tutorStatus))
             ->when($tutorClassId, fn ($q) => $q->whereHas('classes', fn ($c) => $c->where('id', $tutorClassId)))
             // Tutor yang baru ditambahkan tampil paling atas, sama seperti daftar kelas.
             ->orderByDesc('created_at')
@@ -131,7 +131,7 @@ class ClassRoomController extends Controller
 
     public function create()
     {
-        $tutors = Tutor::where('status', 'active')->orderBy('name')->get();
+        $tutors = Tutor::orderBy('name')->get();
 
         return view('classes.create', compact('tutors'));
     }
@@ -157,7 +157,7 @@ class ClassRoomController extends Controller
 
     public function update(Request $request, ClassRoom $class)
     {
-        $data = $this->validateData($request);
+        $data = $this->validateData($request, $class);
 
         DB::transaction(function () use ($class, $data) {
             $class->update($data);
@@ -254,14 +254,19 @@ class ClassRoomController extends Controller
         return $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'phone_number' => ['nullable', 'string', 'max:30'],
-            'status' => ['required', Rule::in(['active', 'inactive'])],
+            'status' => ['required', Rule::in(['full-time', 'part-time'])],
         ]);
     }
 
-    private function validateData(Request $request): array
+    private function validateData(Request $request, ?ClassRoom $class = null): array
     {
         return $request->validate([
-            'class_category' => ['required', 'string', 'max:255'],
+            'class_category' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('classes', 'class_category')->ignore($class?->id),
+            ],
             'tutor_id' => ['required', 'exists:tutors,id'],
             'capacity' => ['required', 'integer', 'min:1'],
             // Jadwal: tanggal + jam. `day_of_week` sengaja tidak divalidasi karena
@@ -271,6 +276,7 @@ class ClassRoomController extends Controller
             'is_recurring' => ['required', 'boolean'],
             'class_fee' => ['required', 'numeric', 'min:0'],
         ], [
+            'class_category.unique' => 'Kelas sudah ada.',
             'schedule_date.required' => 'Tanggal kelas belum diisi.',
         ]);
     }

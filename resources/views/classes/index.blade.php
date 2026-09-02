@@ -129,8 +129,8 @@
             </div>
             <select name="tutor_status" class="form-select form-select-sm" style="width:190px;">
                 <option value="">Semua Status</option>
-                <option value="active" @selected($tutorStatus === 'active')>Aktif</option>
-                <option value="inactive" @selected($tutorStatus === 'inactive')>Nonaktif</option>
+                <option value="full-time" @selected($tutorStatus === 'full-time')>Full-Time</option>
+                <option value="part-time" @selected($tutorStatus === 'part-time')>Part-Time</option>
             </select>
             <select name="tutor_class" class="form-select form-select-sm" style="width:190px;">
                 <option value="">Semua Kelas Diampu</option>
@@ -154,7 +154,13 @@
                         <tr>
                             <td class="fw-bold">{{ $tutor->name }}</td>
                             <td>{{ $tutor->phone_number ?: '-' }}</td>
-                            <td><span class="badge bg-{{ $tutor->status === 'active' ? 'success' : 'secondary' }}">{{ $tutor->status === 'active' ? 'Aktif' : 'Nonaktif' }}</span></td>
+                            <td>
+                                @if($tutor->status === 'full-time')
+                                    <span class="badge rounded-pill px-3 py-1 text-white fw-semibold" style="background-color: #15803D;">Full-Time</span>
+                                @else
+                                    <span class="badge rounded-pill px-3 py-1 text-white fw-semibold" style="background-color: #0891B2;">Part-Time</span>
+                                @endif
+                            </td>
                             <td><span class="badge bg-light text-dark border">{{ $tutor->classes_count }} kelas</span></td>
                             <td class="text-end">
                                 <button type="button" class="btn btn-sm btn-info text-white btn-edit-tutor"
@@ -206,8 +212,8 @@
                     <div class="mb-3"><label class="form-label">No HP</label><input type="text" name="phone_number" id="editTutorPhone" class="form-control"></div>
                     <div class="mb-3"><label class="form-label">Status</label>
                         <select name="status" id="editTutorStatus" class="form-select" data-no-search>
-                            <option value="active">Aktif</option>
-                            <option value="inactive">Nonaktif</option>
+                            <option value="full-time">Full-Time</option>
+                            <option value="part-time">Part-Time</option>
                         </select>
                     </div>
                 </div>
@@ -247,7 +253,7 @@
                     <div class="mb-3"><label class="form-label">Nama Tutor</label><input type="text" name="name" class="form-control" required></div>
                     <div class="mb-3"><label class="form-label">No HP</label><input type="text" name="phone_number" class="form-control"></div>
                     <div class="mb-3"><label class="form-label">Status</label>
-                        <select name="status" class="form-select"><option value="active">Aktif</option><option value="inactive">Nonaktif</option></select>
+                        <select name="status" class="form-select"><option value="full-time">Full-Time</option><option value="part-time">Part-Time</option></select>
                     </div>
                     <p class="small text-muted mb-0">Tutor terdaftar: {{ $tutors->count() }} orang.</p>
                 </div>

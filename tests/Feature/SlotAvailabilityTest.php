@@ -63,7 +63,7 @@ class SlotAvailabilityTest extends TestCase
         return $student;
     }
 
-    private function makeClass(array $overrides = [], string $tutorStatus = 'active'): ClassRoom
+    private function makeClass(array $overrides = [], string $tutorStatus = 'full-time'): ClassRoom
     {
         $tutor = Tutor::create(['name' => 'Kak Tutor', 'status' => $tutorStatus]);
 
@@ -159,9 +159,11 @@ class SlotAvailabilityTest extends TestCase
         }
     }
 
-    public function test_slot_tanpa_tutor_aktif_tidak_available(): void
+    public function test_slot_tanpa_tutor_tidak_available(): void
     {
-        $class = $this->makeClass(tutorStatus: 'inactive');
+        $class = $this->makeClass();
+        // Simulasikan kondisi tanpa tutor (relasi tutor kosong/null).
+        $class->setRelation('tutor', null);
         $this->assertFalse($class->isAvailable());
         $this->assertSame('Tutor kosong', $class->availability()['text']);
     }
@@ -184,7 +186,7 @@ class SlotAvailabilityTest extends TestCase
     public function test_kelas_baru_menurunkan_hari_dari_tanggal(): void
     {
         $this->actingAs($this->makeUser());
-        $tutor = Tutor::create(['name' => 'Kak Tutor', 'status' => 'active']);
+        $tutor = Tutor::create(['name' => 'Kak Tutor', 'status' => 'full-time']);
         $rabu = now()->next(3); // Rabu terdekat
 
         $this->post(route('classes.store'), [
