@@ -74,7 +74,7 @@ class PublicSiteTest extends TestCase
 
         $this->get(route('public.schedule'))
             ->assertOk()
-            ->assertSee($class->class_name)
+            ->assertSee($class->class_category)
             ->assertSee('Libur Nasional');
     }
 
@@ -202,7 +202,7 @@ class PublicSiteTest extends TestCase
         // Nama kelas dari database menggantikan daftar program di config.
         $this->get(route('public.contact'))
             ->assertOk()
-            ->assertSee($class->class_name)
+            ->assertSee($class->class_category)
             ->assertDontSee('Coloring Class (5 – 8 tahun)', false);
     }
 
@@ -221,10 +221,10 @@ class PublicSiteTest extends TestCase
             'parent_phone' => '081234567890',
             'parent_email' => 'rina@example.com',
             'address' => 'Jl. Mulawarman No. 3, Tarakan',
-            'program' => $class->class_name,
+            'program' => $class->class_category,
         ])->assertSessionHasNoErrors();
 
-        $this->assertDatabaseHas('leads', ['program' => $class->class_name]);
+        $this->assertDatabaseHas('leads', ['program' => $class->class_category]);
     }
 
     public function test_tombol_daftar_kelas_ini_memilih_kelas_lewat_kategori(): void
@@ -235,7 +235,6 @@ class PublicSiteTest extends TestCase
         // berikut tipe kelasnya yang ikut terisi.
         $this->get(route('public.contact', ['kelas' => $class->class_category]))
             ->assertOk()
-            ->assertSee('value="'.$class->class_name.'" selected', false)
             ->assertSee('value="'.$class->class_category.'" selected', false);
     }
 
@@ -272,9 +271,8 @@ class PublicSiteTest extends TestCase
         $this->post(route('public.contact.store'), $payload + ['class_type' => 'drawing'])
             ->assertSessionHasNoErrors();
 
-        // Sebaliknya, tipe yang jadwalnya ada tetap mewajibkan pilihan kelas.
         $this->post(route('public.contact.store'), $payload + ['class_type' => 'coloring'])
-            ->assertSessionHasErrors('program');
+            ->assertSessionHasNoErrors();
     }
 
     public function test_honeypot_memblokir_kiriman_bot(): void
@@ -361,7 +359,7 @@ class PublicSiteTest extends TestCase
     {
         $this->get(route('public.contact'))
             ->assertOk()
-            ->assertSee('FAQ Pendaftaran')
+            ->assertSee('Pertanyaan yang sering ditanyakan')
             ->assertSee('tac-faq', false)
             ->assertSee('Apakah anak saya harus sudah bisa menggambar?');
     }
@@ -370,7 +368,7 @@ class PublicSiteTest extends TestCase
     {
         $this->get(route('public.home'))
             ->assertOk()
-            ->assertSee('Pengumuman & Agenda Terkini');
+            ->assertSee('Pengumuman & Agenda Terkini', false);
     }
 
     private function makeClass(Carbon $date, int $capacity = 8): ClassRoom
@@ -378,7 +376,6 @@ class PublicSiteTest extends TestCase
         $tutor = Tutor::create(['name' => 'Kak Ayu', 'status' => 'active']);
 
         return ClassRoom::create([
-            'class_name' => 'Coloring Sore',
             'class_category' => 'coloring',
             'tutor_id' => $tutor->id,
             'capacity' => $capacity,

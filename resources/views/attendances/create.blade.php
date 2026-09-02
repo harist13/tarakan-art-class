@@ -98,7 +98,7 @@
                 <select name="class_id" id="class_id" class="form-select" onchange="this.form.submit()" required>
                     <option value="">— Pilih Kelas —</option>
                     @foreach($classes as $class)
-                        <option value="{{ $class->id }}" @selected($selectedClass && $selectedClass->id === $class->id)>{{ $class->class_name }} ({{ $class->class_code }})</option>
+                        <option value="{{ $class->id }}" @selected($selectedClass && $selectedClass->id === $class->id)>{{ $class->class_category }} ({{ $class->class_code }})</option>
                     @endforeach
                 </select>
             </div>
@@ -119,7 +119,7 @@
         <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
             <span class="d-flex align-items-center gap-2">
                 <span class="badge rounded-pill text-bg-primary">2</span>
-                <span class="fw-semibold">{{ $selectedClass->class_name }} — {{ $tanggalPanjang }}</span>
+                <span class="fw-semibold">{{ $selectedClass->class_category }} — {{ $tanggalPanjang }}</span>
             </span>
             <span class="d-flex flex-wrap gap-2">
                 <span class="badge bg-primary-subtle text-primary-emphasis">{{ $rows->count() }} murid diabsen</span>
@@ -137,7 +137,7 @@
                  peringatan, bukan diblokir — murid pengganti tetap sah hadir. --}}
             @if(! $occursOnDate)
                 <div class="alert alert-warning">
-                    <div class="fw-bold mb-1"><i class="bi bi-calendar-x me-1"></i>{{ $selectedClass->class_name }} tidak ada sesi pada tanggal ini</div>
+                    <div class="fw-bold mb-1"><i class="bi bi-calendar-x me-1"></i>{{ $selectedClass->class_category }} tidak ada sesi pada tanggal ini</div>
                     <p class="small mb-0">Jadwal rutinnya <strong>{{ $selectedClass->scheduleLabel() }}</strong>. Tanggal yang dipilih jatuh di hari lain atau pada hari libur — periksa lagi sebelum menyimpan.</p>
                 </div>
             @endif
@@ -152,7 +152,7 @@
                         @foreach($movedOut as $moved)
                             <li>
                                 <strong>{{ $moved['student']->name }}</strong> ({{ $moved['student']->student_id }}) — pindah ke
-                                {{ $moved['replacement']->classRoom->class_name ?? 'kelas lain' }},
+                                {{ $moved['replacement']->classRoom->class_category ?? 'kelas lain' }},
                                 {{ $moved['replacement']->replacement_date->locale('id')->translatedFormat('l, j F Y') }}
                                 pukul {{ \Illuminate\Support\Str::of($moved['replacement']->replacement_time)->substr(0, 5) }}.
                             </li>
@@ -234,7 +234,7 @@
                                         @if($replacement)
                                             <div class="small text-info-emphasis mt-1">
                                                 <i class="bi bi-box-arrow-in-right me-1"></i>Murid pengganti dari
-                                                <strong>{{ $replacement->originClass->class_name ?? 'kelas lain' }}</strong>,
+                                                <strong>{{ $replacement->originClass->class_category ?? 'kelas lain' }}</strong>,
                                                 pukul {{ \Illuminate\Support\Str::of($replacement->replacement_time)->substr(0, 5) }}
                                                 @if($replacement->reason)<span class="text-muted">· {{ $replacement->reason }}</span>@endif
                                             </div>

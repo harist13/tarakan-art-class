@@ -20,7 +20,7 @@
             <select name="class_id" class="form-select form-select-sm" style="width:190px;" aria-label="Filter kelas">
                 <option value="">Semua Kelas</option>
                 @foreach($classes as $class)
-                    <option value="{{ $class->id }}" @selected($classId == $class->id)>{{ $class->class_name }}</option>
+                    <option value="{{ $class->id }}" @selected($classId == $class->id)>{{ $class->class_category }}</option>
                 @endforeach
             </select>
             <input type="date" name="date" value="{{ $date }}" class="form-control form-control-sm py-2" style="width:170px;" aria-label="Filter tanggal">
@@ -40,7 +40,7 @@
                         <tr>
                             <td>{{ $att->attendance_date->format('d M Y') }}</td>
                             <td class="fw-bold">{{ $att->student->name ?? '-' }}</td>
-                            <td>{{ $att->classRoom->class_name ?? '-' }}</td>
+                            <td>{{ $att->classRoom->class_category ?? '-' }}</td>
                             <td>
                                 @php
                                     $attStyles = [

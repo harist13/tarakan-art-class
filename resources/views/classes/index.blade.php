@@ -26,10 +26,10 @@
                 <input type="text" name="search" value="{{ $search }}" class="form-control border-start-0 ps-0 py-2" placeholder="Cari kelas...">
             </div>
             <select name="category" class="form-select form-select-sm" style="width:150px;">
-                <option value="">Semua Tipe</option>
-                <option value="preschool" @selected($category === 'preschool')>Preschool</option>
-                <option value="coloring" @selected($category === 'coloring')>Coloring</option>
-                <option value="drawing" @selected($category === 'drawing')>Drawing</option>
+                <option value="">Semua Kategori</option>
+                @foreach($categories as $cat)
+                    <option value="{{ $cat }}" @selected($category === $cat)>{{ ucfirst($cat) }}</option>
+                @endforeach
             </select>
             <select name="status" class="form-select form-select-sm" style="width:150px;">
                 <option value="">Semua Status</option>
@@ -65,13 +65,12 @@
         <div class="table-responsive">
             <table class="table table-hover align-middle">
                 <thead>
-                    <tr><th>Kode</th><th>Nama Kelas</th><th>Kategori</th><th>Tutor</th><th>Kapasitas</th><th>Ketersediaan</th><th>Jadwal</th><th>Biaya</th><th class="text-end">Aksi</th></tr>
+                    <tr><th>Kode</th><th>Kategori</th><th>Tutor</th><th>Kapasitas</th><th>Ketersediaan</th><th>Jadwal</th><th>Biaya</th><th class="text-end">Aksi</th></tr>
                 </thead>
                 <tbody>
                     @forelse($classes as $class)
                         <tr>
                             <td class="fw-bold">{{ $class->class_code }}</td>
-                            <td>{{ $class->class_name }}</td>
                             <td><span class="badge bg-light text-dark border text-capitalize rounded-pill px-2 py-1 fw-semibold">{{ $class->class_category }}</span></td>
                             <td>{{ $class->tutor->name ?? '-' }}</td>
                             <td>{{ $class->enrolledCount() }} / {{ $class->capacity }}</td>
@@ -109,7 +108,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="9" class="text-center text-muted">Belum ada kelas.</td></tr>
+                        <tr><td colspan="8" class="text-center text-muted">Belum ada kelas.</td></tr>
                     @endforelse
                 </tbody>
             </table>
@@ -136,7 +135,7 @@
             <select name="tutor_class" class="form-select form-select-sm" style="width:190px;">
                 <option value="">Semua Kelas Diampu</option>
                 @foreach($allClasses as $cls)
-                    <option value="{{ $cls->id }}" @selected($tutorClassId == $cls->id)>{{ $cls->class_name }} ({{ $cls->class_code }})</option>
+                    <option value="{{ $cls->id }}" @selected($tutorClassId == $cls->id)>{{ $cls->class_category }} ({{ $cls->class_code }})</option>
                 @endforeach
             </select>
             @if($tutorSearch !== '' || $tutorStatus !== '' || $tutorClassId)

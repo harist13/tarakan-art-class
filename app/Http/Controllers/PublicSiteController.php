@@ -352,13 +352,13 @@ class PublicSiteController extends Controller
     private function classOptions(): Collection
     {
         $fromDb = ClassRoom::query()
-            ->select('class_name', 'class_category')
+            ->select('class_category')
             ->distinct()
-            ->orderBy('class_name')
+            ->orderBy('class_category')
             ->get()
             ->map(fn (ClassRoom $class) => [
-                'value' => $class->class_name,
-                'label' => $class->class_name,
+                'value' => $class->class_category,
+                'label' => $class->class_category,
                 'category' => $class->class_category,
             ]);
 

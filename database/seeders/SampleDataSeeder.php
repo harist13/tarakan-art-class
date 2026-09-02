@@ -29,13 +29,13 @@ class SampleDataSeeder extends Seeder
 
         // Classes
         $classDefs = [
-            ['class_name' => 'Preschool Fun Art', 'class_category' => 'preschool', 'capacity' => 10, 'class_fee' => 350000],
-            ['class_name' => 'Coloring Basic', 'class_category' => 'coloring', 'capacity' => 12, 'class_fee' => 300000],
-            ['class_name' => 'Manga Drawing Basic', 'class_category' => 'drawing', 'capacity' => 8, 'class_fee' => 450000],
+            ['class_category' => 'preschool', 'capacity' => 10, 'class_fee' => 350000],
+            ['class_category' => 'coloring', 'capacity' => 12, 'class_fee' => 300000],
+            ['class_category' => 'drawing', 'capacity' => 8, 'class_fee' => 450000],
         ];
         $classes = collect($classDefs)->map(function ($c, $i) use ($tutors) {
             return ClassRoom::firstOrCreate(
-                ['class_name' => $c['class_name']],
+                ['class_category' => $c['class_category']],
                 array_merge($c, [
                     'tutor_id' => $tutors[$i % $tutors->count()]->id,
                     // Kelas mingguan: Senin, Selasa, Rabu terdekat.

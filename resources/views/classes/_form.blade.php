@@ -1,15 +1,7 @@
 <div class="row">
     <div class="col-md-6 mb-3">
-        <label class="form-label">Nama Kelas</label>
-        <input type="text" name="class_name" class="form-control" value="{{ old('class_name', $class->class_name ?? '') }}" required>
-    </div>
-    <div class="col-md-6 mb-3">
         <label class="form-label">Kategori</label>
-        <select name="class_category" class="form-select" required>
-            @foreach(['preschool' => 'Preschool', 'coloring' => 'Coloring', 'drawing' => 'Drawing'] as $val => $label)
-                <option value="{{ $val }}" @selected(old('class_category', $class->class_category ?? '') === $val)>{{ $label }}</option>
-            @endforeach
-        </select>
+        <input type="text" name="class_category" class="form-control" value="{{ old('class_category', $class->class_category ?? '') }}" placeholder="Contoh: Preschool, Coloring, Drawing" required>
     </div>
     <div class="col-md-6 mb-3">
         <label class="form-label">Tutor</label>

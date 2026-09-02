@@ -40,7 +40,6 @@ class StudentManagementTest extends TestCase
         $tutor = Tutor::create(['name' => 'Kak Tutor', 'status' => 'active']);
 
         return ClassRoom::create([
-            'class_name' => 'Kelas '.ucfirst($category),
             'class_category' => $category,
             'tutor_id' => $tutor->id,
             'capacity' => $capacity,
@@ -140,7 +139,6 @@ class StudentManagementTest extends TestCase
 
         $response = $this->actingAs($admin)->post(route('students.store'), $this->validPayload([
             'class_type' => 'drawing',
-            'class_id' => $class->id,
         ]));
 
         $response->assertRedirect(route('students.index'));
@@ -156,11 +154,11 @@ class StudentManagementTest extends TestCase
 
     public function test_student_id_auto_increments(): void
     {
-        $class = $this->makeClass('drawing');
+        $this->makeClass('drawing');
         $admin = $this->makeUser('admin');
 
-        $this->actingAs($admin)->post(route('students.store'), $this->validPayload(['name' => 'Pertama', 'class_id' => $class->id]));
-        $this->actingAs($admin)->post(route('students.store'), $this->validPayload(['name' => 'Kedua', 'class_id' => $class->id]));
+        $this->actingAs($admin)->post(route('students.store'), $this->validPayload(['name' => 'Pertama']));
+        $this->actingAs($admin)->post(route('students.store'), $this->validPayload(['name' => 'Kedua']));
 
         $this->assertSame(['STD001', 'STD002'], Student::orderBy('id')->pluck('student_id')->all());
     }
@@ -170,30 +168,30 @@ class StudentManagementTest extends TestCase
         $this->makeClass();
 
         $this->actingAs($this->makeUser('admin'))
-            ->post(route('students.store'), $this->validPayload(['name' => '', 'class_id' => null]))
-            ->assertSessionHasErrors(['name', 'class_id']);
+            ->post(route('students.store'), $this->validPayload(['name' => '', 'class_type' => '']))
+            ->assertSessionHasErrors(['name', 'class_type']);
 
         $this->assertDatabaseCount('students', 0);
     }
 
     public function test_store_rejects_non_numeric_phone(): void
     {
-        $class = $this->makeClass();
+        $this->makeClass();
 
         $this->actingAs($this->makeUser('admin'))
-            ->post(route('students.store'), $this->validPayload(['phone_number' => '0812-abc', 'class_id' => $class->id]))
+            ->post(route('students.store'), $this->validPayload(['phone_number' => '0812-abc']))
             ->assertSessionHasErrors('phone_number');
 
         $this->assertDatabaseCount('students', 0);
     }
 
-    public function test_store_rejects_invalid_class(): void
+    public function test_store_rejects_full_or_closed_class_type(): void
     {
-        $this->makeClass();
+        $this->makeClass('drawing', capacity: 0, status: 'closed');
 
         $this->actingAs($this->makeUser('admin'))
-            ->post(route('students.store'), $this->validPayload(['class_id' => 99999]))
-            ->assertSessionHasErrors('class_id');
+            ->post(route('students.store'), $this->validPayload(['class_type' => 'drawing']))
+            ->assertSessionHasErrors('class_type');
     }
 
     // ─── EDIT + UPDATE ─────────────────────────────────────────────
@@ -217,7 +215,6 @@ class StudentManagementTest extends TestCase
         $response = $this->actingAs($this->makeUser('admin'))->put(route('students.update', $student), $this->validPayload([
             'name' => 'Nama Baru',
             'status' => 'inactive',
-            'class_id' => $class->id,
         ]));
 
         $response->assertRedirect(route('students.index'));

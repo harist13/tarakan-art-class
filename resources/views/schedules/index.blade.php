@@ -150,14 +150,14 @@
                             <td class="fw-bold">{{ $req->student->name ?? '-' }}</td>
                             <td>
                                 @if($req->originClass)
-                                    {{ $req->originClass->class_name }}
+                                    {{ $req->originClass->class_category }}
                                     <br><small class="text-muted">{{ $req->originClass->scheduleLabel() }}</small>
                                 @else
                                     <span class="text-muted">—</span>
                                 @endif
                             </td>
                             <td>
-                                <i class="bi bi-arrow-right-short text-success"></i>{{ $req->classRoom->class_name ?? '-' }}
+                                <i class="bi bi-arrow-right-short text-success"></i>{{ $req->classRoom->class_category ?? '-' }}
                                 @if($req->classRoom)<br><small class="text-muted">{{ ucfirst($req->classRoom->class_category) }}</small>@endif
                             </td>
                             {{-- Jam ditampilkan 12 jam seperti di form pengajuan,
@@ -263,7 +263,7 @@
                     @forelse($slots as $slot)
                         @php $av = $slot->availability(); @endphp
                         <tr>
-                            <td class="fw-bold">{{ $slot->class_name }}<br><small class="text-muted">{{ $slot->class_code }} · {{ ucfirst($slot->class_category) }}</small></td>
+                            <td class="fw-bold">{{ $slot->class_category }}<br><small class="text-muted">{{ $slot->class_code }}</small></td>
                             @php $nextSession = $slot->nextOccurrence(); @endphp
                             <td>
                                 {{ $slot->scheduleLabel() }}
@@ -282,7 +282,7 @@
                                 @else
                                     <button type="button" class="btn btn-sm btn-outline-secondary btn-close-slot"
                                         data-action="{{ route('classes.toggle-status', $slot) }}"
-                                        data-name="{{ $slot->class_name }}"
+                                        data-name="{{ $slot->class_category }}"
                                         title="Tutup slot"><i class="bi bi-lock me-1"></i>Tutup</button>
                                 @endif
                             </td>

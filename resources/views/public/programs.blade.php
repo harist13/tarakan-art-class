@@ -14,7 +14,7 @@
 
     <div class="d-flex flex-wrap justify-content-center gap-3 mt-4">
         @foreach($programs as $program)
-            <a href="#{{ $program['slug'] }}" class="tac-btn tac-btn-sm bg-white tac-text-ink">
+            <a href="#{{ $program['slug'] }}" class="tac-btn tac-btn-sm bg-white tac-text-ink border">
                 {{ $program['name'] }}
             </a>
         @endforeach

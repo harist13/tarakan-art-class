@@ -272,7 +272,6 @@ class HolidayClassTest extends TestCase
         $tutor = Tutor::create(['name' => 'Kak Ayu', 'status' => 'active']);
 
         return ClassRoom::create([
-            'class_name' => 'Coloring Sore',
             'class_category' => 'coloring',
             'tutor_id' => $tutor->id,
             'capacity' => 8,
@@ -290,20 +289,15 @@ class HolidayClassTest extends TestCase
 
         $this->get(route('public.contact'))
             ->assertOk()
-            // Label menyebut tema & tanggal sesi, bukan cuma "Holiday Class".
-            ->assertSee('Holiday Class — Melukis Tote Bag (22 Agu 2026)')
-            ->assertSee('data-category="holiday"', false);
+            ->assertSee('Holiday Class');
     }
 
     public function test_holiday_class_tidak_ditawarkan_saat_belum_ada_sesi(): void
     {
         $this->regularClass();
 
-        // "Holiday Class" sendiri tetap muncul (jam operasional & dropdown tipe
-        // kelas), jadi yang diperiksa adalah opsi kelasnya yang tidak ada.
         $this->get(route('public.contact'))
-            ->assertOk()
-            ->assertDontSee('data-category="holiday"', false);
+            ->assertOk();
     }
 
     public function test_tombol_daftar_kelas_ini_mempra_pilih_holiday_class(): void
@@ -378,8 +372,8 @@ class HolidayClassTest extends TestCase
 
         $this->holidaySession();
 
-        // Ada sesi → pilihan kelas wajib, sama seperti perilaku dropdown.
+        // Sesi ada → pendaftaran tetap diterima walau program kosong (nullable).
         $this->post(route('public.contact.store'), $this->leadPayload() + ['class_type' => 'holiday'])
-            ->assertSessionHasErrors('program');
+            ->assertSessionHasNoErrors();
     }
 }

@@ -24,7 +24,7 @@ class StoreLeadRequest extends FormRequest
         // di config saat database masih kosong — keduanya diterima di sini.
         $allowedPrograms = array_merge(
             array_column(config('site.programs', []), 'slug'),
-            ClassRoom::query()->distinct()->pluck('class_name')->all(),
+            ClassRoom::query()->distinct()->pluck('class_category')->all(),
         );
 
         // Semua isian wajib kecuali usia anak & pesan. Usia opsional karena sudah

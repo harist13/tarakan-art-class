@@ -98,6 +98,15 @@
             color: #0EA5E9; display: flex; align-items: center; gap: .5rem; margin-bottom: .6rem;
         }
         .report-section p { margin: 0; white-space: pre-line; line-height: 1.7; }
+
+        @media print {
+            body { background: #fff !important; padding: 0 !important; }
+            .theme-toggle, .brand, .text-white-50, .no-print { display: none !important; }
+            .container { max-width: 100% !important; padding: 0 !important; }
+            .card { box-shadow: none !important; border: 1px solid #e2e8f0 !important; border-radius: 0 !important; }
+            .report-hero { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: #0284C7 !important; color: #fff !important; }
+            .class-chip { border: 1px solid #fff !important; color: #fff !important; }
+        }
     </style>
 </head>
 <body class="py-5">
@@ -125,7 +134,7 @@
                     <form action="{{ route('reports.guest.show') }}" method="POST">
                         @csrf
                         <div class="mb-3">
-                            <input type="text" name="credential_key" class="form-control form-control-lg text-center fw-bold" style="letter-spacing:2px;" placeholder="silakan masukan Credential Key" value="{{ old('credential_key') }}" required autofocus>
+                            <input type="text" name="credential_key" class="form-control form-control-lg text-center fw-bold text-uppercase" style="letter-spacing:2px;" placeholder="Contoh: TAC-2026-0001" value="{{ old('credential_key') }}" required autofocus>
                         </div>
                         <button type="submit" class="btn btn-primary btn-lg w-100"><i class="bi bi-unlock me-1"></i> Lihat Raport</button>
                     </form>
@@ -147,7 +156,7 @@
                         <div class="hero-sub"><i class="bi bi-calendar3 me-1"></i>{{ $report->period_start->format('d M Y') }} — {{ $report->period_end->format('d M Y') }}</div>
                         <div class="hero-meta">
                             @forelse($report->student->classes as $class)
-                                <span class="class-chip"><i class="bi bi-easel2"></i>{{ $class->class_name }}</span>
+                                <span class="class-chip"><i class="bi bi-easel2"></i>{{ $class->class_category }}</span>
                             @empty
                                 <span class="class-chip"><i class="bi bi-easel2"></i>Belum ada kelas</span>
                             @endforelse
@@ -167,8 +176,13 @@
                     </div>
                 @endif
 
-                <div class="report-section text-center">
-                    <a href="{{ route('reports.guest') }}" class="btn btn-outline-primary btn-sm"><i class="bi bi-arrow-left me-1"></i> Cek Raport Lain</a>
+                <div class="report-section text-center no-print d-flex flex-wrap justify-content-center gap-2">
+                    <button type="button" class="btn btn-primary btn-sm d-inline-flex align-items-center gap-1" onclick="window.print()">
+                        <i class="bi bi-printer"></i> Cetak / Simpan PDF
+                    </button>
+                    <a href="{{ route('reports.guest') }}" class="btn btn-outline-primary btn-sm d-inline-flex align-items-center gap-1">
+                        <i class="bi bi-arrow-left"></i> Cek Raport Lain
+                    </a>
                 </div>
             </div>
         @endif

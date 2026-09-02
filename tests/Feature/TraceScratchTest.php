@@ -28,7 +28,7 @@ class TraceScratchTest extends TestCase
 
         $tutor = Tutor::create(['name' => 'Kak T', 'status' => 'active']);
         ClassRoom::create([
-            'class_name' => 'Kelas Uji', 'class_category' => 'drawing', 'tutor_id' => $tutor->id,
+            'class_category' => 'drawing', 'tutor_id' => $tutor->id,
             'capacity' => 5, 'schedule_date' => now()->toDateString(), 'schedule_time' => '09:00',
             'class_fee' => 100000,
         ]);

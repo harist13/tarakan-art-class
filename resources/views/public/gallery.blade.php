@@ -15,13 +15,13 @@
     @if($categories->isNotEmpty())
         <div class="d-flex flex-wrap justify-content-center gap-2 mt-4">
             <a href="{{ route('public.gallery') }}"
-               class="tac-btn tac-btn-sm {{ $active ? 'bg-white tac-text-ink' : '' }}"
+               class="tac-btn tac-btn-sm {{ $active ? 'bg-white tac-text-ink border' : '' }}"
                @if(! $active) aria-current="page" @endif>
                 Semua
             </a>
             @foreach($categories as $slug => $label)
                 <a href="{{ route('public.gallery', ['kategori' => $slug]) }}"
-                   class="tac-btn tac-btn-sm {{ $active === $slug ? '' : 'bg-white tac-text-ink' }}"
+                   class="tac-btn tac-btn-sm {{ $active === $slug ? '' : 'bg-white tac-text-ink border' }}"
                    @if($active === $slug) aria-current="page" @endif>
                     {{ $label }}
                 </a>
@@ -40,7 +40,7 @@
                              alt="{{ $item['caption'] ?: 'Karya murid Tarakan Art Class' }}"
                              loading="lazy" decoding="async" class="tac-thumb">
                         <figcaption class="d-flex justify-content-between align-items-center gap-2 px-3 py-2">
-                            <span class="text-truncate tac-muted" style="font-size: 0.75rem;">
+                            <span class="text-truncate tac-muted" style="font-size: 0.75rem;" title="{{ $item['caption'] ?: 'Karya murid' }}">
                                 {{ $item['caption'] ?: 'Karya murid' }}
                             </span>
                             <span class="tac-badge tac-bg-paper-2 flex-shrink-0" style="font-size: 0.625rem;">

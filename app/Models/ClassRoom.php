@@ -43,7 +43,6 @@ class ClassRoom extends Model
 
     protected $fillable = [
         'class_code',
-        'class_name',
         'class_category',
         'tutor_id',
         'capacity',

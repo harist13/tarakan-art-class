@@ -56,10 +56,10 @@ class ClassRoomController extends Controller
                 'students as enrolled_count' => fn ($q) => $q->where('student_class.status', 'active'),
             ])
             ->when($search, fn ($q) => $q->where(function ($sub) use ($search) {
-                $sub->where('class_name', 'like', "%{$search}%")
+                $sub->where('class_category', 'like', "%{$search}%")
                     ->orWhere('class_code', 'like', "%{$search}%");
             }))
-            ->when(in_array($category, ['preschool', 'coloring', 'drawing'], true), fn ($q) => $q->where('class_category', $category))
+            ->when($category !== '', fn ($q) => $q->where('class_category', $category))
             // Status ketersediaan — mengikuti prioritas badge: ditutup > tutor kosong > penuh > tersedia.
             // Tidak ada lagi status "sudah lewat": slot mingguan tidak kedaluwarsa.
             ->when($status === 'ditutup', fn ($q) => $q->where('classes.status', 'closed'))
@@ -115,14 +115,17 @@ class ClassRoomController extends Controller
             ->get();
 
         // Daftar semua kelas untuk dropdown filter "kelas yang diampu".
-        $allClasses = ClassRoom::orderBy('class_name')->get(['id', 'class_name', 'class_code']);
+        $allClasses = ClassRoom::orderBy('class_category')->get(['id', 'class_category', 'class_code']);
+
+        // Daftar kategori unik untuk dropdown filter.
+        $categories = ClassRoom::query()->distinct()->orderBy('class_category')->pluck('class_category');
 
         // Panel aktif: 'kelas' (default) atau 'tutor'.
         $tab = $request->string('tab')->toString() === 'tutor' ? 'tutor' : 'kelas';
 
         return view('classes.index', compact(
             'classes', 'search', 'tutors', 'status', 'category', 'day',
-            'tab', 'tutorSearch', 'tutorClassId', 'tutorStatus', 'allClasses'
+            'tab', 'tutorSearch', 'tutorClassId', 'tutorStatus', 'allClasses', 'categories'
         ));
     }
 
@@ -139,7 +142,7 @@ class ClassRoomController extends Controller
 
         DB::transaction(function () use ($data) {
             $class = ClassRoom::create($data);
-            ActivityLog::record('created', $class, "Membuat kelas {$class->class_name}");
+            ActivityLog::record('created', $class, "Membuat kelas {$class->class_category}");
         });
 
         return redirect()->route('classes.index')->with('success', 'Kelas berhasil dibuat.');
@@ -158,7 +161,7 @@ class ClassRoomController extends Controller
 
         DB::transaction(function () use ($class, $data) {
             $class->update($data);
-            ActivityLog::record('updated', $class, "Memperbarui kelas {$class->class_name}");
+            ActivityLog::record('updated', $class, "Memperbarui kelas {$class->class_category}");
         });
 
         return redirect()->route('classes.index')->with('success', 'Kelas berhasil diperbarui.');
@@ -167,7 +170,7 @@ class ClassRoomController extends Controller
     public function destroy(ClassRoom $class)
     {
         DB::transaction(function () use ($class) {
-            ActivityLog::record('deleted', $class, "Menghapus kelas {$class->class_name}");
+            ActivityLog::record('deleted', $class, "Menghapus kelas {$class->class_category}");
             $class->delete();
         });
 
@@ -198,10 +201,10 @@ class ClassRoomController extends Controller
 
         DB::transaction(function () use ($class, $label) {
             $class->save();
-            ActivityLog::record('updated', $class, "Kelas {$class->class_name} {$label}");
+            ActivityLog::record('updated', $class, "Kelas {$class->class_category} {$label}");
         });
 
-        return back()->with('success', "Kelas {$class->class_name} berhasil {$label}.");
+        return back()->with('success', "Kelas {$class->class_category} berhasil {$label}.");
     }
 
     // ─── Tutor management (nested under Class Management) ──────────
@@ -258,8 +261,7 @@ class ClassRoomController extends Controller
     private function validateData(Request $request): array
     {
         return $request->validate([
-            'class_name' => ['required', 'string', 'max:255'],
-            'class_category' => ['required', Rule::in(['preschool', 'coloring', 'drawing'])],
+            'class_category' => ['required', 'string', 'max:255'],
             'tutor_id' => ['required', 'exists:tutors,id'],
             'capacity' => ['required', 'integer', 'min:1'],
             // Jadwal: tanggal + jam. `day_of_week` sengaja tidak divalidasi karena

@@ -50,7 +50,6 @@ class PaymentMethodOptionsTest extends TestCase
     {
         $tutor = Tutor::create(['name' => 'Kak Tutor', 'status' => 'active']);
         $class = ClassRoom::create([
-            'class_name' => 'Kelas Drawing',
             'class_category' => 'drawing',
             'tutor_id' => $tutor->id,
             'capacity' => 10,

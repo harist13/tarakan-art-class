@@ -29,13 +29,13 @@
             --card-bg: rgba(255, 255, 255, 0.96);
             --card-shadow: rgba(37, 99, 235, 0.25);
             --title-color: #0F172A;
-            --subtitle-color: #64748B;
+            --subtitle-color: #475569;
             --input-bg: #F1F5F9;
             --input-bg-focus: #FFFFFF;
-            --input-border: #E2E8F0;
+            --input-border: #CBD5E1;
             --input-text: #1E293B;
-            --label-color: #94A3B8;
-            --toggle-color: #94A3B8;
+            --label-color: #64748B;
+            --toggle-color: #64748B;
         }
 
         [data-bs-theme="dark"] {
@@ -43,13 +43,13 @@
             --grad-to: #1E3A8A;
             --card-bg: rgba(17, 30, 51, 0.94);
             --card-shadow: rgba(0, 0, 0, 0.5);
-            --title-color: #F1F5F9;
-            --subtitle-color: #94A3B8;
+            --title-color: #F8FAFC;
+            --subtitle-color: #CBD5E1;
             --input-bg: #16243C;
             --input-bg-focus: #1B2C48;
-            --input-border: #22334E;
-            --input-text: #E2E8F0;
-            --label-color: #94A3B8;
+            --input-border: #334155;
+            --input-text: #F1F5F9;
+            --label-color: #CBD5E1;
             --toggle-color: #94A3B8;
         }
 

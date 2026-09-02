@@ -54,7 +54,6 @@ class PaymentArrearsAccessTest extends TestCase
         $tutor = Tutor::create(['name' => 'Kak Tutor', 'status' => 'active']);
 
         return ClassRoom::create([
-            'class_name' => 'Kelas '.ucfirst($category),
             'class_category' => $category,
             'tutor_id' => $tutor->id,
             'capacity' => 10,
@@ -233,7 +232,7 @@ class PaymentArrearsAccessTest extends TestCase
 
         // Admin tetap melihat raportnya; yang ditahan hanya akses orang tua.
         $this->actingAs($this->admin())
-            ->get(route('reports.index'))
+            ->get(route('reports.index', ['month' => now()->format('Y-m')]))
             ->assertOk()
             ->assertSee('Murid Nunggak')
             ->assertSee('lewat jatuh tempo', false);
@@ -319,12 +318,11 @@ class PaymentArrearsAccessTest extends TestCase
                 'date_of_birth' => '2018-05-10',
                 'parent_name' => 'Ibu Ani',
                 'phone_number' => '081234567890',
-                'class_type' => 'drawing',
+                'class_type' => 'coloring',
                 'status' => 'active',
                 'join_date' => '2026-01-15',
-                'class_id' => $classB->id,
             ])
-            ->assertSessionHasErrors('class_id');
+            ->assertSessionHasErrors('class_type');
 
         $this->assertSame([$classA->id], $student->fresh()->classes->pluck('id')->all());
     }

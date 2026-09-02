@@ -97,7 +97,7 @@
                                 </span>
 
                                 <span class="flex-grow-1" style="min-width: 0;">
-                                    <span class="d-block fw-semibold text-truncate">{{ $class->class_name }}</span>
+                                    <span class="d-block fw-semibold text-truncate">{{ $class->class_category }}</span>
                                     <span class="d-block tac-muted-soft" style="font-size: 0.75rem;">
                                         {{ $categoryLabels[$class->class_category] ?? ucfirst($class->class_category) }}
                                         @if($class->tutor) &middot; {{ $class->tutor->name }} @endif

@@ -238,7 +238,8 @@ html { scroll-behavior: smooth; }
 .tac-btn:disabled { opacity: 0.6; pointer-events: none; }
 
 .tac-btn-accent { --tac-btn-bg: var(--tac-sun); --tac-btn-color: var(--tac-ink); }
-.tac-btn-coral  { --tac-btn-bg: var(--tac-coral); --tac-btn-color: #fff; }
+.tac-btn-coral  { --tac-btn-bg: var(--tac-coral-dark); --tac-btn-color: #ffffff; }
+.tac-btn-coral:hover { --tac-btn-bg: #b93723; --tac-btn-color: #ffffff; }
 
 /* Ghost = tombol sekunder: permukaan krem terang bergaris tipis. */
 .tac-btn-ghost {
@@ -248,6 +249,8 @@ html { scroll-behavior: smooth; }
     box-shadow: none;
 }
 .tac-btn-ghost:hover { --tac-btn-bg: #fff; box-shadow: var(--tac-shadow-pill); }
+
+.tac-scroll-target { scroll-margin-top: 5.5rem; }
 
 .tac-btn-light  { --tac-btn-bg: var(--tac-paper); --tac-btn-color: var(--tac-ink); }
 

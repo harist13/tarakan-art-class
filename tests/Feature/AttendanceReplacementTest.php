@@ -48,8 +48,7 @@ class AttendanceReplacementTest extends TestCase
         $tutor = Tutor::create(['name' => 'Kak '.$name, 'status' => 'active']);
 
         return ClassRoom::create([
-            'class_name' => $name,
-            'class_category' => 'drawing',
+            'class_category' => $name,
             'tutor_id' => $tutor->id,
             'capacity' => 10,
             'schedule_date' => now()->addDays($dayOffset)->toDateString(),

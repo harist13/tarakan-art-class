@@ -60,8 +60,8 @@ class ScheduleController extends Controller
             ->when(in_array($status, ['pending', 'approved', 'rejected'], true), fn ($q) => $q->where('request_status', $status))
             ->when($search, fn ($q) => $q->where(function ($sub) use ($search) {
                 $sub->whereHas('student', fn ($s) => $s->where('name', 'like', "%{$search}%"))
-                    ->orWhereHas('classRoom', fn ($c) => $c->where('class_name', 'like', "%{$search}%"))
-                    ->orWhereHas('originClass', fn ($c) => $c->where('class_name', 'like', "%{$search}%"));
+                    ->orWhereHas('classRoom', fn ($c) => $c->where('class_category', 'like', "%{$search}%"))
+                    ->orWhereHas('originClass', fn ($c) => $c->where('class_category', 'like', "%{$search}%"));
             }))
             ->orderByDesc('id')
             ->paginate(10)
@@ -85,7 +85,7 @@ class ScheduleController extends Controller
 
         $slots = $allSlots
             ->when($slotSearch !== '', fn ($c) => $c->filter(
-                fn (ClassRoom $s) => str_contains(mb_strtolower($s->class_name.' '.$s->class_code), mb_strtolower($slotSearch))
+                fn (ClassRoom $s) => str_contains(mb_strtolower($s->class_category.' '.$s->class_code), mb_strtolower($slotSearch))
             ))
             ->when(isset(self::SLOT_STATUS_COLORS[$slotStatus]), fn ($c) => $c->filter(
                 fn (ClassRoom $s) => $s->availability()['color'] === self::SLOT_STATUS_COLORS[$slotStatus]
@@ -219,7 +219,7 @@ class ScheduleController extends Controller
                 $label = $past ? 'Sudah lewat' : $av['text'];
 
                 $events[] = [
-                    'title' => $class->class_name.($available ? '' : ' ('.$label.')'),
+                    'title' => $class->class_category.($available ? '' : ' ('.$label.')'),
                     'start' => $at->format('Y-m-d\TH:i:s'),
                     'color' => $available ? '#0EA5E9' : '#94A3B8',
                     'extendedProps' => [
@@ -279,8 +279,8 @@ class ScheduleController extends Controller
                 'extendedProps' => [
                     'type' => 'Replacement Class',
                     'status' => ucfirst($req->request_status),
-                    'originClass' => $req->originClass->class_name ?? '-',
-                    'newClass' => $req->classRoom->class_name ?? '-',
+                    'originClass' => $req->originClass->class_category ?? '-',
+                    'newClass' => $req->classRoom->class_category ?? '-',
                     'reason' => $req->reason ?: '-',
                     // Disembunyikan toggle "Hanya slot available" — lihat visibleEvents().
                     'past' => $req->isPast(),
@@ -357,7 +357,7 @@ class ScheduleController extends Controller
         // Kelas pengganti adalah fasilitas tambahan, jadi ditahan selama menunggak.
         $students = $this->studentsWithActiveClass(Student::attendable()->settled());
         $classes = ClassRoom::with('tutor')->withCount(['students as enrolled_count' => fn ($q) => $q->where('student_class.status', 'active')])
-            ->orderBy('class_name')->get();
+            ->orderBy('class_category')->get();
 
         return view('schedules.create', compact('students', 'classes'));
     }
@@ -394,7 +394,7 @@ class ScheduleController extends Controller
             Student::query()->where(fn ($q) => $q->settled()->orWhere('id', $schedule->student_id))
         );
         $classes = ClassRoom::with('tutor')->withCount(['students as enrolled_count' => fn ($q) => $q->where('student_class.status', 'active')])
-            ->orderBy('class_name')->get();
+            ->orderBy('class_category')->get();
 
         return view('schedules.edit', ['request' => $schedule, 'students' => $students, 'classes' => $classes]);
     }
@@ -477,7 +477,7 @@ class ScheduleController extends Controller
                         return;
                     }
 
-                    $fail("Tanggal tersebut bukan sesi kelas \"{$origin->class_name}\" ({$origin->scheduleLabel()}) — bisa jadi jatuh di hari lain atau pada hari libur. Pilih salah satu sesi kelas tersebut.");
+                    $fail("Tanggal tersebut bukan sesi kelas \"{$origin->class_category}\" ({$origin->scheduleLabel()}) — bisa jadi jatuh di hari lain atau pada hari libur. Pilih salah satu sesi kelas tersebut.");
                 },
             ],
             'class_id' => [
@@ -502,7 +502,7 @@ class ScheduleController extends Controller
                             $class->isFull() => 'sudah penuh',
                             default => 'tidak punya sesi mendatang',
                         };
-                        $fail("Kelas \"{$class->class_name}\" {$reason} sehingga tidak bisa dijadikan slot pengganti. Silakan pilih slot lain yang tersedia.");
+                        $fail("Kelas \"{$class->class_category}\" {$reason} sehingga tidak bisa dijadikan slot pengganti. Silakan pilih slot lain yang tersedia.");
                     }
 
                     // Catatan: beda tipe kelas TIDAK ditolak — murid boleh pindah lintas

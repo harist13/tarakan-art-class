@@ -267,7 +267,7 @@
                                         <small class="text-muted">{{ $student->student_id }}</small>
                                     </td>
                                     <td class="small text-muted">
-                                        {{ $student->classes->pluck('class_name')->implode(', ') ?: 'Belum ada kelas' }}
+                                        {{ $student->classes->pluck('class_category')->implode(', ') ?: 'Belum ada kelas' }}
                                     </td>
                                     <td>
                                         <input type="number" step="1000" min="0" placeholder="0"

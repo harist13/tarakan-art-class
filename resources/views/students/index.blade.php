@@ -49,7 +49,7 @@
             <select name="class_id" class="form-select form-select-sm" style="width:160px;">
                 <option value="">Semua Kelas</option>
                 @foreach($classes as $class)
-                    <option value="{{ $class->id }}" @selected($classId == $class->id)>{{ $class->class_name }}</option>
+                    <option value="{{ $class->id }}" @selected($classId == $class->id)>{{ $class->class_category }}</option>
                 @endforeach
             </select>
             <select name="status" class="form-select form-select-sm" style="width:150px;">
@@ -123,7 +123,7 @@
                             <td>
                                 <div class="d-flex flex-wrap gap-1">
                                     @forelse($student->classes as $class)
-                                        <span class="badge bg-light text-dark border rounded-pill px-2 py-1 fw-semibold">{{ $class->class_name }}</span>
+                                        <span class="badge bg-light text-dark border rounded-pill px-2 py-1 fw-semibold">{{ $class->class_category }}</span>
                                     @empty
                                         <span class="text-muted small">Belum ada kelas</span>
                                     @endforelse

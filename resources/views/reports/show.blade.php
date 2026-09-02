@@ -69,7 +69,7 @@
             </div>
             <div class="hero-meta">
                 @forelse($report->student->classes as $class)
-                    <span class="class-chip"><i class="bi bi-easel2"></i>{{ $class->class_name }}</span>
+                    <span class="class-chip"><i class="bi bi-easel2"></i>{{ $class->class_category }}</span>
                 @empty
                     <span class="class-chip"><i class="bi bi-easel2"></i>Belum ada kelas</span>
                 @endforelse

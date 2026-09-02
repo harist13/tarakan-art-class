@@ -38,8 +38,12 @@ class ReportController extends Controller
         }
 
         // Mode default: daftar bulan beserta jumlah raport.
+        $monthExpr = DB::connection()->getDriverName() === 'sqlite'
+            ? "strftime('%Y-%m', period_start)"
+            : "DATE_FORMAT(period_start, '%Y-%m')";
+
         $months = StudentReport::query()
-            ->selectRaw("DATE_FORMAT(period_start, '%Y-%m') as month, COUNT(*) as total")
+            ->selectRaw("{$monthExpr} as month, COUNT(*) as total")
             ->groupBy('month')
             ->orderByDesc('month')
             ->get();

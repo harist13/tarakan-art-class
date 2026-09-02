@@ -38,7 +38,7 @@ class StudentController extends Controller
         // "berapa yang belum ditagih di antara hasil pencarian saat ini".
         $unbilledCount = Student::unbilledFor()->count();
 
-        $classes = ClassRoom::orderBy('class_name')->get();
+        $classes = ClassRoom::orderBy('class_category')->get();
 
         return view('students.index', compact(
             'students', 'search', 'status', 'classId', 'classes', 'unbilled', 'unbilledCount'
@@ -48,7 +48,7 @@ class StudentController extends Controller
     public function create()
     {
         $classes = ClassRoom::withCount(['students as enrolled_count' => fn ($q) => $q->where('student_class.status', 'active')])
-            ->orderBy('class_name')->get();
+            ->orderBy('class_category')->get();
 
         return view('students.create', compact('classes'));
     }
@@ -56,12 +56,17 @@ class StudentController extends Controller
     public function store(Request $request)
     {
         $data = $this->validateData($request);
-        $classId = $data['class_id'];
-        unset($data['class_id']);
 
-        DB::transaction(function () use ($data, $classId) {
+        $matchingClass = ClassRoom::whereRaw('LOWER(class_category) = ?', [strtolower($data['class_type'])])
+            ->get()
+            ->first(fn ($c) => $c->isAvailable())
+            ?? ClassRoom::whereRaw('LOWER(class_category) = ?', [strtolower($data['class_type'])])->first();
+
+        DB::transaction(function () use ($data, $matchingClass) {
             $student = Student::create($data);
-            $this->syncClasses($student, [$classId]);
+            if ($matchingClass) {
+                $this->syncClasses($student, [$matchingClass->id]);
+            }
             ActivityLog::record('created', $student, "Menambahkan murid {$student->name}");
         });
 
@@ -71,7 +76,7 @@ class StudentController extends Controller
     public function edit(Student $student)
     {
         $classes = ClassRoom::withCount(['students as enrolled_count' => fn ($q) => $q->where('student_class.status', 'active')])
-            ->orderBy('class_name')->get();
+            ->orderBy('class_category')->get();
         $student->load('classes');
 
         return view('students.edit', compact('student', 'classes'));
@@ -79,22 +84,33 @@ class StudentController extends Controller
 
     public function update(Request $request, Student $student)
     {
-        $data = $this->validateData($request);
-        $classId = $data['class_id'];
-        unset($data['class_id']);
+        $data = $this->validateData($request, $student);
 
-        // Pindah/tambah kelas ditahan selama menunggak — itu keputusan yang bisa
+        // Pindah tipe kelas ditahan selama menunggak — itu keputusan yang bisa
         // ditunda tanpa merusak catatan apa pun. Perubahan data lain tetap boleh.
-        $movingClass = ! $student->classes()->where('classes.id', $classId)->exists();
-        if ($movingClass && $student->hasArrears()) {
+        $typeChanged = $student->class_type !== $data['class_type'];
+        if ($typeChanged && $student->hasArrears()) {
             return back()->withInput()->withErrors([
-                'class_id' => "Kelas belum bisa diubah: murid {$student->paymentBlockReason()}. Lunasi dulu di menu Pembayaran.",
+                'class_type' => "Tipe kelas belum bisa diubah: murid {$student->paymentBlockReason()}. Lunasi dulu di menu Pembayaran.",
             ]);
         }
 
-        DB::transaction(function () use ($student, $data, $classId) {
+        $matchingClass = null;
+        if ($typeChanged) {
+            $matchingClass = ClassRoom::whereRaw('LOWER(class_category) = ?', [strtolower($data['class_type'])])
+                ->get()
+                ->first(fn ($c) => $c->isAvailable())
+                ?? ClassRoom::whereRaw('LOWER(class_category) = ?', [strtolower($data['class_type'])])->first();
+        } else {
+            $matchingClass = $student->classes->first()
+                ?? ClassRoom::whereRaw('LOWER(class_category) = ?', [strtolower($data['class_type'])])->first();
+        }
+
+        DB::transaction(function () use ($student, $data, $matchingClass) {
             $student->update($data);
-            $this->syncClasses($student, [$classId]);
+            if ($matchingClass) {
+                $this->syncClasses($student, [$matchingClass->id]);
+            }
             ActivityLog::record('updated', $student, "Memperbarui murid {$student->name}");
         });
 
@@ -112,7 +128,7 @@ class StudentController extends Controller
         return redirect()->route('students.index')->with('success', 'Data murid berhasil dihapus.');
     }
 
-    private function validateData(Request $request): array
+    private function validateData(Request $request, ?Student $student = null): array
     {
         return $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -122,13 +138,31 @@ class StudentController extends Controller
             'phone_number' => ['required', 'string', 'regex:/^[0-9]+$/', 'max:20'],
             'instagram_username' => ['nullable', 'string', 'max:255'],
             'address' => ['nullable', 'string'],
-            'class_type' => ['required', Rule::in(['preschool', 'coloring', 'drawing'])],
+            'class_type' => [
+                'required',
+                'string',
+                'max:255',
+                function ($attribute, $value, $fail) use ($student) {
+                    $classes = ClassRoom::whereRaw('LOWER(class_category) = ?', [strtolower($value)])->get();
+                    if ($classes->isEmpty()) {
+                        return;
+                    }
+
+                    if ($student && strtolower($student->class_type) === strtolower($value)) {
+                        return;
+                    }
+
+                    $hasAvailable = $classes->contains(fn ($c) => $c->isAvailable());
+                    if (! $hasAvailable) {
+                        $allClosed = $classes->every(fn ($c) => $c->isClosed());
+                        $reason = $allClosed ? 'ditutup' : 'penuh';
+                        $fail("Kelas untuk kategori {$value} saat ini sedang {$reason}.");
+                    }
+                },
+            ],
             'status' => ['required', Rule::in(['active', 'inactive'])],
             'join_date' => ['required', 'date'],
-            'class_id' => ['required', Rule::exists('classes', 'id')],
         ], [
-            'class_id.required' => 'Kelas wajib dipilih.',
-            'class_id.exists' => 'Kelas yang dipilih tidak valid.',
             'class_type.required' => 'Tipe kelas wajib dipilih.',
             'class_type.in' => 'Tipe kelas yang dipilih tidak valid.',
             'phone_number.regex' => 'No HP Wali harus berupa angka.',

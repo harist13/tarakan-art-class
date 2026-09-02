@@ -68,7 +68,6 @@ class SlotAvailabilityTest extends TestCase
         $tutor = Tutor::create(['name' => 'Kak Tutor', 'status' => $tutorStatus]);
 
         return ClassRoom::create(array_merge([
-            'class_name' => 'Kelas Drawing',
             'class_category' => 'drawing',
             'tutor_id' => $tutor->id,
             'capacity' => 5,
@@ -189,8 +188,7 @@ class SlotAvailabilityTest extends TestCase
         $rabu = now()->next(3); // Rabu terdekat
 
         $this->post(route('classes.store'), [
-            'class_name' => 'Drawing Sore',
-            'class_category' => 'drawing',
+            'class_category' => 'Drawing Sore',
             'tutor_id' => $tutor->id,
             'capacity' => 8,
             'schedule_date' => $rabu->toDateString(),
@@ -199,7 +197,7 @@ class SlotAvailabilityTest extends TestCase
             'class_fee' => 300000,
         ])->assertRedirect(route('classes.index'))->assertSessionHasNoErrors();
 
-        $class = ClassRoom::where('class_name', 'Drawing Sore')->firstOrFail();
+        $class = ClassRoom::where('class_category', 'Drawing Sore')->firstOrFail();
         // Hari tidak dikirim form & tidak disimpan — diturunkan dari tanggalnya.
         $this->assertSame(3, $class->day_of_week);
         $this->assertTrue($class->is_recurring);
@@ -244,14 +242,14 @@ class SlotAvailabilityTest extends TestCase
     public function test_filter_hari_menyaring_daftar_kelas(): void
     {
         $this->actingAs($this->makeUser());
-        $this->makeClass(['class_name' => 'Kelas Senin', 'schedule_date' => now()->next(1)->toDateString()]);
-        $this->makeClass(['class_name' => 'Kelas Kamis', 'schedule_date' => now()->next(4)->toDateString()]);
-        $this->makeClass(['class_name' => 'Kelas Minggu', 'schedule_date' => now()->next(0)->toDateString()]);
+        $this->makeClass(['class_category' => 'Kelas Senin', 'schedule_date' => now()->next(1)->toDateString()]);
+        $this->makeClass(['class_category' => 'Kelas Kamis', 'schedule_date' => now()->next(4)->toDateString()]);
+        $this->makeClass(['class_category' => 'Kelas Minggu', 'schedule_date' => now()->next(0)->toDateString()]);
 
         // Kelas Senin kedua sengaja dibuat belakangan tapi berjam lebih pagi:
         // saat satu hari dipilih, urutannya harus jadwal, bukan kelas terbaru.
         $this->makeClass([
-            'class_name' => 'Kelas Senin Pagi',
+            'class_category' => 'Kelas Senin Pagi',
             'schedule_date' => now()->next(1)->toDateString(),
             'schedule_time' => '07:00',
         ]);
@@ -259,7 +257,7 @@ class SlotAvailabilityTest extends TestCase
         // Kelas sekali jalan pada Senin yang sudah lewat: masih ada di inventaris,
         // tapi tidak lagi "jalan hari Senin".
         $this->makeClass([
-            'class_name' => 'Kelas Senin Lampau',
+            'class_category' => 'Kelas Senin Lampau',
             'schedule_date' => now()->subWeek()->next(1)->toDateString(),
             'is_recurring' => false,
         ]);
@@ -267,17 +265,17 @@ class SlotAvailabilityTest extends TestCase
         $senin = $this->get(route('classes.index', ['day' => 1]))->assertOk();
         $this->assertSame(
             ['Kelas Senin Pagi', 'Kelas Senin'],
-            $senin->viewData('classes')->pluck('class_name')->all()
+            $senin->viewData('classes')->pluck('class_category')->all()
         );
 
         // Minggu = 0. Nilai ini mudah terjatuh sebagai "kosong" di pengecekan
         // filter, jadi sengaja ikut diuji.
         $minggu = $this->get(route('classes.index', ['day' => 0]))->assertOk();
-        $this->assertSame(['Kelas Minggu'], $minggu->viewData('classes')->pluck('class_name')->all());
+        $this->assertSame(['Kelas Minggu'], $minggu->viewData('classes')->pluck('class_category')->all());
 
         // Tanpa filter, semuanya tampil — termasuk yang sekali jalan & sudah lewat.
         $semua = $this->get(route('classes.index'))->assertOk();
-        $this->assertContains('Kelas Senin Lampau', $semua->viewData('classes')->pluck('class_name')->all());
+        $this->assertContains('Kelas Senin Lampau', $semua->viewData('classes')->pluck('class_category')->all());
         $this->assertCount(5, $semua->viewData('classes'));
     }
 
@@ -316,8 +314,8 @@ class SlotAvailabilityTest extends TestCase
     public function test_replacement_lintas_tipe_kelas_diterima(): void
     {
         $this->actingAs($this->makeUser());
-        $origin = $this->makeClass(['class_name' => 'Kelas Coloring', 'class_category' => 'coloring']);
-        $target = $this->makeClass(['class_name' => 'Kelas Drawing', 'class_category' => 'drawing']);
+        $origin = $this->makeClass(['class_category' => 'coloring']);
+        $target = $this->makeClass(['class_category' => 'drawing']);
         $student = $this->makeStudent(['name' => 'Dina', 'parent_name' => 'Eka', 'class_type' => 'coloring']);
 
         $this->post(route('schedules.store'), [
@@ -607,7 +605,7 @@ class SlotAvailabilityTest extends TestCase
 
         $student = $this->makeStudent();
         $origin = $this->makeClass();
-        $target = $this->makeClass(['class_name' => 'Kelas Tujuan']);
+        $target = $this->makeClass(['class_category' => 'Kelas Tujuan']);
 
         // Satu per status, semuanya di masa lalu.
         foreach (['pending', 'approved', 'rejected'] as $status) {
@@ -658,7 +656,7 @@ class SlotAvailabilityTest extends TestCase
 
         $student = $this->makeStudent();
         $origin = $this->makeClass();
-        $target = $this->makeClass(['class_name' => 'Kelas Tujuan']);
+        $target = $this->makeClass(['class_category' => 'Kelas Tujuan']);
 
         ReplacementRequest::create([
             'student_id' => $student->id,

@@ -80,9 +80,12 @@
 
                 @elseif($state === 'payable')
                     @if($payment->isOverdue())
-                        <p class="text-center tac-text-coral small mb-3">
-                            Invoice ini sudah lewat jatuh tempo {{ $payment->daysOverdue() }} hari.
-                        </p>
+                        <div class="alert d-flex align-items-center gap-2 p-3 mb-3 rounded-4" style="background-color: #FEF3C7; border: 1px solid rgba(245, 136, 12, 0.4); color: #92400E;">
+                            <span style="font-size: 1.2rem;" aria-hidden="true">⚠️</span>
+                            <div class="small fw-semibold">
+                                Invoice ini sudah lewat jatuh tempo {{ $payment->daysOverdue() }} hari. Harap segera menyelesaikan pembayaran.
+                            </div>
+                        </div>
                     @endif
 
                     <div class="d-grid gap-2">

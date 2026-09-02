@@ -56,14 +56,14 @@
                      pilihan "tanggal sesi yang dilewatkan". Dibatasi ke sesi yang
                      benar-benar ada karena tanggal lain tak pernah cocok dengan
                      absensi — muridnya tak akan dikeluarkan dari sesi mana pun. --}}
-                <option value="{{ $class->id }}" data-name="{{ $class->class_name }}"
+                <option value="{{ $class->id }}" data-name="{{ $class->class_category }}"
                     data-category="{{ $class->class_category }}"
                     data-time="{{ $class->timeLabel() }}"
                     data-schedule="{{ $class->sessionLabel() }}"
                     data-next="{{ $class->nextOccurrence()?->format('Y-m-d') }}"
                     data-sessions="{{ collect($class->sessionWindow())->map->format('Y-m-d')->join(',') }}"
                     @selected(old('origin_class_id', $request->origin_class_id ?? request('origin_class_id', '')) == $class->id)>
-                    {{ $class->class_name }} ({{ ucfirst($class->class_category) }}) · {{ $class->availability()['text'] }}
+                    {{ $class->class_category }} ({{ $class->class_code }}) · {{ $class->availability()['text'] }}
                 </option>
             @endforeach
         </select>
@@ -145,12 +145,12 @@
                         $nextSession = $class->nextOccurrence();
                         $sessionAfter = $nextSession ? $class->nextOccurrence($nextSession->copy()->addSecond()) : null;
                     @endphp
-                    <option value="{{ $class->id }}" data-name="{{ $class->class_name }}"
+                    <option value="{{ $class->id }}" data-name="{{ $class->class_category }}"
                         data-category="{{ $class->class_category }}"
                         data-date="{{ $nextSession?->format('Y-m-d') }}"
                         data-date-after="{{ $sessionAfter?->format('Y-m-d') }}"
                         data-time="{{ $class->timeLabel() }}" @selected($selected)>
-                        {{ $class->class_name }} ({{ ucfirst($class->class_category) }}) · {{ $class->availability()['text'] }}
+                        {{ $class->class_category }} ({{ $class->class_code }}) · {{ $class->availability()['text'] }}
                     </option>
                 @endif
             @endforeach

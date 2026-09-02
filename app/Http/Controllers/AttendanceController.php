@@ -31,7 +31,7 @@ class AttendanceController extends Controller
             ->paginate(15)
             ->withQueryString();
 
-        $classes = ClassRoom::orderBy('class_name')->get();
+        $classes = ClassRoom::orderBy('class_category')->get();
 
         return view('attendances.index', compact('attendances', 'classes', 'classId', 'date', 'search'));
     }
@@ -45,7 +45,7 @@ class AttendanceController extends Controller
      */
     public function create(Request $request)
     {
-        $classes = ClassRoom::orderBy('class_name')->get();
+        $classes = ClassRoom::orderBy('class_category')->get();
         $date = $request->string('date')->toString() ?: now()->toDateString();
         $selectedClass = null;
         $rows = collect();

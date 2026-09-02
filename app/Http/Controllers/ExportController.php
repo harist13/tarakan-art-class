@@ -42,7 +42,7 @@ class ExportController extends Controller
             $s->age !== null ? $s->age.' th' : '-',
             $s->parent_name,
             $s->phone_number,
-            $s->classes->pluck('class_name')->implode(', ') ?: '-',
+            $s->classes->pluck('class_category')->implode(', ') ?: '-',
             ucfirst($s->class_type),
             $s->status === 'active' ? 'Aktif' : 'Nonaktif',
             optional($s->join_date)->format('d/m/Y'),
@@ -153,7 +153,7 @@ class ExportController extends Controller
         $rows = $attendances->map(fn ($a) => [
             optional($a->attendance_date)->format('d/m/Y'),
             $a->student->name ?? '-',
-            $a->classRoom->class_name ?? '-',
+            $a->classRoom->class_category ?? '-',
             $statusLabels[$a->status] ?? ucfirst((string) $a->status),
             $a->notes ?: '-',
         ]);

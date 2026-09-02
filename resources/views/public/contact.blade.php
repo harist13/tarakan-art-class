@@ -141,48 +141,73 @@
                                 Nama anak <span class="tac-text-coral" aria-hidden="true">*</span>
                             </label>
                             <input type="text" id="child_name" name="child_name" required maxlength="100"
-                                   value="{{ old('child_name') }}" placeholder="Nama lengkap anak" class="tac-input">
+                                   value="{{ old('child_name') }}" placeholder="Nama lengkap anak"
+                                   @class(['tac-input', 'is-invalid border-danger' => $errors->has('child_name')])>
+                            @error('child_name')
+                                <div class="text-danger small mt-1">{{ $message }}</div>
+                            @enderror
                         </div>
                         <div class="col-md-6">
                             <label for="date_of_birth" class="tac-label">
                                 Tanggal lahir <span class="tac-text-coral" aria-hidden="true">*</span>
                             </label>
                             <input type="date" id="date_of_birth" name="date_of_birth" required max="{{ now()->toDateString() }}"
-                                   value="{{ old('date_of_birth') }}" class="tac-input">
+                                   value="{{ old('date_of_birth') }}"
+                                   @class(['tac-input', 'is-invalid border-danger' => $errors->has('date_of_birth')])>
+                            @error('date_of_birth')
+                                <div class="text-danger small mt-1">{{ $message }}</div>
+                            @enderror
                         </div>
                         <div class="col-md-6">
                             <label for="child_age" class="tac-label">
                                 Usia <span class="fw-normal tac-muted-soft"></span>
                             </label>
                             <input type="number" id="child_age" name="child_age" min="1" max="99"
-                                   value="{{ old('child_age') }}" placeholder="" class="tac-input">
+                                   value="{{ old('child_age') }}" placeholder=""
+                                   @class(['tac-input', 'is-invalid border-danger' => $errors->has('child_age')])>
+                            @error('child_age')
+                                <div class="text-danger small mt-1">{{ $message }}</div>
+                            @enderror
                         </div>
                         <div class="col-md-6">
                             <label for="parent_name" class="tac-label">
                                 Nama orang tua / wali <span class="tac-text-coral" aria-hidden="true">*</span>
                             </label>
                             <input type="text" id="parent_name" name="parent_name" required maxlength="100"
-                                   value="{{ old('parent_name') }}" placeholder="Nama Anda" class="tac-input">
+                                   value="{{ old('parent_name') }}" placeholder="Nama Anda"
+                                   @class(['tac-input', 'is-invalid border-danger' => $errors->has('parent_name')])>
+                            @error('parent_name')
+                                <div class="text-danger small mt-1">{{ $message }}</div>
+                            @enderror
                         </div>
                         <div class="col-md-6">
                             <label for="parent_phone" class="tac-label">
                                 Nomor WhatsApp <span class="tac-text-coral" aria-hidden="true">*</span>
                             </label>
                             <input type="tel" id="parent_phone" name="parent_phone" required maxlength="25"
-                                   value="{{ old('parent_phone') }}" placeholder="0812 3456 7890" class="tac-input">
+                                   value="{{ old('parent_phone') }}" placeholder="0812 3456 7890"
+                                   @class(['tac-input', 'is-invalid border-danger' => $errors->has('parent_phone')])>
+                            @error('parent_phone')
+                                <div class="text-danger small mt-1">{{ $message }}</div>
+                            @enderror
                         </div>
                         <div class="col-md-6">
                             <label for="parent_email" class="tac-label">
                                 Email <span class="tac-text-coral" aria-hidden="true">*</span>
                             </label>
                             <input type="email" id="parent_email" name="parent_email" required maxlength="150"
-                                   value="{{ old('parent_email') }}" placeholder="nama@email.com" class="tac-input">
+                                   value="{{ old('parent_email') }}" placeholder="nama@email.com"
+                                   @class(['tac-input', 'is-invalid border-danger' => $errors->has('parent_email')])>
+                            @error('parent_email')
+                                <div class="text-danger small mt-1">{{ $message }}</div>
+                            @enderror
                         </div>
                         <div class="col-12">
                             <label for="class_type" class="tac-label">
                                 Tipe kelas <span class="tac-text-coral" aria-hidden="true">*</span>
                             </label>
-                            <select id="class_type" name="class_type" required class="tac-input">
+                            <select id="class_type" name="class_type" required
+                                    @class(['tac-input', 'is-invalid border-danger' => $errors->has('class_type')])>
                                 <option value="">— Pilih tipe kelas —</option>
                                 @foreach(\App\Models\Lead::CLASS_TYPES as $value => $label)
                                     <option value="{{ $value }}" @selected(old('class_type', $selectedType) === $value)>
@@ -190,13 +215,20 @@
                                     </option>
                                 @endforeach
                             </select>
+                            @error('class_type')
+                                <div class="text-danger small mt-1">{{ $message }}</div>
+                            @enderror
                         </div>
                         <div class="col-12">
                             <label for="address" class="tac-label">
                                 Alamat <span class="tac-text-coral" aria-hidden="true">*</span>
                             </label>
-                            <textarea id="address" name="address" rows="2" required maxlength="500" class="tac-input"
+                            <textarea id="address" name="address" rows="2" required maxlength="500"
+                                      @class(['tac-input', 'is-invalid border-danger' => $errors->has('address')])
                                       placeholder="Nama jalan, nomor rumah, kelurahan">{{ old('address') }}</textarea>
+                            @error('address')
+                                <div class="text-danger small mt-1">{{ $message }}</div>
+                            @enderror
                         </div>
                         <div class="col-12">
                             <label for="message" class="tac-label">
