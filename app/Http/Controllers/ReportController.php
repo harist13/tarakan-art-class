@@ -3,11 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\ActivityLog;
+use App\Models\Artwork;
 use App\Models\Student;
 use App\Models\StudentReport;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 
 class ReportController extends Controller
 {
@@ -34,7 +34,17 @@ class ReportController extends Controller
                 )
                 ->get();
 
-            return view('reports.index', compact('reports', 'month', 'search', 'withheldCount'));
+            // Jumlah karya tiap murid di bulan ini, untuk badge pada tombol folder.
+            // Satu query terpisah, bukan withCount: relasinya perlu disaring per
+            // bulan, dan angkanya cuma dipakai sebagai penanda di tombol.
+            $artworkCounts = Artwork::query()
+                ->inMonth($month)
+                ->whereIn('student_id', $reports->pluck('student_id'))
+                ->selectRaw('student_id, COUNT(*) as total')
+                ->groupBy('student_id')
+                ->pluck('total', 'student_id');
+
+            return view('reports.index', compact('reports', 'month', 'search', 'withheldCount', 'artworkCounts'));
         }
 
         // Mode default: daftar bulan beserta jumlah raport.
@@ -73,27 +83,15 @@ class ReportController extends Controller
 
     public function store(Request $request)
     {
-        $data = $this->reportData($this->validateData($request));
+        $data = $this->validateData($request);
         $data['created_by'] = auth()->id();
 
-        if ($request->hasFile('photo')) {
-            $data['photo_path'] = $request->file('photo')->store('report-photos', 'public');
-        }
+        $report = DB::transaction(function () use ($data) {
+            $report = StudentReport::create($data);
+            ActivityLog::record('created', $report, "Membuat raport {$report->credential_key}");
 
-        try {
-            $report = DB::transaction(function () use ($data) {
-                $report = StudentReport::create($data);
-                ActivityLog::record('created', $report, "Membuat raport {$report->credential_key}");
-
-                return $report;
-            });
-        } catch (\Throwable $e) {
-            // Bersihkan foto yang terlanjur diupload bila transaksi gagal.
-            if (! empty($data['photo_path'])) {
-                Storage::disk('public')->delete($data['photo_path']);
-            }
-            throw $e;
-        }
+            return $report;
+        });
 
         return redirect()->route('reports.index', ['month' => $report->period_start->format('Y-m')])
             ->with('success', "Raport berhasil dibuat. Credential key: {$report->credential_key}");
@@ -103,7 +101,10 @@ class ReportController extends Controller
     {
         $report->load(['student', 'creator']);
 
-        return view('reports.show', compact('report'));
+        return view('reports.show', [
+            'report' => $report,
+            'artworks' => $report->artworkQuery()->get(),
+        ]);
     }
 
     public function edit(StudentReport $report)
@@ -120,48 +121,22 @@ class ReportController extends Controller
 
     public function update(Request $request, StudentReport $report)
     {
-        $data = $this->reportData($this->validateData($request, $report->id));
+        $data = $this->validateData($request, $report->id);
 
-        $oldPhoto = $report->photo_path;
-        $newPhoto = null;
-        if ($request->hasFile('photo')) {
-            $newPhoto = $request->file('photo')->store('report-photos', 'public');
-            $data['photo_path'] = $newPhoto;
-        }
-
-        try {
-            DB::transaction(function () use ($report, $data) {
-                $report->update($data);
-                ActivityLog::record('updated', $report, "Memperbarui raport {$report->credential_key}");
-            });
-        } catch (\Throwable $e) {
-            if ($newPhoto) {
-                Storage::disk('public')->delete($newPhoto);
-            }
-            throw $e;
-        }
-
-        // Hapus foto lama hanya setelah commit sukses & memang diganti.
-        if ($newPhoto && $oldPhoto) {
-            Storage::disk('public')->delete($oldPhoto);
-        }
+        DB::transaction(function () use ($report, $data) {
+            $report->update($data);
+            ActivityLog::record('updated', $report, "Memperbarui raport {$report->credential_key}");
+        });
 
         return redirect()->route('reports.index', ['month' => $report->period_start->format('Y-m')])->with('success', 'Raport berhasil diperbarui.');
     }
 
     public function destroy(StudentReport $report)
     {
-        $photo = $report->photo_path;
-
         DB::transaction(function () use ($report) {
             ActivityLog::record('deleted', $report, "Menghapus raport {$report->credential_key}");
             $report->delete();
         });
-
-        // Hapus file foto hanya setelah commit sukses.
-        if ($photo) {
-            Storage::disk('public')->delete($photo);
-        }
 
         return redirect()->route('reports.index', ['month' => $report->period_start->format('Y-m')])->with('success', 'Raport berhasil dihapus.');
     }
@@ -195,7 +170,10 @@ class ReportController extends Controller
             ])->onlyInput('credential_key');
         }
 
-        return view('reports.guest', compact('report'));
+        return view('reports.guest', [
+            'report' => $report,
+            'artworks' => $report->artworkQuery()->get(),
+        ]);
     }
 
     private function validateData(Request $request, ?int $excludeId = null): array
@@ -206,7 +184,6 @@ class ReportController extends Controller
             'period_end' => ['required', 'date', 'after_or_equal:period_start'],
             'activity_notes' => ['required', 'string'],
             'tutor_notes' => ['nullable', 'string'],
-            'photo' => ['nullable', 'image', 'mimes:jpeg,jpg,png', 'max:2048'], // foto pas 4x6, maks 2MB
         ]);
 
         // Cek duplikat: murid yang sama di bulan periode yang sama.
@@ -223,16 +200,6 @@ class ReportController extends Controller
                 'student_id' => 'Murid ini sudah memiliki raport di bulan ' . $periodDate->translatedFormat('F Y') . '.',
             ]);
         }
-
-        return $data;
-    }
-
-    /**
-     * Buang key 'photo' dari data yang akan disimpan ke DB (bukan kolom).
-     */
-    private function reportData(array $data): array
-    {
-        unset($data['photo']);
 
         return $data;
     }

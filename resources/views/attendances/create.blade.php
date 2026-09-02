@@ -133,12 +133,12 @@
         </div>
         <div class="card-body">
             {{-- Tanggal yang tidak jatuh pada sesi kelas ini adalah kekeliruan
-                 paling umum: salah hari, atau tanggalnya hari libur. Diberi
-                 peringatan, bukan diblokir — murid pengganti tetap sah hadir. --}}
+                 paling umum — biasanya salah hari. Diberi peringatan, bukan
+                 diblokir: murid pengganti tetap sah hadir. --}}
             @if(! $occursOnDate)
                 <div class="alert alert-warning">
                     <div class="fw-bold mb-1"><i class="bi bi-calendar-x me-1"></i>{{ $selectedClass->class_category }} tidak ada sesi pada tanggal ini</div>
-                    <p class="small mb-0">Jadwal rutinnya <strong>{{ $selectedClass->scheduleLabel() }}</strong>. Tanggal yang dipilih jatuh di hari lain atau pada hari libur — periksa lagi sebelum menyimpan.</p>
+                    <p class="small mb-0">Jadwal rutinnya <strong>{{ $selectedClass->scheduleLabel() }}</strong>. Tanggal yang dipilih jatuh di hari lain — periksa lagi sebelum menyimpan.</p>
                 </div>
             @endif
 

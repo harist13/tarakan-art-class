@@ -257,7 +257,7 @@ chmod -R 775 storage bootstrap/cache
 php artisan storage:link
 ```
 
-`storage:link` wajib — foto rapor diunggah ke `storage/app/public/report-photos` dan hanya bisa
+`storage:link` wajib — foto karya murid diunggah ke `storage/app/public/artworks` dan hanya bisa
 tampil lewat symlink ini. Pada **Opsi B**, symlink bawaan menunjuk ke `public/storage` yang sudah
 tidak dipakai; buat symlink-nya di `public_html`:
 

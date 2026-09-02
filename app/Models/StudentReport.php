@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -13,7 +14,6 @@ class StudentReport extends Model
         'period_end',
         'activity_notes',
         'tutor_notes',
-        'photo_path',
         'credential_key',
         'created_by',
     ];
@@ -44,11 +44,20 @@ class StudentReport extends Model
     }
 
     /**
-     * URL foto pas siswa (null jika belum ada foto).
+     * Foto karya murid sepanjang periode raport ini.
+     *
+     * Sengaja bukan relasi foreign key: karya terikat pada murid + tanggal, bukan
+     * pada satu raport. Yang menyatukannya adalah rentang periode — jadi karya
+     * yang diunggah sebelum raportnya dibuat pun tetap ikut terbawa.
+     *
+     * @return Builder<Artwork>
      */
-    public function photoUrl(): ?string
+    public function artworkQuery(): Builder
     {
-        return $this->photo_path ? asset('storage/'.$this->photo_path) : null;
+        return Artwork::where('student_id', $this->student_id)
+            ->inPeriod($this->period_start, $this->period_end)
+            ->orderBy('taken_on')
+            ->orderBy('id');
     }
 
     public function student(): BelongsTo

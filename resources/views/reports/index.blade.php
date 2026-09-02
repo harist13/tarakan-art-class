@@ -11,7 +11,7 @@
             <nav aria-label="breadcrumb" class="mt-1">
                 <ol class="breadcrumb mb-0 small">
                     <li class="breadcrumb-item"><a href="{{ route('reports.index') }}">Semua Bulan</a></li>
-                    <li class="breadcrumb-item active">{{ $dt->translatedFormat('F Y') }}</li>
+                    <li class="breadcrumb-item active">{{ $dt->locale('id')->translatedFormat('F Y') }}</li>
                 </ol>
             </nav>
         @endif
@@ -21,7 +21,7 @@
 
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-        <span class="fw-bold">{{ isset($month) ? $dt->translatedFormat('F Y') . ' — ' . $reports->count() . ' raport' : 'Daftar Raport per Bulan' }}</span>
+        <span class="fw-bold">{{ isset($month) ? $dt->locale('id')->translatedFormat('F Y') . ' — ' . $reports->count() . ' raport' : 'Daftar Raport per Bulan' }}</span>
         @if(isset($month))
             <form method="GET" data-live class="d-flex" style="max-width:320px;">
                 <input type="hidden" name="month" value="{{ $month }}">
@@ -51,7 +51,20 @@
                                 <td class="fw-bold">{{ $report->student->name ?? '-' }}</td>
                                 <td class="small">{{ $report->period_start->format('d M Y') }} — {{ $report->period_end->format('d M Y') }}</td>
                                 <td class="small">{{ $report->creator->full_name ?? '-' }}</td>
-                                <td class="text-end">
+                                <td class="text-end text-nowrap">
+                                    {{-- Folder karya murid ini di bulan yang sama. Unggahnya
+                                         dilakukan di modul Galeri Karya, jadi di sini cukup pintunya. --}}
+                                    @if($report->student)
+                                        @php $karya = $artworkCounts[$report->student_id] ?? 0; @endphp
+                                        <a href="{{ route('artworks.folder', ['student' => $report->student, 'month' => $month]) }}"
+                                           class="btn btn-sm btn-outline-secondary position-relative"
+                                           title="Folder karya {{ $report->student->name }}">
+                                            <i class="bi bi-folder2-open"></i>
+                                            @if($karya)
+                                                <span class="badge rounded-pill bg-primary ms-1">{{ $karya }}</span>
+                                            @endif
+                                        </a>
+                                    @endif
                                     <a href="{{ route('reports.show', $report) }}" class="btn btn-sm btn-outline-primary" title="Lihat raport"><i class="bi bi-eye"></i></a>
                                     <a href="{{ route('reports.edit', $report) }}" class="btn btn-sm btn-info text-white" title="Edit raport"><i class="bi bi-pencil"></i></a>
                                     <form action="{{ route('reports.destroy', $report) }}" method="POST" class="d-inline" onsubmit="return confirm('Hapus raport ini?')">
@@ -75,7 +88,7 @@
                         <a href="{{ route('reports.index', ['month' => $item->month]) }}" class="text-decoration-none">
                             <div class="card border h-100 text-center py-4 px-3 folder-card">
                                 <div class="mb-2"><i class="bi bi-folder-fill text-primary" style="font-size: 2.5rem;"></i></div>
-                                <div class="fw-bold text-body">{{ $dt->translatedFormat('F Y') }}</div>
+                                <div class="fw-bold text-body">{{ $dt->locale('id')->translatedFormat('F Y') }}</div>
                                 <small class="text-muted">{{ $item->total }} raport</small>
                             </div>
                         </a>

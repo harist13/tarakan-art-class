@@ -102,7 +102,10 @@ class ClassRoomController extends Controller
         $tutorClassId = $request->integer('tutor_class');
         $tutorStatus = $request->string('tutor_status')->toString();
 
-        $tutors = Tutor::withCount('classes')
+        // `withActiveStudents` memuat rantai kelas → murid sekali untuk seluruh
+        // daftar: kolom "Murid Diampu" dan rinciannya membaca dari sana.
+        $tutors = Tutor::withActiveStudents()
+            ->withCount('classes')
             ->when($tutorSearch, fn ($q) => $q->where(function ($sub) use ($tutorSearch) {
                 $sub->where('name', 'like', "%{$tutorSearch}%")
                     ->orWhere('phone_number', 'like', "%{$tutorSearch}%");

@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Mail\NewLeadNotification;
 use App\Models\ClassRoom;
-use App\Models\Holiday;
 use App\Models\Lead;
 use App\Models\Tutor;
 use App\Models\User;
@@ -70,12 +69,9 @@ class PublicSiteTest extends TestCase
     {
         $class = $this->makeClass(Carbon::today()->addDays(3));
 
-        Holiday::create(['date' => Carbon::today()->addDays(5), 'name' => 'Libur Nasional']);
-
         $this->get(route('public.schedule'))
             ->assertOk()
-            ->assertSee($class->class_category)
-            ->assertSee('Libur Nasional');
+            ->assertSee($class->class_category);
     }
 
     public function test_kartu_program_menampilkan_sisa_kursi_dari_database(): void

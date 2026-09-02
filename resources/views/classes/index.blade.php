@@ -147,10 +147,11 @@
         <div class="table-responsive">
             <table class="table table-hover align-middle">
                 <thead>
-                    <tr><th>Nama Tutor</th><th>No HP</th><th>Status</th><th>Kelas Diampu</th><th class="text-end">Aksi</th></tr>
+                    <tr><th>Nama Tutor</th><th>No HP</th><th>Status</th><th>Murid Diampu</th><th>Kelas Diampu</th><th class="text-end">Aksi</th></tr>
                 </thead>
                 <tbody>
                     @forelse($tutors as $tutor)
+                        @php $muridTutor = $tutor->activeStudents(); @endphp
                         <tr>
                             <td class="fw-bold">{{ $tutor->name }}</td>
                             <td>{{ $tutor->phone_number ?: '-' }}</td>
@@ -159,6 +160,21 @@
                                     <span class="badge rounded-pill px-3 py-1 text-white fw-semibold" style="background-color: #15803D;">Full-Time</span>
                                 @else
                                     <span class="badge rounded-pill px-3 py-1 text-white fw-semibold" style="background-color: #0891B2;">Part-Time</span>
+                                @endif
+                            </td>
+                            {{-- Jumlah murid, bukan jumlah kelas: yang ditanya admin adalah berapa
+                                 anak yang dipegang seorang tutor, lalu siapa saja mereka. --}}
+                            <td>
+                                @if($muridTutor->isEmpty())
+                                    <span class="badge bg-light text-muted border">0 murid</span>
+                                @else
+                                    <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1 fw-semibold btn-tutor-students"
+                                        data-bs-toggle="collapse" data-bs-target="#tutorStudents{{ $tutor->id }}"
+                                        aria-expanded="false" aria-controls="tutorStudents{{ $tutor->id }}"
+                                        title="Lihat daftar murid {{ $tutor->name }}">
+                                        <i class="bi bi-people me-1"></i>{{ $muridTutor->count() }} murid
+                                        <i class="bi bi-chevron-down ms-1 small"></i>
+                                    </button>
                                 @endif
                             </td>
                             <td><span class="badge bg-light text-dark border">{{ $tutor->classes_count }} kelas</span></td>
@@ -185,8 +201,67 @@
                                 @endif
                             </td>
                         </tr>
+                        {{-- Rincian murid, dikelompokkan per kelas: di situlah murid bertemu
+                             tutornya, jadi daftar nama polos tidak menjawab "kapan & di kelas apa". --}}
+                        @if($muridTutor->isNotEmpty())
+                            <tr>
+                                <td colspan="6" class="p-0 border-0">
+                                    <div class="collapse" id="tutorStudents{{ $tutor->id }}">
+                                        <div class="bg-light border-top px-3 py-3">
+                                            <p class="small text-muted mb-3">
+                                                <i class="bi bi-info-circle me-1"></i>
+                                                {{ $tutor->name }} mengampu <strong>{{ $muridTutor->count() }} murid</strong> aktif
+                                                di {{ $tutor->classes_count }} kelas. Murid yang ikut dua kelas tutor ini
+                                                sekaligus tetap dihitung satu.
+                                            </p>
+                                            @foreach($tutor->classes as $cls)
+                                                <div class="mb-3">
+                                                    <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                                                        <span class="badge bg-light text-dark border text-capitalize rounded-pill px-2 py-1 fw-semibold">{{ $cls->class_category }}</span>
+                                                        <span class="small text-muted">{{ $cls->class_code }} &middot; {{ $cls->scheduleLabel() }}</span>
+                                                        <span class="badge bg-white text-dark border">{{ $cls->students->count() }} / {{ $cls->capacity }} murid</span>
+                                                        <a href="{{ route('students.index', ['class_id' => $cls->id]) }}" class="small ms-auto text-decoration-none">
+                                                            Buka di daftar murid <i class="bi bi-box-arrow-up-right"></i>
+                                                        </a>
+                                                    </div>
+                                                    @if($cls->students->isEmpty())
+                                                        <p class="small text-muted fst-italic mb-0 ps-1">Belum ada murid aktif di kelas ini.</p>
+                                                    @else
+                                                        <div class="table-responsive bg-white border rounded">
+                                                            <table class="table table-sm table-hover align-middle mb-0">
+                                                                <thead>
+                                                                    <tr class="small text-muted">
+                                                                        <th>ID Murid</th><th>Nama</th><th>Usia</th><th>Wali</th><th>No HP</th><th class="text-end">Aksi</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody>
+                                                                    @foreach($cls->students as $murid)
+                                                                        <tr>
+                                                                            <td class="text-muted small">{{ $murid->student_id }}</td>
+                                                                            <td class="fw-semibold">{{ $murid->name }}</td>
+                                                                            <td>{{ $murid->age ? $murid->age.' th' : '-' }}</td>
+                                                                            <td>{{ $murid->parent_name ?: '-' }}</td>
+                                                                            <td>{{ $murid->phone_number ?: '-' }}</td>
+                                                                            <td class="text-end">
+                                                                                <a href="{{ route('students.edit', $murid) }}" class="btn btn-sm btn-outline-primary" title="Buka data murid {{ $murid->name }}">
+                                                                                    <i class="bi bi-person-lines-fill"></i>
+                                                                                </a>
+                                                                            </td>
+                                                                        </tr>
+                                                                    @endforeach
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    @endif
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        @endif
                     @empty
-                        <tr><td colspan="5" class="text-center text-muted">
+                        <tr><td colspan="6" class="text-center text-muted">
                             @if($tutorSearch !== '' || $tutorStatus !== '' || $tutorClassId)
                                 Tidak ada tutor yang cocok dengan filter.
                             @else
@@ -301,6 +376,21 @@
                 document.getElementById('editTutorName').value = btn.dataset.name;
                 document.getElementById('editTutorPhone').value = btn.dataset.phone || '';
                 document.getElementById('editTutorStatus').value = btn.dataset.status;
+            });
+        });
+    })();
+
+    // ── Chevron tombol "N murid" mengikuti buka/tutup rincian ──
+    (function () {
+        document.querySelectorAll('.btn-tutor-students').forEach(function (btn) {
+            const panel = document.querySelector(btn.dataset.bsTarget);
+            if (!panel) return;
+            const chevron = btn.querySelector('.bi-chevron-down, .bi-chevron-up');
+            panel.addEventListener('show.bs.collapse', function () {
+                chevron.classList.replace('bi-chevron-down', 'bi-chevron-up');
+            });
+            panel.addEventListener('hide.bs.collapse', function () {
+                chevron.classList.replace('bi-chevron-up', 'bi-chevron-down');
             });
         });
     })();

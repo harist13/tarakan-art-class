@@ -73,10 +73,6 @@
             flex-wrap: wrap;
             color: #fff;
         }
-        .hero-photo {
-            width: 84px; height: 112px; border-radius: 0.75rem; object-fit: cover;
-            border: 3px solid rgba(255,255,255,0.6); flex-shrink: 0; background: rgba(255,255,255,0.15);
-        }
         .hero-avatar {
             width: 84px; height: 84px; border-radius: 50%;
             display: flex; align-items: center; justify-content: center;
@@ -99,6 +95,22 @@
         }
         .report-section p { margin: 0; white-space: pre-line; line-height: 1.7; }
 
+        /* ── Galeri karya ───────────────────────────── */
+        .artwork-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: .75rem;
+        }
+        .artwork-item { margin: 0; }
+        .artwork-item img {
+            width: 100%; height: 140px; object-fit: cover;
+            border-radius: .6rem; border: 1px solid rgba(148,163,184,0.35);
+            background: rgba(148,163,184,0.12);
+        }
+        .artwork-item figcaption { padding-top: .35rem; line-height: 1.45; }
+        .artwork-date { display: block; font-size: .72rem; font-weight: 700; color: #0EA5E9; }
+        .artwork-desc { display: block; font-size: .75rem; opacity: .75; }
+
         @media print {
             body { background: #fff !important; padding: 0 !important; }
             .theme-toggle, .brand, .text-white-50, .no-print { display: none !important; }
@@ -106,6 +118,9 @@
             .card { box-shadow: none !important; border: 1px solid #e2e8f0 !important; border-radius: 0 !important; }
             .report-hero { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: #0284C7 !important; color: #fff !important; }
             .class-chip { border: 1px solid #fff !important; color: #fff !important; }
+            /* Grid dipersempit agar tiap karya tetap utuh di atas kertas. */
+            .artwork-grid { grid-template-columns: repeat(3, 1fr) !important; }
+            .artwork-item { break-inside: avoid; }
         }
     </style>
 </head>
@@ -146,11 +161,7 @@
             @endphp
             <div class="card report-card">
                 <div class="report-hero">
-                    @if($report->photoUrl())
-                        <img src="{{ $report->photoUrl() }}" alt="Foto {{ $report->student->name }}" class="hero-photo">
-                    @else
-                        <div class="hero-avatar">{{ $initial }}</div>
-                    @endif
+                    <div class="hero-avatar">{{ $initial }}</div>
                     <div class="hero-main">
                         <h4>{{ $report->student->name }}</h4>
                         <div class="hero-sub"><i class="bi bi-calendar3 me-1"></i>{{ $report->period_start->format('d M Y') }} — {{ $report->period_end->format('d M Y') }}</div>
@@ -173,6 +184,27 @@
                     <div class="report-section">
                         <h6><i class="bi bi-chat-square-quote"></i> Catatan Tutor</h6>
                         <p>{{ $report->tutor_notes }}</p>
+                    </div>
+                @endif
+
+                {{-- Galeri karya sepanjang periode raport. Ikut tertahan bersama
+                     raportnya bila muridnya menunggak — akses keduanya satu pintu. --}}
+                @if($artworks->isNotEmpty())
+                    <div class="report-section">
+                        <h6><i class="bi bi-images"></i> Karya Periode Ini ({{ $artworks->count() }})</h6>
+                        <div class="artwork-grid">
+                            @foreach($artworks as $artwork)
+                                <figure class="artwork-item">
+                                    <img src="{{ $artwork->photoUrl() }}" alt="{{ $artwork->description ?: 'Karya '.$report->student->name }}" loading="lazy">
+                                    <figcaption>
+                                        <span class="artwork-date">{{ $artwork->taken_on->format('d M Y') }}</span>
+                                        @if($artwork->description)
+                                            <span class="artwork-desc">{{ $artwork->description }}</span>
+                                        @endif
+                                    </figcaption>
+                                </figure>
+                            @endforeach
+                        </div>
                     </div>
                 @endif
 

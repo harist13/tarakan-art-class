@@ -7,7 +7,7 @@
 </div>
 <div class="card">
     <div class="card-body">
-        <form action="{{ route('reports.update', $report) }}" method="POST" enctype="multipart/form-data">
+        <form action="{{ route('reports.update', $report) }}" method="POST">
             @csrf @method('PUT')
             @include('reports._form', ['report' => $report])
             <button type="submit" class="btn btn-primary"><i class="bi bi-save me-1"></i> Perbarui</button>

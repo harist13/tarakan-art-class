@@ -2,9 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Models\CalendarEvent;
 use App\Models\ClassRoom;
-use App\Models\Holiday;
 use App\Models\Payment;
 use App\Models\ReplacementRequest;
 use App\Models\Student;
@@ -16,18 +14,12 @@ use Tests\TestCase;
 
 /**
  * QA: Aturan ketersediaan slot (F4) — available = tidak ditutup manual, belum penuh,
- * belum lewat, bukan hari libur, dan tutor aktif. Kecocokan tipe kelas hanya penanda:
- * murid boleh mengambil replacement lintas tipe.
+ * belum lewat, dan tutor aktif. Kecocokan tipe kelas hanya penanda: murid boleh
+ * mengambil replacement lintas tipe.
  */
 class SlotAvailabilityTest extends TestCase
 {
     use RefreshDatabase;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        ClassRoom::flushHolidayCache();
-    }
 
     private function makeUser(): User
     {
@@ -127,20 +119,23 @@ class SlotAvailabilityTest extends TestCase
         }
     }
 
-    public function test_sesi_berikutnya_melewati_hari_libur(): void
+    /**
+     * Sesi hari ini yang jamnya sudah lewat bukan lagi "sesi berikutnya" —
+     * yang terdekat bergeser sepekan.
+     */
+    public function test_sesi_hari_ini_yang_jamnya_sudah_lewat_bergeser_sepekan(): void
     {
-        $class = $this->makeClass();
-        $mingguIni = $class->nextOccurrence();
+        $class = $this->makeClass([
+            'schedule_date' => now()->subWeek()->toDateString(),
+            'schedule_time' => '09:00',
+        ]);
 
-        Holiday::create(['date' => $mingguIni->toDateString(), 'name' => 'Libur']);
-        ClassRoom::flushHolidayCache();
+        $lewat = $class->occurrenceAt(now()->startOfDay())->addHours(2);
 
-        // Sesi minggu ini ditiadakan, jadi yang terdekat bergeser sepekan.
         $this->assertSame(
-            $mingguIni->copy()->addWeek()->toDateString(),
-            $class->nextOccurrence()->toDateString()
+            now()->addWeek()->toDateString(),
+            $class->nextOccurrence($lewat)->toDateString()
         );
-        // Slotnya sendiri tetap available — yang libur cuma satu sesi.
         $this->assertTrue($class->isAvailable());
     }
 
@@ -511,24 +506,6 @@ class SlotAvailabilityTest extends TestCase
         ])->assertSessionHasErrors('replacement_date');
     }
 
-    public function test_tanggal_pengganti_pada_hari_libur_ditolak(): void
-    {
-        $this->actingAs($this->makeUser());
-        $class = $this->makeClass();
-        $student = $this->makeStudent(['name' => 'Nanda', 'parent_name' => 'Omar']);
-
-        $libur = now()->addDays(3)->toDateString();
-        Holiday::create(['date' => $libur, 'name' => 'Libur']);
-        ClassRoom::flushHolidayCache();
-
-        $this->post(route('schedules.store'), [
-            'student_id' => $student->id,
-            'class_id' => $class->id,
-            'replacement_date' => $libur,
-            'replacement_time' => '09:00',
-        ])->assertSessionHasErrors('replacement_date');
-    }
-
     public function test_tanggal_jam_pengganti_kosong_ikut_jadwal_kelas_tujuan(): void
     {
         $this->actingAs($this->makeUser());
@@ -688,70 +665,6 @@ class SlotAvailabilityTest extends TestCase
         $this->assertSame($class->scheduleLabel(), $events[0]['extendedProps']['schedule']);
     }
 
-    public function test_hari_libur_dan_acara_tidak_pernah_ditandai_past(): void
-    {
-        $this->actingAs($this->makeUser());
-
-        // Keduanya di masa lalu, tapi tetap tampil sebagai konteks kalender.
-        Holiday::create(['date' => now()->subMonth()->toDateString(), 'name' => 'Libur Lama']);
-        CalendarEvent::create([
-            'title' => 'Pameran Lampau',
-            'date' => now()->subMonth()->toDateString(),
-        ]);
-
-        $this->get(route('schedules.calendar'))
-            ->assertOk()
-            ->assertSee('Libur Lama')
-            ->assertSee('Pameran Lampau')
-            ->assertDontSee('"past":true', false);
-    }
-
-    public function test_hari_libur_muncul_di_kalender_walau_tanpa_jadwal(): void
-    {
-        $this->actingAs($this->makeUser());
-        Holiday::create(['date' => now()->addWeek()->toDateString(), 'name' => 'Libur Nasional']);
-
-        $this->get(route('schedules.calendar'))
-            ->assertOk()
-            ->assertSee('Libur Nasional')
-            ->assertSee('Hari Libur'); // legenda + extendedProps
-    }
-
-    public function test_admin_dapat_menambah_acara_dan_muncul_di_kalender(): void
-    {
-        $this->actingAs($this->makeUser());
-        $date = now()->addDays(3)->toDateString();
-
-        $this->post(route('calendar-events.store'), [
-            'title' => 'Rapat Guru',
-            'date' => $date,
-            'start_time' => '13:00',
-            'end_time' => '15:00',
-            'description' => 'Evaluasi bulanan',
-            'color' => '#6366F1',
-        ])->assertRedirect();
-
-        $this->assertDatabaseHas('calendar_events', ['title' => 'Rapat Guru']);
-
-        $this->get(route('schedules.calendar'))->assertOk()->assertSee('Rapat Guru');
-
-        $event = CalendarEvent::first();
-        $this->delete(route('calendar-events.destroy', $event))->assertRedirect();
-        $this->assertDatabaseMissing('calendar_events', ['id' => $event->id]);
-    }
-
-    public function test_acara_jam_selesai_harus_setelah_jam_mulai(): void
-    {
-        $this->actingAs($this->makeUser());
-
-        $this->post(route('calendar-events.store'), [
-            'title' => 'Salah Jam',
-            'date' => now()->addDay()->toDateString(),
-            'start_time' => '15:00',
-            'end_time' => '14:00',
-        ])->assertSessionHasErrors('end_time', null, 'event');
-    }
-
     public function test_pesan_validasi_kelas_kosong_berbahasa_indonesia(): void
     {
         $this->actingAs($this->makeUser());
@@ -781,19 +694,5 @@ class SlotAvailabilityTest extends TestCase
         $this->get(route('schedules.create', ['student_id' => $student->id, 'class_id' => $class->id]))
             ->assertOk()
             ->assertSee($student->name);
-    }
-
-    public function test_admin_dapat_menambah_dan_menghapus_hari_libur(): void
-    {
-        $this->actingAs($this->makeUser());
-        $date = now()->addWeek()->toDateString();
-
-        $this->post(route('holidays.store'), ['date' => $date, 'name' => 'Libur Nasional'])
-            ->assertRedirect();
-        $this->assertDatabaseHas('holidays', ['name' => 'Libur Nasional']);
-
-        $holiday = Holiday::first();
-        $this->delete(route('holidays.destroy', $holiday))->assertRedirect();
-        $this->assertDatabaseMissing('holidays', ['id' => $holiday->id]);
     }
 }

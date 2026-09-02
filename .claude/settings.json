@@ -46,7 +46,17 @@
       "PowerShell(php artisan tinker \"C:\\\\Users\\\\LENOVO\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--laragon-www-tarakan-art-class\\\\97a53768-5a6a-4f75-ae9b-62ed95f79c79\\\\scratchpad\\\\preview.php\")",
       "PowerShell(php artisan test --filter=\"SlotAvailabilityTest|PaymentArrearsAccessTest|ClassRoom\")",
       "PowerShell(php artisan test --filter=\"SlotAvailabilityTest|PaymentArrearsAccessTest\")",
-      "PowerShell(php artisan test --filter=\"AttendanceReplacementTest\")"
+      "PowerShell(php artisan test --filter=\"AttendanceReplacementTest\")",
+      "PowerShell(php artisan route:clear)",
+      "PowerShell(php artisan test --filter=ArtworkGalleryTest 2>&1)",
+      "PowerShell(php artisan test 2>&1)",
+      "PowerShell(./vendor/bin/pint --test app/Models/Artwork.php app/Http/Controllers/ArtworkController.php app/Http/Controllers/ReportController.php app/Models/StudentReport.php app/Models/Student.php tests/Feature/ArtworkGalleryTest.php routes/web.php database/migrations/2026_09_02_000001_create_artworks_table.php 2>&1)",
+      "Bash(echo \"exit=$?\")",
+      "PowerShell(./vendor/bin/pint --test app/Models/Artwork.php app/Http/Controllers/ArtworkController.php app/Models/StudentReport.php app/Models/Student.php tests/Feature/ArtworkGalleryTest.php routes/web.php database/migrations/2026_09_02_000001_create_artworks_table.php 2>&1)",
+      "PowerShell(php artisan migrate --path=database/migrations/2026_09_02_000001_create_artworks_table.php --force 2>&1)",
+      "PowerShell(php artisan route:list --name=artworks 2>&1)",
+      "PowerShell(php artisan migrate --path=database/migrations/2026_09_02_000002_drop_photo_path_from_student_reports_table.php --force 2>&1)",
+      "PowerShell(./vendor/bin/pint --test app/Models/StudentReport.php database/migrations/2026_09_02_000002_drop_photo_path_from_student_reports_table.php 2>&1)"
     ],
     "additionalDirectories": [
       "C:\\Users\\LENOVO\\AppData\\Local\\Temp\\claude\\c--laragon-www-tarakan-art-class\\7b704970-429c-4686-b28c-0dc23945c341\\scratchpad"

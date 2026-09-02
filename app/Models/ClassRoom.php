@@ -34,13 +34,6 @@ class ClassRoom extends Model
         4 => 'Kamis', 5 => 'Jumat', 6 => 'Sabtu',
     ];
 
-    /**
-     * Sejauh mana nextOccurrence() mencari sebelum menyerah. Slot hanya kehabisan
-     * sesi kalau setiap kejadian dalam rentang ini jatuh di hari libur — praktis
-     * tak pernah terjadi, tapi batas ini menjaga pencarian tetap terbatas.
-     */
-    private const OCCURRENCE_HORIZON_WEEKS = 8;
-
     protected $fillable = [
         'class_code',
         'class_category',
@@ -155,38 +148,6 @@ class ClassRoom extends Model
     }
 
     /**
-     * Daftar tanggal libur (string Y-m-d), dimemo per-request agar tidak N+1.
-     */
-    protected static ?array $holidayDates = null;
-
-    public static function holidayDates(): array
-    {
-        if (static::$holidayDates === null) {
-            static::$holidayDates = Holiday::pluck('date')
-                ->map(fn ($d) => Carbon::parse($d)->toDateString())
-                ->all();
-        }
-
-        return static::$holidayDates;
-    }
-
-    /**
-     * Kosongkan memo setelah data libur berubah (dipanggil dari controller).
-     */
-    public static function flushHolidayCache(): void
-    {
-        static::$holidayDates = null;
-    }
-
-    /**
-     * Tanggal ini jatuh pada hari libur / tanggal kelas ditiadakan.
-     */
-    public function isHolidayOn(Carbon $date): bool
-    {
-        return in_array($date->toDateString(), static::holidayDates(), true);
-    }
-
-    /**
      * Tutor tersedia untuk slot ini (ada & terdaftar).
      *
      * Baik full-time maupun part-time dianggap tersedia.
@@ -268,10 +229,9 @@ class ClassRoom extends Model
      * sekali jalan. Dipakai saat yang perlu dijawab adalah "kapan tepatnya",
      * mis. jadwal kelas asal di form replacement.
      *
-     * Sesi yang dipakai adalah kejadian berikutnya (hari libur sudah dilewati
-     * nextOccurrence()). Kelas sekali jalan yang sesinya sudah lewat tetap
-     * dilabeli dengan tanggal aslinya — itu memang jadwal terakhirnya. Kelas
-     * berulang yang kehabisan sesi mengembalikan null.
+     * Sesi yang dipakai adalah kejadian berikutnya. Kelas sekali jalan yang
+     * sesinya sudah lewat tetap dilabeli dengan tanggal aslinya — itu memang
+     * jadwal terakhirnya.
      *
      * Nama hari & bulan dipaksa locale 'id' karena APP_LOCALE aplikasi ini 'en'.
      */
@@ -308,14 +268,10 @@ class ClassRoom extends Model
     }
 
     /**
-     * Tanggal ini adalah sesi kelas ini, dan tidak jatuh di hari libur.
+     * Tanggal ini adalah sesi kelas ini.
      */
     public function occursOn(Carbon $date): bool
     {
-        if ($this->isHolidayOn($date)) {
-            return false;
-        }
-
         if (! $this->is_recurring) {
             return $date->toDateString() === $this->schedule_date->toDateString();
         }
@@ -325,8 +281,10 @@ class ClassRoom extends Model
     }
 
     /**
-     * Sesi berikutnya yang belum lewat, atau null bila seluruh sesi dalam horizon
-     * jatuh di hari libur.
+     * Sesi berikutnya yang belum lewat.
+     *
+     * Null hanya untuk kelas sekali jalan yang sesinya sudah terlewat — slot
+     * mingguan selalu punya sesi berikutnya.
      */
     public function nextOccurrence(?Carbon $from = null): ?Carbon
     {
@@ -336,33 +294,23 @@ class ClassRoom extends Model
         if (! $this->is_recurring) {
             $at = $this->occurrenceAt($this->schedule_date);
 
-            return ($at->gte($from) && ! $this->isHolidayOn($this->schedule_date)) ? $at : null;
+            return $at->gte($from) ? $at : null;
         }
 
         $cursor = $this->firstCandidate($from);
+        $at = $this->occurrenceAt($cursor);
 
-        for ($week = 0; $week < self::OCCURRENCE_HORIZON_WEEKS; $week++) {
-            $at = $this->occurrenceAt($cursor);
-            // gte, bukan isFuture: sesi yang jam mulainya persis sekarang masih terhitung.
-            if ($at->gte($from) && ! $this->isHolidayOn($cursor)) {
-                return $at;
-            }
-            $cursor = $cursor->addWeek();
-        }
-
-        return null;
+        // gte, bukan isFuture: sesi yang jam mulainya persis sekarang masih
+        // terhitung. Yang jamnya sudah lewat hari ini digeser sepekan.
+        return $at->gte($from) ? $at : $this->occurrenceAt($cursor->addWeek());
     }
 
     /**
      * Semua sesi dalam rentang tanggal (inklusif).
      *
-     * Hari libur dilewati secara default — itu yang benar untuk ketersediaan.
-     * Lewatkan $skipHolidays = false bila sesi yang ditiadakan justru perlu
-     * ditampilkan (mis. halaman jadwal publik, agar orang tua tahu kelas libur).
-     *
      * @return list<Carbon>
      */
-    public function occurrencesBetween(Carbon $from, Carbon $to, bool $skipHolidays = true): array
+    public function occurrencesBetween(Carbon $from, Carbon $to): array
     {
         $limit = $to->copy()->endOfDay();
 
@@ -371,16 +319,14 @@ class ClassRoom extends Model
             $at = $this->occurrenceAt($this->schedule_date);
             $masuk = $at->gte($from->copy()->startOfDay()) && $at->lte($limit);
 
-            return ($masuk && (! $skipHolidays || ! $this->isHolidayOn($this->schedule_date))) ? [$at] : [];
+            return $masuk ? [$at] : [];
         }
 
         $cursor = $this->firstCandidate($from);
         $dates = [];
 
         while ($cursor->lte($limit)) {
-            if (! $skipHolidays || ! $this->isHolidayOn($cursor)) {
-                $dates[] = $this->occurrenceAt($cursor);
-            }
+            $dates[] = $this->occurrenceAt($cursor);
             $cursor = $cursor->addWeek();
         }
 
@@ -393,8 +339,6 @@ class ClassRoom extends Model
      *
      * Mundur beberapa pekan karena kelas pengganti sering baru diminta setelah
      * anaknya absen, dan maju beberapa pekan untuk absen yang sudah direncanakan.
-     * Hari libur tidak masuk daftar — di tanggal itu kelasnya ditiadakan, jadi
-     * tak ada sesi yang bisa ditinggalkan.
      *
      * @return array<int, Carbon>
      */
@@ -447,13 +391,9 @@ class ClassRoom extends Model
             return ['text' => 'Penuh', 'color' => 'danger', 'bg' => '#DC2626'];
         }
         if ($this->nextOccurrence() === null) {
-            // Kelas sekali jalan memang kedaluwarsa setelah sesinya lewat. Kelas
-            // berulang hanya kehabisan sesi bila seluruh horizon jatuh di hari
-            // libur — praktis tak pernah terjadi, tapi tetap perlu labelnya sendiri
-            // agar tidak salah tampil "kursi tersisa".
-            return $this->is_recurring
-                ? ['text' => 'Belum ada sesi', 'color' => 'dark', 'bg' => '#475569']
-                : ['text' => 'Sudah lewat', 'color' => 'dark', 'bg' => '#475569'];
+            // Hanya kelas sekali jalan yang bisa kehabisan sesi; slot mingguan
+            // selalu punya sesi berikutnya.
+            return ['text' => 'Sudah lewat', 'color' => 'dark', 'bg' => '#475569'];
         }
 
         return ['text' => $this->remainingSeats().' kursi tersisa', 'color' => 'success', 'bg' => '#15803D'];

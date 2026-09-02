@@ -4,9 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreLeadRequest;
 use App\Mail\NewLeadNotification;
-use App\Models\CalendarEvent;
 use App\Models\ClassRoom;
-use App\Models\Holiday;
 use App\Models\HolidayClass;
 use App\Models\Lead;
 use Illuminate\Http\Request;
@@ -46,9 +44,7 @@ class PublicSiteController extends Controller
             'testimonials' => config('site.testimonials', []),
             'galleryPreview' => $this->galleryItems()->take(6),
             'stats' => config('site.about.stats', []),
-            'announcements' => CalendarEvent::where('date', '>=', $today)->orderBy('date')->limit(4)->get(),
             'holidayClasses' => HolidayClass::upcoming()->limit(4)->get(),
-            'holidays' => Holiday::where('date', '>=', $today)->orderBy('date')->limit(4)->get(),
         ]);
     }
 
@@ -106,8 +102,6 @@ class PublicSiteController extends Controller
         return view('public.schedule', [
             'programs' => $this->programsWithWeeklySchedule($classes, $holidayClasses),
             'days' => $this->sessionsByDate($classes, $today, $until),
-            'holidays' => Holiday::whereBetween('date', [$today, $until])->orderBy('date')->get(),
-            'announcements' => CalendarEvent::where('date', '>=', $today)->orderBy('date')->limit(6)->get(),
             'holidayClasses' => $holidayClasses,
             'until' => $until,
         ]);
@@ -171,10 +165,6 @@ class PublicSiteController extends Controller
     /**
      * Rentangkan slot mingguan jadi sesi konkret, dikelompokkan per tanggal.
      *
-     * Sesi yang jatuh di hari libur sengaja ikut dirender (skipHolidays = false):
-     * halaman ini informatif, jadi lebih berguna menampilkannya bertanda
-     * "Ditiadakan" daripada menghilangkannya diam-diam dari jadwal.
-     *
      * @param  Collection<int, ClassRoom>  $classes
      * @return Collection<string, Collection<int, ClassRoom>>
      */
@@ -183,7 +173,7 @@ class PublicSiteController extends Controller
         $byDate = [];
 
         foreach ($classes as $class) {
-            foreach ($class->occurrencesBetween($from, $to, skipHolidays: false) as $at) {
+            foreach ($class->occurrencesBetween($from, $to) as $at) {
                 $byDate[$at->toDateString()][] = $class;
             }
         }

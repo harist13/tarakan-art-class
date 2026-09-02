@@ -3,9 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\ActivityLog;
-use App\Models\CalendarEvent;
 use App\Models\ClassRoom;
-use App\Models\Holiday;
 use App\Models\HolidayClass;
 use App\Models\ReplacementRequest;
 use App\Models\Student;
@@ -46,12 +44,11 @@ class ScheduleController extends Controller
         $status = $request->string('status')->toString();
         $search = $request->string('search')->toString();
 
-        // Panel yang terbuka. Halaman ini menampung tiga pekerjaan terpisah —
-        // memproses request, mengatur slot, dan menandai kalender — jadi hanya
-        // satu yang ditampilkan sekaligus. Disimpan di query string supaya
-        // bertahan setelah filter disubmit atau form penanda kalender redirect.
-        $tab = $request->string('tab')->toString();
-        $tab = in_array($tab, ['slots', 'markers'], true) ? $tab : 'requests';
+        // Panel yang terbuka. Halaman ini menampung dua pekerjaan terpisah —
+        // memproses request dan mengatur ketersediaan slot — jadi hanya satu yang
+        // ditampilkan sekaligus. Disimpan di query string supaya bertahan setelah
+        // filter disubmit.
+        $tab = $request->string('tab')->toString() === 'slots' ? 'slots' : 'requests';
 
         $requests = ReplacementRequest::query()
             ->with(['student.payments', 'classRoom', 'originClass', 'approver'])
@@ -92,12 +89,6 @@ class ScheduleController extends Controller
             ))
             ->values();
 
-        // Hari libur untuk panel pengelolaan (yang akan datang di atas).
-        $holidays = Holiday::orderBy('date')->get();
-
-        // Acara / agenda umum untuk panel pengelolaan.
-        $calendarEvents = CalendarEvent::orderBy('date')->orderBy('start_time')->get();
-
         // Ringkasan untuk scorecard di atas halaman — dihitung dari seluruh slot,
         // bukan dari hasil filter panel: ini gambaran keadaan, bukan cerminan
         // pencarian yang sedang dilakukan admin.
@@ -112,82 +103,10 @@ class ScheduleController extends Controller
             ->count();
 
         return view('schedules.index', compact(
-            'requests', 'status', 'search', 'slots', 'holidays', 'calendarEvents',
+            'requests', 'status', 'search', 'slots',
             'pendingCount', 'availableSlots', 'totalSlots', 'arrearsCount', 'tab',
             'slotSearch', 'slotStatus'
         ));
-    }
-
-    /**
-     * Tambah acara / agenda umum ke kalender.
-     */
-    public function storeEvent(Request $request)
-    {
-        $data = $request->validateWithBag('event', [
-            'title' => ['required', 'string', 'max:255'],
-            'date' => ['required', 'date'],
-            'start_time' => ['nullable', 'date_format:H:i'],
-            'end_time' => ['nullable', 'date_format:H:i', 'after:start_time'],
-            'description' => ['nullable', 'string', 'max:255'],
-            'color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
-        ], [
-            'end_time.after' => 'Jam selesai harus setelah jam mulai.',
-        ]);
-
-        DB::transaction(function () use ($data) {
-            $event = CalendarEvent::create($data);
-            ActivityLog::record('created', $event, "Menambah acara \"{$event->title}\"");
-        });
-
-        return back()->with('success', 'Acara berhasil ditambahkan ke kalender.');
-    }
-
-    /**
-     * Hapus acara / agenda.
-     */
-    public function destroyEvent(CalendarEvent $event)
-    {
-        DB::transaction(function () use ($event) {
-            ActivityLog::record('deleted', $event, "Menghapus acara \"{$event->title}\"");
-            $event->delete();
-        });
-
-        return back()->with('success', 'Acara berhasil dihapus.');
-    }
-
-    /**
-     * Tambah tanggal libur / kelas ditiadakan.
-     */
-    public function storeHoliday(Request $request)
-    {
-        $data = $request->validateWithBag('holiday', [
-            'date' => ['required', 'date', 'unique:holidays,date'],
-            'name' => ['nullable', 'string', 'max:255'],
-        ], [
-            'date.unique' => 'Tanggal tersebut sudah terdaftar sebagai hari libur.',
-        ]);
-
-        DB::transaction(function () use ($data) {
-            $holiday = Holiday::create($data);
-            ActivityLog::record('created', $holiday, 'Menambah hari libur '.$holiday->date->format('d M Y'));
-        });
-        ClassRoom::flushHolidayCache();
-
-        return back()->with('success', 'Hari libur berhasil ditambahkan.');
-    }
-
-    /**
-     * Hapus tanggal libur.
-     */
-    public function destroyHoliday(Holiday $holiday)
-    {
-        DB::transaction(function () use ($holiday) {
-            ActivityLog::record('deleted', $holiday, 'Menghapus hari libur '.$holiday->date->format('d M Y'));
-            $holiday->delete();
-        });
-        ClassRoom::flushHolidayCache();
-
-        return back()->with('success', 'Hari libur berhasil dihapus.');
     }
 
     /**
@@ -198,8 +117,8 @@ class ScheduleController extends Controller
         $events = [];
 
         // Jadwal kelas reguler. Setiap slot mingguan direntangkan jadi satu event
-        // per kejadian dalam rentang tampilan — hari libur otomatis dilewati oleh
-        // occurrencesBetween(). Available = biru; penuh/ditutup/lewat = abu-abu.
+        // per kejadian dalam rentang tampilan.
+        // Available = biru; penuh/ditutup/lewat = abu-abu.
         $classes = ClassRoom::with('tutor')
             ->withCount(['students as enrolled_count' => fn ($q) => $q->where('student_class.status', 'active')])
             ->get();
@@ -241,7 +160,7 @@ class ScheduleController extends Controller
 
         // Holiday Class — sesi musiman saat libur sekolah. Fuchsia, satu-satunya
         // warna yang belum dipakai: biru kelas reguler, abu penuh/ditutup, amber
-        // & hijau & merah replacement, oranye hari libur, indigo acara.
+        // & hijau & merah replacement.
         //
         // Bukan slot kelas pengganti (sekali sesi & berbayar), jadi sengaja tanpa
         // extendedProps 'available' — mode "cari kelas pengganti" hanya
@@ -284,50 +203,6 @@ class ScheduleController extends Controller
                     'reason' => $req->reason ?: '-',
                     // Disembunyikan toggle "Hanya slot available" — lihat visibleEvents().
                     'past' => $req->isPast(),
-                ],
-            ];
-        }
-
-        // Hari libur: tampil sebagai event seharian, berdiri sendiri walau tak ada jadwal kelas.
-        // Dua representasi: tint latar seharian + chip berlabel (agar jelas & muncul di tampilan daftar).
-        foreach (Holiday::orderBy('date')->get() as $holiday) {
-            $date = $holiday->date->format('Y-m-d');
-            $props = [
-                'type' => 'Hari Libur',
-                'reason' => $holiday->name ?: 'Kelas ditiadakan',
-                'holiday' => true,
-            ];
-            // Oranye — sengaja dibedakan dari biru kelas reguler & amber replacement pending.
-            // Tint latar seharian (FullCalendar merender background event dgn opacity rendah).
-            $events[] = [
-                'start' => $date,
-                'allDay' => true,
-                'display' => 'background',
-                'color' => '#FB923C',
-                'extendedProps' => $props,
-            ];
-            // Chip berlabel (bisa diklik, tampil juga di listMonth).
-            $events[] = [
-                'title' => '🏖️ Libur'.($holiday->name ? ': '.$holiday->name : ''),
-                'start' => $date,
-                'allDay' => true,
-                'color' => '#EA580C',
-                'extendedProps' => $props,
-            ];
-        }
-
-        // Acara / agenda umum. Jam kosong = seharian.
-        foreach (CalendarEvent::orderBy('date')->get() as $ev) {
-            $allDay = $ev->isAllDay();
-            $events[] = [
-                'title' => $ev->title,
-                'start' => $allDay ? $ev->date->format('Y-m-d') : $this->combineDateTime($ev->date, $ev->start_time),
-                'end' => (! $allDay && $ev->end_time) ? $this->combineDateTime($ev->date, $ev->end_time) : null,
-                'allDay' => $allDay,
-                'color' => $ev->color ?: '#6366F1',
-                'extendedProps' => [
-                    'type' => 'Acara',
-                    'note' => $ev->description ?: '-',
                 ],
             ];
         }
@@ -451,8 +326,8 @@ class ScheduleController extends Controller
      * sesi penggantinya harus benar-benar berbeda — lihat
      * assertReplacementDiffersFromOrigin().
      *
-     * "Sudah lewat" dan "hari libur" dinilai pada `replacement_date`, bukan pada
-     * slotnya — slot mingguan sendiri tidak pernah kedaluwarsa.
+     * "Sudah lewat" dinilai pada `replacement_date`, bukan pada slotnya — slot
+     * mingguan sendiri tidak pernah kedaluwarsa.
      */
     private function validateReplacement(Request $request, ?ReplacementRequest $current = null): array
     {
@@ -477,7 +352,7 @@ class ScheduleController extends Controller
                         return;
                     }
 
-                    $fail("Tanggal tersebut bukan sesi kelas \"{$origin->class_category}\" ({$origin->scheduleLabel()}) — bisa jadi jatuh di hari lain atau pada hari libur. Pilih salah satu sesi kelas tersebut.");
+                    $fail("Tanggal tersebut bukan sesi kelas \"{$origin->class_category}\" ({$origin->scheduleLabel()}) — kemungkinan jatuh di hari lain. Pilih salah satu sesi kelas tersebut.");
                 },
             ],
             'class_id' => [
@@ -522,12 +397,6 @@ class ScheduleController extends Controller
 
                     if ($date->lt(Carbon::today()) && (! $current || $current->replacement_date->toDateString() !== $date->toDateString())) {
                         $fail('Tanggal pengganti sudah lewat. Pilih tanggal hari ini atau setelahnya.');
-
-                        return;
-                    }
-
-                    if (in_array($date->toDateString(), ClassRoom::holidayDates(), true)) {
-                        $fail('Tanggal pengganti jatuh pada hari libur — kelas ditiadakan pada tanggal tersebut.');
                     }
                 },
             ],

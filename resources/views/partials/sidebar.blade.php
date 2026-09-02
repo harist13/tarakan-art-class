@@ -43,6 +43,9 @@
         <li class="{{ request()->is('reports*') ? 'active' : '' }}">
             <a href="{{ route('reports.index') }}"><i class="bi bi-journal-bookmark-fill"></i> Raport Siswa</a>
         </li>
+        <li class="{{ request()->is('galeri-karya*') ? 'active' : '' }}">
+            <a href="{{ route('artworks.index') }}"><i class="bi bi-images"></i> Galeri Karya</a>
+        </li>
 
         <li class="px-4 mt-4 mb-2 text-uppercase sidebar-heading">Keuangan & Ops</li>
         <li class="{{ request()->is('payments*') ? 'active' : '' }}">

@@ -25,12 +25,6 @@ class AttendanceReplacementTest extends TestCase
 {
     use RefreshDatabase;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        ClassRoom::flushHolidayCache();
-    }
-
     private function admin(): User
     {
         Role::firstOrCreate(['name' => 'admin']);

@@ -8,7 +8,7 @@
 <div class="card">
     <div class="card-body">
         <div class="alert alert-info small"><i class="bi bi-key me-1"></i> Credential key untuk akses orang tua akan di-generate otomatis setelah raport disimpan.</div>
-        <form action="{{ route('reports.store') }}" method="POST" enctype="multipart/form-data">
+        <form action="{{ route('reports.store') }}" method="POST">
             @csrf
             @include('reports._form', ['report' => null])
             <button type="submit" class="btn btn-primary"><i class="bi bi-save me-1"></i> Simpan</button>

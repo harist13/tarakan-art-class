@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ActivityLogController;
+use App\Http\Controllers\ArtworkController;
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ClassRoomController;
@@ -96,12 +97,6 @@ Route::middleware('auth')->group(function () {
 
     // ─── Scheduler / Replacement Class (F4) ────────────────────
     Route::get('schedules/calendar', [ScheduleController::class, 'calendar'])->name('schedules.calendar');
-    // Hari libur / kelas ditiadakan — memengaruhi ketersediaan slot.
-    Route::post('holidays', [ScheduleController::class, 'storeHoliday'])->name('holidays.store');
-    Route::delete('holidays/{holiday}', [ScheduleController::class, 'destroyHoliday'])->name('holidays.destroy');
-    // Acara / agenda umum di kalender.
-    Route::post('calendar-events', [ScheduleController::class, 'storeEvent'])->name('calendar-events.store');
-    Route::delete('calendar-events/{event}', [ScheduleController::class, 'destroyEvent'])->name('calendar-events.destroy');
     Route::patch('schedules/{schedule}/status', [ScheduleController::class, 'updateStatus'])
         ->middleware('role:super_admin')->name('schedules.status');
     Route::resource('schedules', ScheduleController::class)->except('show');
@@ -141,6 +136,16 @@ Route::middleware('auth')->group(function () {
 
     // ─── Student Report (F8) ───────────────────────────────────
     Route::resource('reports', ReportController::class);
+
+    // ─── Galeri Karya — arsip foto karya murid, per murid & bulan ──
+    // Folder tidak punya route sendiri: alamatnya adalah murid + bulan.
+    Route::get('galeri-karya', [ArtworkController::class, 'index'])->name('artworks.index');
+    Route::get('galeri-karya/unggah', [ArtworkController::class, 'create'])->name('artworks.create');
+    Route::post('galeri-karya', [ArtworkController::class, 'store'])->name('artworks.store');
+    Route::get('galeri-karya/{student}/{month}', [ArtworkController::class, 'folder'])
+        ->where('month', '\d{4}-\d{2}')->name('artworks.folder');
+    Route::put('galeri-karya/{artwork}', [ArtworkController::class, 'update'])->name('artworks.update');
+    Route::delete('galeri-karya/{artwork}', [ArtworkController::class, 'destroy'])->name('artworks.destroy');
 
     // ─── Inventory (F10) ───────────────────────────────────────
     Route::post('inventory/movement', [InventoryController::class, 'storeMovement'])->name('inventory.movement');

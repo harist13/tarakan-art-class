@@ -119,7 +119,7 @@
     <div class="col-12 mb-3 d-none" id="noSlotAlert">
         <div class="alert alert-warning mb-0">
             <div class="fw-bold mb-1"><i class="bi bi-exclamation-triangle-fill me-1"></i>Tidak ada slot pengganti yang tersedia</div>
-            <p class="small mb-2">Semua slot sedang penuh, ditutup, sudah lewat jadwalnya, jatuh di hari libur, atau tutornya belum tersedia.</p>
+            <p class="small mb-2">Semua slot sedang penuh, ditutup, sudah lewat jadwalnya, atau tutornya belum tersedia.</p>
             <div class="small mb-0">Yang bisa dilakukan:
                 <ul class="mb-0 ps-3">
                     <li>Buka kembali slot yang ditutup lewat <a href="{{ route('schedules.index') }}" class="alert-link">Pengaturan Jadwal &amp; Slot</a>.</li>

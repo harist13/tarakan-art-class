@@ -9,10 +9,6 @@
         background: linear-gradient(135deg, #0EA5E9 0%, #2563EB 100%);
         padding: 1.75rem; display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap; color: #fff;
     }
-    .hero-photo {
-        width: 84px; height: 112px; border-radius: 0.75rem; object-fit: cover;
-        border: 3px solid rgba(255,255,255,0.6); flex-shrink: 0; background: rgba(255,255,255,0.15);
-    }
     .hero-avatar {
         width: 84px; height: 84px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
         background: rgba(255,255,255,0.2); border: 3px solid rgba(255,255,255,0.6); font-size: 2rem; font-weight: 800; color: #fff; flex-shrink: 0;
@@ -55,11 +51,7 @@
 
 <div class="card report-card">
     <div class="report-hero">
-        @if($report->photoUrl())
-            <img src="{{ $report->photoUrl() }}" alt="Foto {{ $report->student->name ?? '' }}" class="hero-photo">
-        @else
-            <div class="hero-avatar">{{ $initial }}</div>
-        @endif
+        <div class="hero-avatar">{{ $initial }}</div>
         <div class="hero-main">
             <h4>{{ $report->student->name ?? '-' }}</h4>
             <div class="hero-sub">
@@ -95,6 +87,33 @@
             <p>{{ $report->tutor_notes }}</p>
         </div>
     @endif
+
+    {{-- Karya sepanjang periode raport — sama persis dengan yang dilihat orang
+         tua lewat credential key. Unggahnya di modul Galeri Karya. --}}
+    <div class="report-section">
+        <h6><i class="bi bi-images"></i> Karya Periode Ini ({{ $artworks->count() }})</h6>
+        @if($artworks->isNotEmpty())
+            <div class="row g-2">
+                @foreach($artworks as $artwork)
+                    <div class="col-4 col-md-3 col-lg-2">
+                        <a href="{{ $artwork->photoUrl() }}" target="_blank" rel="noopener"
+                           title="{{ $artwork->description ?: $artwork->taken_on->format('d M Y') }}">
+                            <img src="{{ $artwork->photoUrl() }}" alt="{{ $artwork->description ?: 'Karya' }}"
+                                 class="w-100 rounded border" style="height:100px; object-fit:cover;">
+                        </a>
+                    </div>
+                @endforeach
+            </div>
+        @else
+            <p class="small text-muted">Belum ada foto karya pada periode ini.</p>
+        @endif
+        @if($report->student)
+            <a href="{{ route('artworks.folder', ['student' => $report->student, 'month' => $report->period_start->format('Y-m')]) }}"
+               class="btn btn-sm btn-outline-primary mt-3">
+                <i class="bi bi-folder2-open me-1"></i>Kelola Folder Karya
+            </a>
+        @endif
+    </div>
 
     <div class="report-section d-flex flex-wrap justify-content-between align-items-center gap-2">
         <span class="small text-muted">

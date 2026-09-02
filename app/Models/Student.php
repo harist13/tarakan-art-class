@@ -377,4 +377,10 @@ class Student extends Model
     {
         return $this->hasMany(StudentReport::class);
     }
+
+    /** Foto karya murid — dikelompokkan per bulan di modul Galeri Karya. */
+    public function artworks(): HasMany
+    {
+        return $this->hasMany(Artwork::class);
+    }
 }
