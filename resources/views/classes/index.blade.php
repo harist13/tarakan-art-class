@@ -1,20 +1,62 @@
 @extends('layouts.app')
 
+@push('styles')
+<style>
+    /* Tabel di halaman ini punya tujuh kolom. Dengan padding 1rem bawaan, ruang
+       kosongnya sendiri sudah memakan ratusan piksel dan memaksa tabel bergulir
+       pada layar yang sebenarnya cukup lebar. */
+    #panelKelas .table th,
+    #panelKelas .table td,
+    #panelTutor .table th,
+    #panelTutor .table td {
+        padding: 0.75rem 0.6rem;
+    }
+
+    /* Kolom sempit tidak boleh memotong isinya sendiri: nama tutor & kategori
+       boleh turun baris, sedangkan angka uang & tanggal tidak. */
+    #panelKelas .table td,
+    #panelTutor .table td {
+        word-break: break-word;
+    }
+
+    /* Bilah penyaring di kepala kartu: melebar sendiri di layar sempit alih-alih
+       memaksa kartunya lebih lebar dari layar. */
+    @media (max-width: 767.98px) {
+        .card-header form[data-live] {
+            width: 100%;
+        }
+        .card-header form[data-live] > .input-group,
+        .card-header form[data-live] > .form-select {
+            width: 100% !important;
+        }
+    }
+</style>
+@endpush
+
 @section('content')
 <div class="d-sm-flex align-items-center justify-content-between mb-4">
     <h1 class="h3 mb-0 text-gray-800 fw-bold" id="pageTitle">Manajemen Kelas & Tutor</h1>
     <div class="d-flex gap-2">
         <button id="btnAddTutor" class="btn btn-sm btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#tutorModal" style="display:none;"><i class="bi bi-person-plus"></i> Tambah Tutor</button>
+        <a id="btnReplacement" href="{{ route('schedules.create') }}" class="btn btn-sm btn-primary shadow-sm" style="display:none;"><i class="bi bi-plus-lg"></i> Ajukan Replacement</a>
         <a id="btnAddClass" href="{{ route('classes.create') }}" class="btn btn-sm btn-primary shadow-sm"><i class="bi bi-plus-lg"></i> Tambah Kelas</a>
     </div>
 </div>
 
-{{-- Switch toggle: Manajemen Kelas <-> Manajemen Tutor --}}
-<div class="btn-group mb-4 shadow-sm" role="group" aria-label="Pilih panel">
+{{-- Switch panel: Kelas <-> Tutor <-> Kalender.
+
+     Dua yang pertama berpindah di sisi klien karena datanya sudah dirender.
+     Kalender berupa tautan biasa: eventnya ratusan dan hanya disusun saat panel
+     itu memang diminta -- lihat ClassRoomController::index. --}}
+<div class="btn-group mb-4 shadow-sm flex-wrap" role="group" aria-label="Pilih panel">
     <input type="radio" class="btn-check" name="panelToggle" id="toggleKelas" autocomplete="off" @checked($tab === 'kelas')>
     <label class="btn btn-outline-primary" for="toggleKelas"><i class="bi bi-easel2 me-1"></i> Manajemen Kelas</label>
     <input type="radio" class="btn-check" name="panelToggle" id="toggleTutor" autocomplete="off" @checked($tab === 'tutor')>
     <label class="btn btn-outline-primary" for="toggleTutor"><i class="bi bi-person-video3 me-1"></i> Manajemen Tutor</label>
+    <a href="{{ route('classes.index', ['tab' => 'kalender']) }}" id="toggleKalender"
+        class="btn btn-outline-primary @if($tab === 'kalender') active @endif">
+        <i class="bi bi-calendar3-week me-1"></i> Kalender Jadwal
+    </a>
 </div>
 
 <div class="card" id="panelKelas" @if($tab === 'tutor') style="display:none;" @endif>
@@ -63,52 +105,111 @@
             </div>
         @endif
         <div class="table-responsive">
-            <table class="table table-hover align-middle">
+            <table class="table table-hover align-middle mb-0">
                 <thead>
-                    <tr><th>Kode</th><th>Kategori</th><th>Tutor</th><th>Kapasitas</th><th>Ketersediaan</th><th>Jadwal</th><th>Biaya</th><th class="text-end">Aksi</th></tr>
+                    <tr>
+                        <th>Kelas</th>
+                        <th>Tutor</th>
+                        <th>Jadwal</th>
+                        <th>Kapasitas</th>
+                        <th>Ketersediaan</th>
+                        <th class="text-end">Biaya</th>
+                        <th class="text-end">Aksi</th>
+                    </tr>
                 </thead>
                 <tbody>
                     @forelse($classes as $class)
+                        @php
+                            $av = $class->availability();
+                            $terisi = $class->enrolledCount();
+                            $persen = $class->capacity > 0 ? min(100, round($terisi / $class->capacity * 100)) : 0;
+                            $warnaIsi = $persen >= 100 ? 'bg-danger' : ($persen >= 75 ? 'bg-warning' : 'bg-success');
+                        @endphp
                         <tr>
-                            <td class="fw-bold">{{ $class->class_code }}</td>
-                            <td><span class="badge bg-light text-dark border rounded-pill px-2 py-1 fw-semibold">{{ $class->class_category }}</span></td>
-                            <td>{{ $class->tutor->name ?? '-' }}</td>
-                            <td>{{ $class->enrolledCount() }} / {{ $class->capacity }}</td>
+                            {{-- Kode & kategori disatukan: keduanya menjawab "kelas yang mana",
+                                 dan kolom terpisah hanya melebarkan tabel tanpa menambah info. --}}
                             <td>
-                                @php $av = $class->availability(); @endphp
-                                <span class="badge rounded-pill px-3 py-1 text-white fw-semibold" style="background-color: {{ $av['bg'] ?? '#475569' }};">{{ $av['text'] }}</span>
+                                <div class="fw-bold text-capitalize">{{ $class->class_category }}</div>
+                                <div class="d-flex align-items-center gap-2 mt-1">
+                                    <span class="small text-muted">{{ $class->class_code }}</span>
+                                    @php $warnaTipe = $class->isTrial() ? 'warning' : 'primary'; @endphp
+                                    <span class="badge bg-{{ $warnaTipe }}-subtle text-{{ $warnaTipe }}-emphasis border border-{{ $warnaTipe }}-subtle">{{ $class->typeLabel() }}</span>
+                                </div>
                             </td>
+                            <td>{{ $class->tutor->name ?? '-' }}</td>
                             <td>
-                                {{ $class->scheduleLabel() }}
-                                <br><small class="text-muted">
+                                <div>{{ $class->scheduleLabel() }}</div>
+                                <small class="text-muted d-block">
                                     @if(! $class->is_recurring)
-                                        <span class="badge bg-light text-dark border rounded-pill px-2 py-1 fw-semibold">Sekali jalan</span>
+                                        <i class="bi bi-calendar-x me-1"></i>Sekali jalan
                                     @elseif($next = $class->nextOccurrence())
-                                        Sesi berikutnya {{ $next->format('d M Y') }}
+                                        <i class="bi bi-arrow-repeat me-1"></i>Sesi berikutnya {{ $next->format('d M Y') }}
                                     @else
                                         Belum ada sesi mendatang
                                     @endif
                                 </small>
                             </td>
-                            <td>Rp {{ number_format($class->class_fee, 0, ',', '.') }}</td>
+                            {{-- Angka saja sulit dibaca sekilas; bar tipis membuat kelas yang
+                                 hampir penuh langsung terlihat tanpa membandingkan dua angka. --}}
+                            <td>
+                                <div class="fw-semibold">{{ $terisi }} <span class="text-muted fw-normal">/ {{ $class->capacity }}</span></div>
+                                <div class="progress mt-1" style="height:5px; min-width:56px;" role="progressbar"
+                                    aria-label="Keterisian kelas {{ $class->class_code }}" aria-valuenow="{{ $persen }}" aria-valuemin="0" aria-valuemax="100">
+                                    <div class="progress-bar {{ $warnaIsi }}" style="width: {{ $persen }}%"></div>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge rounded-pill px-3 py-1 text-white fw-semibold" style="background-color: {{ $av['bg'] ?? '#475569' }};">{{ $av['text'] }}</span>
+                            </td>
+                            {{-- Uang pendaftaran hanya ditagih sekali, jadi ditulis sebagai
+                                 tambahan di bawah iuran, bukan dijumlah diam-diam. --}}
                             <td class="text-end">
-                                <form action="{{ route('classes.toggle-status', $class) }}" method="POST" class="d-inline">
-                                    @csrf @method('PATCH')
-                                    @if($class->isClosed())
-                                        <button class="btn btn-sm btn-outline-success" title="Buka kelas"><i class="bi bi-unlock"></i></button>
-                                    @else
-                                        <button class="btn btn-sm btn-outline-secondary" title="Tutup kelas"><i class="bi bi-lock"></i></button>
-                                    @endif
-                                </form>
-                                <a href="{{ route('classes.edit', $class) }}" class="btn btn-sm btn-info text-white"><i class="bi bi-pencil"></i></a>
-                                <form action="{{ route('classes.destroy', $class) }}" method="POST" class="d-inline" onsubmit="return confirm('Hapus kelas ini?')">
-                                    @csrf @method('DELETE')
-                                    <button class="btn btn-sm btn-danger"><i class="bi bi-trash"></i></button>
-                                </form>
+                                <div class="fw-semibold text-nowrap">Rp {{ number_format($class->class_fee, 0, ',', '.') }}</div>
+                                @if($class->registration_fee > 0)
+                                    <small class="text-muted text-nowrap d-block" title="Uang pendaftaran, ditagih sekali saat murid mendaftar">
+                                        + Rp {{ number_format($class->registration_fee, 0, ',', '.') }} daftar
+                                    </small>
+                                @endif
+                                {{-- Tarif sepekan: dasar harga bulan pertama murid yang masuk
+                                     di pertengahan bulan. Tangga lengkapnya di tooltip —
+                                     empat angka di baris tabel akan menenggelamkan iuran pokoknya. --}}
+                                @if($class->class_fee > 0)
+                                    @php
+                                        $rincian = collect(\App\Models\ClassRoom::START_WEEKS)
+                                            ->map(fn ($w) => 'Masuk minggu ke-'.$w.': Rp '.number_format($class->feeForStartWeek($w), 0, ',', '.'))
+                                            ->implode(' · ');
+                                    @endphp
+                                    <small class="text-muted text-nowrap d-block" title="Harga bulan pertama — {{ $rincian }}">
+                                        ≈ Rp {{ number_format($class->weeklyFee(), 0, ',', '.') }} / pekan
+                                    </small>
+                                @endif
+                            </td>
+                            <td class="text-end">
+                                <div class="d-inline-flex flex-nowrap gap-1">
+                                    <form action="{{ route('classes.toggle-status', $class) }}" method="POST">
+                                        @csrf @method('PATCH')
+                                        @if($class->isClosed())
+                                            <button class="btn btn-sm btn-outline-success" title="Buka kelas"><i class="bi bi-unlock"></i></button>
+                                        @else
+                                            <button class="btn btn-sm btn-outline-secondary" title="Tutup kelas"><i class="bi bi-lock"></i></button>
+                                        @endif
+                                    </form>
+                                    <a href="{{ route('classes.edit', $class) }}" class="btn btn-sm btn-info text-white" title="Edit kelas"><i class="bi bi-pencil"></i></a>
+                                    <form action="{{ route('classes.destroy', $class) }}" method="POST" onsubmit="return confirm('Hapus kelas ini?')">
+                                        @csrf @method('DELETE')
+                                        <button class="btn btn-sm btn-danger" title="Hapus kelas"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                </div>
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="8" class="text-center text-muted">Belum ada kelas.</td></tr>
+                        <tr><td colspan="7" class="text-center text-muted py-4">
+                            @if($search !== '' || $category !== '' || $status !== '' || $day !== '')
+                                Tidak ada kelas yang cocok dengan filter.
+                            @else
+                                Belum ada kelas. Klik "Tambah Kelas" untuk menambahkan.
+                            @endif
+                        </td></tr>
                     @endforelse
                 </tbody>
             </table>
@@ -275,6 +376,15 @@
     </div>
 </div>
 
+{{-- Panel Kalender Jadwal -- kelas reguler, Holiday Class, & replacement.
+     Isinya hanya dirender saat panel ini yang diminta; di tab lain kotaknya
+     kosong dan tersembunyi. --}}
+<div id="panelKalender" @if($tab !== 'kalender') style="display:none;" @endif>
+    @if($tab === 'kalender')
+        @include('schedules._calendar-panel', ['events' => $calendarEvents, 'students' => $calendarStudents])
+    @endif
+</div>
+
 <!-- Tutor Edit Modal -->
 <div class="modal fade" id="tutorEditModal" tabindex="-1">
     <div class="modal-dialog">
@@ -343,28 +453,45 @@
 <script>
     // ── Switch panel: Manajemen Kelas <-> Manajemen Tutor ──
     (function () {
-        const panelKelas = document.getElementById('panelKelas');
-        const panelTutor = document.getElementById('panelTutor');
+        const panels = {
+            kelas: document.getElementById('panelKelas'),
+            tutor: document.getElementById('panelTutor'),
+            kalender: document.getElementById('panelKalender'),
+        };
         const toggleKelas = document.getElementById('toggleKelas');
         const toggleTutor = document.getElementById('toggleTutor');
+        const toggleKalender = document.getElementById('toggleKalender');
         const btnAddClass = document.getElementById('btnAddClass');
         const btnAddTutor = document.getElementById('btnAddTutor');
+        const btnReplacement = document.getElementById('btnReplacement');
 
         function applyPanel(tab) {
-            const tutorActive = tab === 'tutor';
-            panelKelas.style.display = tutorActive ? 'none' : '';
-            panelTutor.style.display = tutorActive ? '' : 'none';
-            btnAddClass.style.display = tutorActive ? 'none' : '';
-            btnAddTutor.style.display = tutorActive ? '' : 'none';
+            Object.keys(panels).forEach(function (nama) {
+                if (panels[nama]) panels[nama].style.display = nama === tab ? '' : 'none';
+            });
+
+            // Tombol aksi mengikuti panel: tiap panel punya satu perbuatan utama.
+            btnAddClass.style.display = tab === 'kelas' ? '' : 'none';
+            btnAddTutor.style.display = tab === 'tutor' ? '' : 'none';
+            if (btnReplacement) btnReplacement.style.display = tab === 'kalender' ? '' : 'none';
+            if (toggleKalender) toggleKalender.classList.toggle('active', tab === 'kalender');
+
             // Simpan tab di URL agar bertahan saat reload / setelah submit filter.
             const url = new URL(location);
-            if (tutorActive) { url.searchParams.set('tab', 'tutor'); } else { url.searchParams.delete('tab'); }
+            if (tab === 'kelas') { url.searchParams.delete('tab'); } else { url.searchParams.set('tab', tab); }
             history.replaceState(null, '', url);
+
+            // FullCalendar mengukur tinggi & lebarnya saat render; di dalam panel
+            // yang tersembunyi hasilnya nol, dan kalender tampil sebagai garis
+            // tipis sampai jendela diubah ukurannya.
+            if (tab === 'kalender' && window.jadwalCalendar) {
+                window.jadwalCalendar.updateSize();
+            }
         }
 
         toggleKelas.addEventListener('change', function () { applyPanel('kelas'); });
         toggleTutor.addEventListener('change', function () { applyPanel('tutor'); });
-        applyPanel(toggleTutor.checked ? 'tutor' : 'kelas');
+        applyPanel(@json($tab));
     })();
 
     // ── Isi modal edit tutor ──

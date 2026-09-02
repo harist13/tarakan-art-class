@@ -31,10 +31,11 @@
         <li class="{{ request()->is('holiday-classes*') ? 'active' : '' }}">
             <a href="{{ route('holiday-classes.index') }}"><i class="bi bi-sun-fill"></i> Holiday Class</a>
         </li>
-        <li class="{{ request()->is('schedules/calendar') ? 'active' : '' }}">
-            <a href="{{ route('schedules.calendar') }}"><i class="bi bi-calendar3-week-fill"></i> Kalender Jadwal</a>
-        </li>
-        <li class="{{ (request()->is('schedules*') && ! request()->is('schedules/calendar')) ? 'active' : '' }}">
+        {{-- Kalender Jadwal tidak lagi jadi menu tersendiri: ia kini satu panel di
+             Manajemen Kelas, supaya jadwal, kelas, dan tutornya terbaca di satu
+             tempat. Halamannya sendiri tetap ada untuk alur cari kelas pengganti,
+             dijangkau dari Jadwal & Replacement. --}}
+        <li class="{{ request()->is('schedules*') ? 'active' : '' }}">
             <a href="{{ route('schedules.index') }}"><i class="bi bi-calendar-range-fill"></i> Jadwal & Replacement</a>
         </li>
         <li class="{{ request()->is('attendances*') ? 'active' : '' }}">

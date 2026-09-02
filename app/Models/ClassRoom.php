@@ -21,6 +21,10 @@ use Illuminate\Support\Carbon;
  *   sekali jalan — kelas hanya berjalan pada `schedule_date` itu saja, dan
  *                  memang kedaluwarsa setelah lewat.
  *
+ * Form kelas tidak lagi menanyakan pengulangan secara langsung: admin memilih
+ * `class_type` (Reguler / Trial Class), dan ClassRoomController-lah yang
+ * menurunkan `is_recurring` darinya — reguler berulang, trial sekali jalan.
+ *
  * Tanggal sesi berikutnya tidak disimpan, melainkan diturunkan lewat
  * nextOccurrence() / occurrencesBetween().
  */
@@ -34,6 +38,33 @@ class ClassRoom extends Model
         4 => 'Kamis', 5 => 'Jumat', 6 => 'Sabtu',
     ];
 
+    /**
+     * Tipe kelas, sekaligus penentu pola jadwalnya:
+     *   regular — kelas mingguan berulang (is_recurring = true)
+     *   trial   — kelas percobaan, sekali pertemuan (is_recurring = false)
+     *
+     * Tarifnya berbeda, jadi tipe ini disimpan sendiri alih-alih dibaca balik dari
+     * `is_recurring`: yang satu soal harga, yang satu soal jadwal.
+     */
+    public const TYPE_LABELS = [
+        'regular' => 'Reguler',
+        'trial' => 'Trial Class',
+    ];
+
+    /**
+     * Sebulan dihitung empat pekan — patokan tetap, bukan jumlah sesi sebenarnya
+     * di bulan tertentu. Bulan yang kebetulan punya lima kali pertemuan tidak
+     * membuat iuran murid ikut berubah, dan itu yang bisa dijelaskan ke orang tua.
+     */
+    public const WEEKS_PER_MONTH = 4;
+
+    /**
+     * Pekan ke berapa dalam bulan murid mulai bergabung. Angkanya milik murid
+     * (pivot `student_class.start_week`); harganya diturunkan dari class_fee
+     * lewat feeForStartWeek().
+     */
+    public const START_WEEKS = [1, 2, 3, 4];
+
     protected $fillable = [
         'class_code',
         'class_category',
@@ -41,8 +72,12 @@ class ClassRoom extends Model
         'capacity',
         'schedule_date',
         'is_recurring',
+        'class_type',
         'schedule_time',
+        'schedule_end_time',
         'class_fee',
+        'registration_fee',
+        'start_week_fees',
         'status',
         'closed_reason',
     ];
@@ -54,12 +89,15 @@ class ClassRoom extends Model
      */
     protected $attributes = [
         'is_recurring' => true,
+        'class_type' => 'regular',
+        'registration_fee' => 0,
     ];
 
     protected $casts = [
         'schedule_date' => 'date',
         'is_recurring' => 'boolean',
         'class_fee' => 'decimal:2',
+        'registration_fee' => 'decimal:2',
     ];
 
     /**
@@ -214,6 +252,124 @@ class ClassRoom extends Model
         return substr((string) $this->schedule_time, 0, 5);
     }
 
+    /** Jam selesai sebagai "HH:MM", null bila slot lama belum punya. */
+    public function endTimeLabel(): ?string
+    {
+        return $this->schedule_end_time ? substr((string) $this->schedule_end_time, 0, 5) : null;
+    }
+
+    /**
+     * "11:00–12:30", atau "11:00" saja untuk slot yang jam selesainya belum diisi.
+     *
+     * Dipakai di mana pun jam kelas disebut, supaya slot lama tidak perlu
+     * ditandai khusus: yang belum punya jam selesai tampil seperti sedia kala.
+     */
+    public function timeRangeLabel(): string
+    {
+        $end = $this->endTimeLabel();
+
+        return $end ? $this->timeLabel().'–'.$end : $this->timeLabel();
+    }
+
+    /** Lama satu sesi dalam menit; null bila jam selesainya belum diisi. */
+    public function durationMinutes(): ?int
+    {
+        if (! $this->schedule_end_time) {
+            return null;
+        }
+
+        $start = Carbon::createFromFormat('H:i', $this->timeLabel());
+        $end = Carbon::createFromFormat('H:i', $this->endTimeLabel());
+
+        return max(0, $start->diffInMinutes($end, false));
+    }
+
+    /**
+     * Jam berakhirnya sebuah sesi. Null bila jam selesai belum diisi — kalender
+     * lalu menampilkannya sebagai satu titik waktu, bukan rentang tebakan.
+     */
+    public function occurrenceEndAt(Carbon $start): ?Carbon
+    {
+        $menit = $this->durationMinutes();
+
+        return $menit === null ? null : $start->copy()->addMinutes($menit);
+    }
+
+    // ─── Tipe kelas & biaya ────────────────────────────────────────
+
+    public function isTrial(): bool
+    {
+        return $this->class_type === 'trial';
+    }
+
+    /** "Trial Class" / "Reguler". */
+    public function typeLabel(): string
+    {
+        return self::TYPE_LABELS[$this->class_type] ?? self::TYPE_LABELS['regular'];
+    }
+
+    /** "Minggu ke-3" — dipakai bersama oleh form murid, tabel, & pratinjau invoice. */
+    public static function weekLabel(int $week): string
+    {
+        return 'Minggu ke-'.$week;
+    }
+
+    /**
+     * Pekan ke berapa dalam bulan sebuah tanggal jatuh (1–4).
+     *
+     * Tanggal 29 ke atas tetap terhitung pekan ke-4: sebulan dipatok empat pekan,
+     * dan pekan kelima yang muncul di sebagian bulan bukan pekan berbayar sendiri.
+     *
+     * Dipakai sebagai tebakan awal pekan mulai murid, bukan sebagai kebenaran:
+     * admin tetap memilih sendiri di form, karena tanggal murid terdaftar di
+     * sistem tidak selalu tanggal ia mulai ikut kelas.
+     */
+    public static function weekOfMonth(Carbon $date): int
+    {
+        return min(self::WEEKS_PER_MONTH, intdiv($date->day - 1, 7) + 1);
+    }
+
+    /** Tarif sepekan: iuran sebulan dibagi empat. */
+    public function weeklyFee(): float
+    {
+        return (float) $this->class_fee / self::WEEKS_PER_MONTH;
+    }
+
+    /**
+     * Iuran bulan pertama untuk murid yang mulai pada pekan tertentu.
+     *
+     * Murid membayar pekan yang benar-benar ia dapat: masuk pekan ke-2 berarti
+     * kebagian pekan 2, 3, dan 4 — tiga dari empat pekan. Dibulatkan ke rupiah
+     * penuh karena invoice sanggar tidak pernah menyebut sen.
+     *
+     * Pekan kosong (pendaftaran lama yang tak tercatat) dianggap mulai dari awal:
+     * menagih penuh adalah dugaan yang bisa dikoreksi admin, sedangkan memberi
+     * potongan atas dugaan berarti kehilangan uang tanpa ada yang tahu.
+     */
+    public function feeForStartWeek(?int $week): float
+    {
+        return round($this->weeklyFee() * $this->remainingWeeks($week));
+    }
+
+    /** Sisa pekan berbayar bila murid mulai pada pekan itu (1–4). */
+    public function remainingWeeks(?int $week): int
+    {
+        $week = max(1, min(self::WEEKS_PER_MONTH, (int) ($week ?: 1)));
+
+        return self::WEEKS_PER_MONTH - $week + 1;
+    }
+
+    /**
+     * Yang dibayar murid saat pertama masuk: iuran kelas + uang pendaftaran.
+     *
+     * Uang pendaftaran memang hanya ditagih sekali, jadi angka ini bukan tagihan
+     * bulan berikutnya — itu tetap class_fee saja.
+     */
+    public function initialFee(): float
+    {
+        return (float) $this->class_fee + (float) $this->registration_fee;
+    }
+
     /**
      * Label jadwal: "Setiap Rabu, 09:00" untuk kelas berulang, atau
      * "Rabu, 20 Agu 2026, 09:00" untuk kelas sekali jalan.
@@ -221,10 +377,10 @@ class ClassRoom extends Model
     public function scheduleLabel(): string
     {
         if (! $this->is_recurring) {
-            return $this->dayName().', '.$this->schedule_date->format('d M Y').', '.$this->timeLabel();
+            return $this->dayName().', '.$this->schedule_date->format('d M Y').', '.$this->timeRangeLabel();
         }
 
-        return 'Setiap '.$this->dayName().', '.$this->timeLabel();
+        return 'Setiap '.$this->dayName().', '.$this->timeRangeLabel();
     }
 
     /**

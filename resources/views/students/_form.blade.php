@@ -123,14 +123,97 @@
             <label class="form-label fw-semibold">Tanggal Bergabung <span class="text-danger">*</span></label>
             <div class="input-group">
                 <span class="input-group-text bg-light text-muted"><i class="bi bi-calendar-check"></i></span>
-                <input type="date" name="join_date"
+                <input type="date" name="join_date" id="join_date"
                        class="form-control @error('join_date') is-invalid @enderror"
                        value="{{ old('join_date', isset($student) ? $student->join_date->format('Y-m-d') : now()->format('Y-m-d')) }}" required>
                 @error('join_date') <div class="invalid-feedback">{{ $message }}</div> @enderror
             </div>
+
+            {{-- Pekan mulai menentukan harga bulan pertama murid ini, dan hanya bulan
+                 pertama. Tersimpan pada pendaftarannya ke kelas, bukan pada muridnya:
+                 satu kelas dimasuki anak-anak yang datang di pekan berbeda-beda.
+
+                 Tampil sebagai keterangan, bukan kotak isian tersendiri: nilainya
+                 turun dari tanggal di atas dan nyaris tak pernah diubah, jadi satu
+                 kolom form penuh untuknya hanya menambah ramai. Yang jarang dipakai
+                 disembunyikan di balik "Ubah", bukan dihilangkan. --}}
+            @php
+                $pekanTerpilih = (int) old('start_week', isset($student) ? $student->startWeek() : 1) ?: 1;
+                $pekanSebulan = \App\Models\ClassRoom::WEEKS_PER_MONTH;
+            @endphp
+            <div class="form-text mt-2 d-flex align-items-center flex-wrap gap-2">
+                <span>
+                    <i class="bi bi-calendar2-week me-1"></i>Mulai
+                    <strong id="startWeekLabel">Minggu ke-{{ $pekanTerpilih }}</strong>
+                    <span id="startWeekNote">— bayar {{ $pekanSebulan - $pekanTerpilih + 1 }} dari {{ $pekanSebulan }} pekan di bulan pertama</span>
+                </span>
+                <button type="button" class="btn btn-link btn-sm p-0 align-baseline text-decoration-none" id="startWeekEdit">Ubah</button>
+            </div>
+            <div class="mt-2 @error('start_week') @else d-none @enderror" id="startWeekPicker" style="max-width:220px;">
+                <select name="start_week" id="start_week" class="form-select form-select-sm @error('start_week') is-invalid @enderror" data-no-search>
+                    @foreach(\App\Models\ClassRoom::START_WEEKS as $week)
+                        <option value="{{ $week }}" @selected($pekanTerpilih === $week)>Minggu ke-{{ $week }}</option>
+                    @endforeach
+                </select>
+                @error('start_week') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+            </div>
         </div>
     </div>
 </div>
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const joinDate = document.getElementById('join_date');
+    const startWeek = document.getElementById('start_week');
+    const label = document.getElementById('startWeekLabel');
+    const note = document.getElementById('startWeekNote');
+    const picker = document.getElementById('startWeekPicker');
+    const tombolUbah = document.getElementById('startWeekEdit');
+    if (!joinDate || !startWeek) return;
+
+    const PEKAN_SEBULAN = {{ \App\Models\ClassRoom::WEEKS_PER_MONTH }};
+
+    // Pekan mulai hampir selalu sama dengan pekan tanggal bergabung, jadi ia
+    // mengikuti sendiri — sampai admin memilih sendiri, dan sejak itu pilihannya
+    // tidak lagi ditimpa. Anak yang didaftarkan hari ini tapi baru mulai pekan
+    // depan memang ada, dan angkanya tidak boleh berubah di belakang admin.
+    let disentuh = {{ old('start_week') !== null || isset($student) ? 'true' : 'false' }};
+
+    function render(manual) {
+        const pekan = Number(startWeek.value) || 1;
+        const sisa = PEKAN_SEBULAN - pekan + 1;
+
+        label.textContent = 'Minggu ke-' + pekan;
+        note.textContent = manual
+            ? '— dipilih manual, bayar ' + sisa + ' dari ' + PEKAN_SEBULAN + ' pekan di bulan pertama'
+            : '— bayar ' + sisa + ' dari ' + PEKAN_SEBULAN + ' pekan di bulan pertama';
+    }
+
+    tombolUbah?.addEventListener('click', function () {
+        picker.classList.toggle('d-none');
+        if (! picker.classList.contains('d-none')) {
+            startWeek.focus();
+        }
+    });
+
+    startWeek.addEventListener('change', function () {
+        disentuh = true;
+        render(true);
+    });
+
+    joinDate.addEventListener('input', function () {
+        if (disentuh) return;
+
+        const hari = Number((joinDate.value || '').split('-')[2]);
+        if (!hari) return;
+
+        startWeek.value = String(Math.min(PEKAN_SEBULAN, Math.floor((hari - 1) / 7) + 1));
+        render(false);
+    });
+});
+</script>
+@endpush
 
 {{-- ─── Bagian 2: Data Wali & Kontak ─────────────────────────── --}}
 <div class="mb-4">

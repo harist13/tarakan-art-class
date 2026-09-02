@@ -251,6 +251,16 @@
                                     // otomatis di sini mengundang invoice "biaya pendaftaran"
                                     // senilai SPP hanya karena angkanya sudah terlanjur ada.
                                     $prefill = $lepas ? '' : (int) $row['amount'];
+                                    // Uang pendaftaran hanya menempel di invoice pertama murid,
+                                    // jadi nominal barisnya bisa lebih besar dari SPP-nya sendiri.
+                                    // Selisih yang tak dijelaskan akan terbaca sebagai salah hitung.
+                                    $pendaftaran = $row['registration'] ?? 0;
+                                    $iuran = $row['amount'] - $pendaftaran;
+                                    // Bulan pertama bisa lebih murah dari biaya kelas karena
+                                    // murid masuk di pertengahan bulan. Sama seperti uang
+                                    // pendaftaran, selisihnya disebutkan — bukan dibiarkan
+                                    // terbaca sebagai salah hitung.
+                                    $potongan = $row['discount'] ?? 0;
                                 @endphp
                                 {{-- Baris di atas batas dilipat sejak dari server, bukan
                                      oleh JS sesudah halaman tampil: kalau tidak, seluruh
@@ -274,9 +284,22 @@
                                                name="amounts[{{ $student->id }}]"
                                                class="form-control form-control-sm text-end pick-amount"
                                                value="{{ old('amounts.'.$student->id, $prefill) }}">
-                                        @if($lepas && $row['amount'] > 0)
+                                        @if($lepas && $iuran > 0)
                                             <small class="text-muted d-block text-end mt-1">
-                                                Biaya kelas: Rp {{ number_format($row['amount'], 0, ',', '.') }}
+                                                Biaya kelas: Rp {{ number_format($iuran, 0, ',', '.') }}
+                                            </small>
+                                        @endif
+                                        @if($potongan > 0)
+                                            <small class="d-block text-end mt-1 text-success-emphasis">
+                                                <i class="bi bi-dash-circle me-1"></i>Harga bulan pertama
+                                                Minggu ke-{{ $row['start_week'] }} — hemat
+                                                Rp {{ number_format($potongan, 0, ',', '.') }} dari biaya kelas penuh.
+                                            </small>
+                                        @endif
+                                        @if($pendaftaran > 0)
+                                            <small class="d-block text-end mt-1 text-warning-emphasis">
+                                                <i class="bi bi-plus-circle me-1"></i>Termasuk uang pendaftaran
+                                                Rp {{ number_format($pendaftaran, 0, ',', '.') }} — invoice pertama murid ini.
                                             </small>
                                         @endif
                                     </td>

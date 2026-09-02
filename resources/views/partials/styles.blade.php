@@ -198,6 +198,11 @@
         display: flex;
         flex-direction: column;
         min-height: 100vh;
+        /* Tanpa ini, #content sebagai flex item tidak boleh menyusut di bawah lebar
+           min-content isinya — satu tabel lebar akan melebarkan seluruh halaman,
+           menggeser sidebar & topbar ke kiri alih-alih bergulir di dalam
+           .table-responsive miliknya sendiri. */
+        min-width: 0;
     }
 
     /* Topbar */

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\ActivityLog;
 use App\Models\ClassRoom;
 use App\Models\Tutor;
+use App\Support\ScheduleCalendar;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
@@ -123,12 +124,28 @@ class ClassRoomController extends Controller
         // Daftar kategori unik untuk dropdown filter.
         $categories = ClassRoom::query()->distinct()->orderBy('class_category')->pluck('class_category');
 
-        // Panel aktif: 'kelas' (default) atau 'tutor'.
-        $tab = $request->string('tab')->toString() === 'tutor' ? 'tutor' : 'kelas';
+        // Panel aktif: 'kelas' (default), 'tutor', atau 'kalender'.
+        $tab = in_array($request->string('tab')->toString(), ['tutor', 'kalender'], true)
+            ? $request->string('tab')->toString()
+            : 'kelas';
+
+        // Kalender merentangkan tiap slot mingguan jadi ratusan kejadian, jadi
+        // hanya disusun saat panelnya memang yang dibuka. Panel kelas & tutor
+        // berpindah di sisi klien, tapi kalender selalu lewat muat ulang halaman
+        // — lihat tombolnya di classes/index.
+        $calendarEvents = [];
+        $calendarStudents = collect();
+
+        if ($tab === 'kalender') {
+            $calendar = app(ScheduleCalendar::class);
+            $calendarEvents = $calendar->events();
+            $calendarStudents = $calendar->students();
+        }
 
         return view('classes.index', compact(
             'classes', 'search', 'tutors', 'status', 'category', 'day',
-            'tab', 'tutorSearch', 'tutorClassId', 'tutorStatus', 'allClasses', 'categories'
+            'tab', 'tutorSearch', 'tutorClassId', 'tutorStatus', 'allClasses', 'categories',
+            'calendarEvents', 'calendarStudents'
         ));
     }
 
@@ -263,7 +280,7 @@ class ClassRoomController extends Controller
 
     private function validateData(Request $request, ?ClassRoom $class = null): array
     {
-        return $request->validate([
+        $data = $request->validate([
             'class_category' => [
                 'required',
                 'string',
@@ -276,11 +293,29 @@ class ClassRoomController extends Controller
             // bukan isian admin — ClassRoom menurunkannya dari schedule_date.
             'schedule_date' => ['required', 'date'],
             'schedule_time' => ['required'],
-            'is_recurring' => ['required', 'boolean'],
+            // Jam selesai wajib untuk kelas yang baru disimpan — kalender tidak
+            // bisa menggambarkan sesi sebagai rentang tanpanya. Kolomnya sendiri
+            // nullable demi slot lama yang belum sempat mengisinya.
+            'schedule_end_time' => ['required', 'after:schedule_time'],
+            'class_type' => ['required', Rule::in(array_keys(ClassRoom::TYPE_LABELS))],
             'class_fee' => ['required', 'numeric', 'min:0'],
+            // Uang pendaftaran bersifat add-on: kelas yang tidak memungutnya cukup
+            // dikosongkan, dan tersimpan sebagai 0.
+            'registration_fee' => ['nullable', 'numeric', 'min:0'],
         ], [
             'class_category.unique' => 'Kelas sudah ada.',
             'schedule_date.required' => 'Tanggal kelas belum diisi.',
+            'schedule_end_time.required' => 'Jam selesai belum diisi.',
+            'schedule_end_time.after' => 'Jam selesai harus lebih malam dari jam mulai.',
+            'class_type.required' => 'Tipe kelas belum dipilih.',
         ]);
+
+        // Pengulangan bukan lagi isian tersendiri: trial class hanya berjalan sekali,
+        // kelas reguler berulang tiap pekan. Seluruh perhitungan sesi di ClassRoom
+        // tetap membaca `is_recurring`, jadi nilainya diturunkan di sini.
+        $data['is_recurring'] = $data['class_type'] !== 'trial';
+        $data['registration_fee'] = $data['registration_fee'] ?? 0;
+
+        return $data;
     }
 }

@@ -163,17 +163,27 @@ class SlotAvailabilityTest extends TestCase
         $this->assertSame('Tutor kosong', $class->availability()['text']);
     }
 
-    public function test_form_kelas_memakai_input_tanggal_dan_saklar_pengulangan(): void
+    public function test_form_kelas_memakai_input_tanggal_dan_dropdown_tipe_kelas(): void
     {
         $this->actingAs($this->makeUser());
 
         $this->get(route('classes.create'))
             ->assertOk()
             ->assertSee('Tanggal Kelas')
-            ->assertSee('Kelas berjalan setiap minggu')
+            ->assertSee('Tipe Kelas')
+            ->assertSee('Trial Class')
+            ->assertSee('Uang Pendaftaran')
             ->assertSee('name="schedule_date"', false)
-            ->assertSee('name="is_recurring"', false)
-            // Hari tidak lagi diisi admin — diturunkan dari tanggal.
+            ->assertSee('name="class_type"', false)
+            ->assertSee('name="registration_fee"', false)
+            // Pekan mulai milik murid, bukan kelas. Yang ada di form kelas hanyalah
+            // pratinjau harganya — dihitung dari Biaya Kelas, tidak diketik.
+            ->assertSee('Harga Bulan Pertama menurut Pekan Murid Masuk')
+            ->assertDontSee('name="start_week"', false)
+            ->assertDontSee('name="start_week_fees[1]"', false)
+            // Pengulangan tidak lagi diisi admin — diturunkan dari tipe kelas,
+            // sama seperti hari yang diturunkan dari tanggal.
+            ->assertDontSee('name="is_recurring"', false)
             ->assertDontSee('— Pilih Hari —')
             ->assertDontSee('name="day_of_week"', false);
     }
@@ -190,7 +200,8 @@ class SlotAvailabilityTest extends TestCase
             'capacity' => 8,
             'schedule_date' => $rabu->toDateString(),
             'schedule_time' => '16:00',
-            'is_recurring' => '1',
+            'schedule_end_time' => '17:00',
+            'class_type' => 'regular',
             'class_fee' => 300000,
         ])->assertRedirect(route('classes.index'))->assertSessionHasNoErrors();
 
@@ -198,8 +209,148 @@ class SlotAvailabilityTest extends TestCase
         // Hari tidak dikirim form & tidak disimpan — diturunkan dari tanggalnya.
         $this->assertSame(3, $class->day_of_week);
         $this->assertTrue($class->is_recurring);
-        $this->assertSame('Setiap Rabu, 16:00', $class->scheduleLabel());
+        $this->assertSame('Setiap Rabu, 16:00–17:00', $class->scheduleLabel());
         $this->assertSame(3, $class->nextOccurrence()->dayOfWeek);
+    }
+
+    /**
+     * Tipe kelas menggantikan saklar pengulangan: trial hanya sekali pertemuan,
+     * jadi is_recurring harus ikut turun dari pilihan itu — bukan dikirim form.
+     */
+    public function test_trial_class_disimpan_sebagai_kelas_sekali_jalan(): void
+    {
+        $this->actingAs($this->makeUser());
+        $tutor = Tutor::create(['name' => 'Kak Tutor', 'status' => 'full-time']);
+
+        $this->post(route('classes.store'), [
+            'class_category' => 'Trial Drawing',
+            'tutor_id' => $tutor->id,
+            'capacity' => 4,
+            'schedule_date' => now()->addDay()->toDateString(),
+            'schedule_time' => '10:00',
+            'schedule_end_time' => '11:00',
+            'class_type' => 'trial',
+            'class_fee' => 75000,
+            'registration_fee' => 50000,
+        ])->assertRedirect(route('classes.index'))->assertSessionHasNoErrors();
+
+        $class = ClassRoom::where('class_category', 'Trial Drawing')->firstOrFail();
+        $this->assertTrue($class->isTrial());
+        $this->assertFalse($class->is_recurring);
+        $this->assertEqualsWithDelta(125000.0, $class->initialFee(), 0.01);
+    }
+
+    // ─── JAM MULAI & SELESAI ───────────────────────────────────────
+
+    /** Jam selesai wajib diisi, dan tidak boleh mendahului jam mulai. */
+    public function test_jam_selesai_harus_setelah_jam_mulai(): void
+    {
+        $this->actingAs($this->makeUser());
+        $tutor = Tutor::create(['name' => 'Kak Tutor', 'status' => 'full-time']);
+
+        $payload = [
+            'class_category' => 'Drawing Terbalik',
+            'tutor_id' => $tutor->id,
+            'capacity' => 8,
+            'schedule_date' => now()->addDay()->toDateString(),
+            'schedule_time' => '16:00',
+            'class_type' => 'regular',
+            'class_fee' => 300000,
+        ];
+
+        $this->from(route('classes.create'))
+            ->post(route('classes.store'), $payload + ['schedule_end_time' => '15:00'])
+            ->assertSessionHasErrors('schedule_end_time');
+
+        $this->from(route('classes.create'))
+            ->post(route('classes.store'), $payload)
+            ->assertSessionHasErrors(['schedule_end_time' => 'Jam selesai belum diisi.']);
+
+        $this->assertDatabaseMissing('classes', ['class_category' => 'Drawing Terbalik']);
+    }
+
+    /** Jam kelas disebut sebagai rentang, dan lamanya bisa dihitung. */
+    public function test_label_jadwal_menyebut_rentang_jam(): void
+    {
+        $class = $this->makeClass([
+            'schedule_time' => '09:00',
+            'schedule_end_time' => '10:30',
+        ]);
+
+        $this->assertSame('09:00–10:30', $class->timeRangeLabel());
+        $this->assertSame(90, $class->durationMinutes());
+        $this->assertStringContainsString('09:00–10:30', $class->scheduleLabel());
+
+        $sesi = $class->nextOccurrence();
+        $this->assertSame('10:30', $class->occurrenceEndAt($sesi)->format('H:i'));
+    }
+
+    /**
+     * Slot lama belum punya jam selesai. Ia harus tetap tampil apa adanya —
+     * bukan dilengkapi tebakan yang lalu terbaca sebagai jadwal resmi.
+     */
+    public function test_slot_tanpa_jam_selesai_tampil_seperti_sedia_kala(): void
+    {
+        $class = $this->makeClass(['schedule_time' => '09:00']);
+
+        $this->assertNull($class->endTimeLabel());
+        $this->assertNull($class->durationMinutes());
+        $this->assertNull($class->occurrenceEndAt($class->nextOccurrence()));
+        $this->assertSame('09:00', $class->timeRangeLabel());
+    }
+
+    // ─── PANEL KALENDER DI MANAJEMEN KELAS ─────────────────────────
+
+    /** Kalender jadwal kini juga bisa dibuka dari Manajemen Kelas. */
+    public function test_panel_kalender_tampil_di_manajemen_kelas(): void
+    {
+        $this->actingAs($this->makeUser());
+        $class = $this->makeClass();
+
+        $this->get(route('classes.index', ['tab' => 'kalender']))
+            ->assertOk()
+            ->assertSee('Kalender Jadwal')
+            ->assertSee('id="calendar"', false)
+            ->assertSee($class->class_category);
+    }
+
+    /**
+     * Tab lain tidak ikut menyusun eventnya: satu slot mingguan merentang jadi
+     * ratusan kejadian, dan itu pekerjaan yang tak ada gunanya di halaman daftar.
+     */
+    public function test_tab_kelas_tidak_memuat_kalender(): void
+    {
+        $this->actingAs($this->makeUser());
+        $this->makeClass();
+
+        $this->get(route('classes.index'))
+            ->assertOk()
+            ->assertDontSee('id="calendar"', false);
+    }
+
+    /**
+     * Uang pendaftaran bersifat add-on: dikosongkan berarti nol, bukan gagal validasi.
+     */
+    public function test_uang_pendaftaran_boleh_dikosongkan(): void
+    {
+        $this->actingAs($this->makeUser());
+        $tutor = Tutor::create(['name' => 'Kak Tutor', 'status' => 'full-time']);
+
+        $this->post(route('classes.store'), [
+            'class_category' => 'Coloring Pagi',
+            'tutor_id' => $tutor->id,
+            'capacity' => 6,
+            'schedule_date' => now()->addDay()->toDateString(),
+            'schedule_time' => '08:00',
+            'schedule_end_time' => '09:00',
+            'class_type' => 'regular',
+            'class_fee' => 200000,
+            'registration_fee' => '',
+        ])->assertRedirect(route('classes.index'))->assertSessionHasNoErrors();
+
+        $class = ClassRoom::where('class_category', 'Coloring Pagi')->firstOrFail();
+        $this->assertEqualsWithDelta(0.0, (float) $class->registration_fee, 0.01);
+        $this->assertEqualsWithDelta(200000.0, $class->initialFee(), 0.01);
     }
 
     public function test_kelas_sekali_jalan_hanya_punya_satu_sesi(): void

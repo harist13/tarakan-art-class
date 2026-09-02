@@ -112,8 +112,21 @@ class PaymentController extends Controller
             // murid aktif ditampilkan, dan tidak ada yang dicentang lebih dulu —
             // tagihan lepas selalu untuk beberapa orang tertentu, tidak pernah
             // "semuanya".
-            $billable = Student::where('status', 'active')->with('classes')->orderBy('name')->get()
-                ->map(fn (Student $s) => ['student' => $s, 'amount' => $s->billableFee()])
+            //
+            // withCount di sini bukan soal performa: uang pendaftaran hanya melekat
+            // pada invoice pertama murid, dan itulah cara mengetahuinya.
+            $billable = Student::where('status', 'active')
+                ->with('classes')
+                ->withCount('payments')
+                ->orderBy('name')
+                ->get()
+                ->map(fn (Student $s) => [
+                    'student' => $s,
+                    'amount' => $s->invoiceAmount(),
+                    'registration' => $s->registrationFeeDue(),
+                    'discount' => $s->firstMonthDiscount(),
+                    'start_week' => $s->startWeek(),
+                ])
                 ->all();
 
             return view('payments.create', [
@@ -127,6 +140,11 @@ class PaymentController extends Controller
 
         $students = Student::where('status', 'active')
             ->with(['classes', 'payments' => fn ($q) => $q->forPeriod($period)])
+            // Relasi `payments` di atas sengaja disaring per periode, jadi tidak bisa
+            // menjawab "murid ini sudah pernah ditagih sama sekali belum" — pertanyaan
+            // yang menentukan uang pendaftaran ikut ditagih atau tidak. Hitungannya
+            // datang dari subquery terpisah ini.
+            ->withCount('payments')
             ->orderBy('name')
             ->get();
 
@@ -147,7 +165,13 @@ class PaymentController extends Controller
                 continue;
             }
 
-            $billable[] = ['student' => $student, 'amount' => $student->billableFee()];
+            $billable[] = [
+                'student' => $student,
+                'amount' => $student->invoiceAmount(),
+                'registration' => $student->registrationFeeDue(),
+                'discount' => $student->firstMonthDiscount(),
+                'start_week' => $student->startWeek(),
+            ];
         }
 
         return view('payments.create', [
@@ -244,7 +268,7 @@ class PaymentController extends Controller
 
     public function edit(Payment $payment)
     {
-        $students = Student::with('classes')->orderBy('name')->get();
+        $students = Student::with('classes')->withCount('payments')->orderBy('name')->get();
 
         return view('payments.edit', compact('payment', 'students'));
     }

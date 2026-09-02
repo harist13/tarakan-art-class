@@ -6,6 +6,7 @@ use App\Models\ActivityLog;
 use App\Models\ClassRoom;
 use App\Models\Student;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
@@ -57,15 +58,20 @@ class StudentController extends Controller
     {
         $data = $this->validateData($request);
 
+        // Pekan mulai bukan kolom murid — ia dicatat pada pendaftarannya ke kelas,
+        // jadi dikeluarkan sebelum $data dipakai untuk mengisi model.
+        $startWeek = $data['start_week'] ?? null;
+        unset($data['start_week']);
+
         $matchingClass = ClassRoom::whereRaw('LOWER(class_category) = ?', [strtolower($data['class_type'])])
             ->get()
             ->first(fn ($c) => $c->isAvailable())
             ?? ClassRoom::whereRaw('LOWER(class_category) = ?', [strtolower($data['class_type'])])->first();
 
-        DB::transaction(function () use ($data, $matchingClass) {
+        DB::transaction(function () use ($data, $matchingClass, $startWeek) {
             $student = Student::create($data);
             if ($matchingClass) {
-                $this->syncClasses($student, [$matchingClass->id]);
+                $this->syncClasses($student, [$matchingClass->id], $startWeek);
             }
             ActivityLog::record('created', $student, "Menambahkan murid {$student->name}");
         });
@@ -85,6 +91,9 @@ class StudentController extends Controller
     public function update(Request $request, Student $student)
     {
         $data = $this->validateData($request, $student);
+
+        $startWeek = $data['start_week'] ?? null;
+        unset($data['start_week']);
 
         // Pindah tipe kelas ditahan selama menunggak — itu keputusan yang bisa
         // ditunda tanpa merusak catatan apa pun. Perubahan data lain tetap boleh.
@@ -106,10 +115,10 @@ class StudentController extends Controller
                 ?? ClassRoom::whereRaw('LOWER(class_category) = ?', [strtolower($data['class_type'])])->first();
         }
 
-        DB::transaction(function () use ($student, $data, $matchingClass) {
+        DB::transaction(function () use ($student, $data, $matchingClass, $startWeek) {
             $student->update($data);
             if ($matchingClass) {
-                $this->syncClasses($student, [$matchingClass->id]);
+                $this->syncClasses($student, [$matchingClass->id], $startWeek);
             }
             ActivityLog::record('updated', $student, "Memperbarui murid {$student->name}");
         });
@@ -162,6 +171,9 @@ class StudentController extends Controller
             ],
             'status' => ['required', Rule::in(['active', 'inactive'])],
             'join_date' => ['required', 'date'],
+            // Pekan murid mulai ikut kelas — penentu harga bulan pertamanya.
+            // Boleh kosong: syncClasses() menurunkannya dari tanggal bergabung.
+            'start_week' => ['nullable', 'integer', Rule::in(ClassRoom::START_WEEKS)],
         ], [
             'class_type.required' => 'Tipe kelas wajib dipilih.',
             'class_type.in' => 'Tipe kelas yang dipilih tidak valid.',
@@ -173,13 +185,33 @@ class StudentController extends Controller
         ]);
     }
 
-    private function syncClasses(Student $student, array $classIds): void
+    /**
+     * Pasang murid ke kelasnya, berikut pekan ia mulai.
+     *
+     * Pekan mulai tinggal di pivot, bukan di murid: seorang murid bisa masuk
+     * kelas kedua di bulan yang berbeda, dan harga bulan pertama tiap kelas
+     * dihitung dari pekannya sendiri.
+     *
+     * Tanggal daftar dipertahankan bila pendaftarannya sudah ada — menyegarkannya
+     * jadi hari ini setiap kali data murid disunting akan menghapus jejak kapan
+     * anak itu sebenarnya mulai.
+     */
+    private function syncClasses(Student $student, array $classIds, ?int $startWeek = null): void
     {
         $classIds = array_filter($classIds);
+        $existing = $student->classes()->pluck('student_class.enrolled_at', 'classes.id');
         $payload = [];
+
         foreach ($classIds as $id) {
-            $payload[$id] = ['status' => 'active', 'enrolled_at' => now()->toDateString()];
+            $enrolledAt = $existing[$id] ?? now()->toDateString();
+
+            $payload[$id] = [
+                'status' => 'active',
+                'enrolled_at' => $enrolledAt,
+                'start_week' => $startWeek ?? ClassRoom::weekOfMonth(Carbon::parse($enrolledAt)),
+            ];
         }
+
         $student->classes()->sync($payload);
     }
 }

@@ -49,22 +49,23 @@ class BillingPeriodTest extends TestCase
         return $this->admin = $user;
     }
 
-    private function makeClass(int $fee = 150000): ClassRoom
+    private function makeClass(int $fee = 150000, int $registrationFee = 0, string $category = 'drawing'): ClassRoom
     {
         $tutor = Tutor::create(['name' => 'Kak Tutor', 'status' => 'full-time']);
 
         return ClassRoom::create([
-            'class_category' => 'drawing',
+            'class_category' => $category,
             'tutor_id' => $tutor->id,
             'capacity' => 10,
             'schedule_date' => now()->addDay()->toDateString(),
             'schedule_time' => '09:00',
             'class_fee' => $fee,
+            'registration_fee' => $registrationFee,
             'status' => 'open',
         ]);
     }
 
-    private function makeStudent(string $name, ?ClassRoom $class = null): Student
+    private function makeStudent(string $name, ?ClassRoom $class = null, ?int $startWeek = null): Student
     {
         $student = Student::create([
             'name' => $name,
@@ -78,7 +79,11 @@ class BillingPeriodTest extends TestCase
         ]);
 
         if ($class) {
-            $student->classes()->attach($class->id, ['status' => 'active', 'enrolled_at' => now()->toDateString()]);
+            $student->classes()->attach($class->id, [
+                'status' => 'active',
+                'enrolled_at' => now()->toDateString(),
+                'start_week' => $startWeek,
+            ]);
         }
 
         return $student;
@@ -671,5 +676,187 @@ class BillingPeriodTest extends TestCase
         $this->assertSame('2026-08', Payment::periodFor('2026-08-30'));
         $this->assertSame('Agustus 2026', Payment::labelForPeriod('2026-08'));
         $this->assertSame('tanpa periode', Payment::labelForPeriod(null));
+    }
+
+    // ─── UANG PENDAFTARAN (ADD-ON INVOICE PERTAMA) ─────────────────
+
+    /**
+     * Uang pendaftaran hanya menempel pada invoice pertama murid. Kalau ia ikut
+     * di tiap bulan, tagihan SPP jadi kelebihan terus-menerus tanpa ada yang
+     * menyadarinya — nominalnya wajar dan tidak mencolok.
+     */
+    public function test_uang_pendaftaran_hanya_masuk_invoice_pertama_murid(): void
+    {
+        $class = $this->makeClass(150000, 50000);
+        $student = $this->makeStudent('Murid Baru', $class);
+
+        $this->assertEqualsWithDelta(150000.0, $student->billableFee(), 0.01);
+        $this->assertEqualsWithDelta(50000.0, $student->registrationFeeDue(), 0.01);
+        $this->assertEqualsWithDelta(200000.0, $student->invoiceAmount(), 0.01);
+
+        Payment::create($this->invoicePayload($student, ['payment_amount' => 200000]));
+
+        // Muat ulang: hasBeenBilled() membaca keadaan terbaru, bukan yang tercatat
+        // saat model tadi diambil.
+        $student = Student::with('classes')->find($student->id);
+
+        $this->assertEqualsWithDelta(0.0, $student->registrationFeeDue(), 0.01);
+        $this->assertEqualsWithDelta(150000.0, $student->invoiceAmount(), 0.01);
+    }
+
+    /**
+     * Pratinjau memakai nominal gabungan itu, dan menyebutkan selisihnya —
+     * angka yang lebih besar dari SPP tanpa keterangan akan terbaca salah hitung.
+     */
+    public function test_pratinjau_mengisi_dan_menjelaskan_uang_pendaftaran(): void
+    {
+        $class = $this->makeClass(150000, 50000);
+        $this->makeStudent('Murid Baru', $class);
+
+        $this->actingAs($this->admin())
+            ->get(route('payments.create', ['period' => '2026-08']))
+            ->assertOk()
+            ->assertSee('value="200000"', false)
+            ->assertSee('Termasuk uang pendaftaran');
+    }
+
+    /**
+     * Periode berikutnya: murid yang sama sudah pernah ditagih, jadi tinggal SPP.
+     *
+     * Ini juga yang menjaga agar relasi `payments` yang dimuat tersaring per
+     * periode tidak salah dibaca sebagai "belum pernah ditagih".
+     */
+    public function test_pratinjau_periode_berikutnya_tidak_menagih_pendaftaran_lagi(): void
+    {
+        $class = $this->makeClass(150000, 50000);
+        $student = $this->makeStudent('Murid Baru', $class);
+
+        Payment::create($this->invoicePayload($student, ['payment_amount' => 200000]));
+
+        $this->actingAs($this->admin())
+            ->get(route('payments.create', ['period' => '2026-09']))
+            ->assertOk()
+            ->assertSee('value="150000"', false)
+            ->assertDontSee('Termasuk uang pendaftaran');
+    }
+
+    /** Kelas tanpa uang pendaftaran tidak menambahkan apa pun. */
+    public function test_kelas_tanpa_uang_pendaftaran_tetap_setara_spp(): void
+    {
+        $class = $this->makeClass(150000);
+        $student = $this->makeStudent('Murid Lama', $class);
+
+        $this->assertEqualsWithDelta(0.0, $student->registrationFeeDue(), 0.01);
+        $this->assertEqualsWithDelta(150000.0, $student->invoiceAmount(), 0.01);
+    }
+
+    // ─── HARGA BULAN PERTAMA MENURUT PEKAN MULAI ───────────────────
+
+    /**
+     * Murid membayar pekan yang benar-benar ia dapat: masuk pekan ke-2 berarti
+     * kebagian pekan 2, 3, 4 — tiga perempat iuran. Dan itu hanya berlaku untuk
+     * invoice pertamanya; bulan berikutnya ia mengikuti kelas dari awal.
+     */
+    public function test_bulan_pertama_hanya_menagih_pekan_yang_didapat(): void
+    {
+        $class = $this->makeClass(450000);
+        $student = $this->makeStudent('Murid Tengah Bulan', $class, 2);
+
+        $this->assertSame(2, $student->startWeek());
+        $this->assertSame(3, $class->remainingWeeks(2));
+        // 3 dari 4 pekan × Rp 450.000
+        $this->assertEqualsWithDelta(337500.0, $student->firstMonthFee(), 0.01);
+        $this->assertEqualsWithDelta(337500.0, $student->invoiceAmount(), 0.01);
+        $this->assertEqualsWithDelta(112500.0, $student->firstMonthDiscount(), 0.01);
+
+        Payment::create($this->invoicePayload($student, ['payment_amount' => 337500]));
+
+        $student = Student::with('classes')->find($student->id);
+
+        $this->assertEqualsWithDelta(450000.0, $student->invoiceAmount(), 0.01);
+        $this->assertEqualsWithDelta(0.0, $student->firstMonthDiscount(), 0.01);
+    }
+
+    /** Tangga harganya utuh: pekan 1 penuh, pekan 4 tinggal seperempat. */
+    public function test_tangga_harga_tiap_pekan_mulai(): void
+    {
+        $class = $this->makeClass(450000);
+
+        $this->assertEqualsWithDelta(112500.0, $class->weeklyFee(), 0.01);
+        $this->assertEqualsWithDelta(450000.0, $class->feeForStartWeek(1), 0.01);
+        $this->assertEqualsWithDelta(337500.0, $class->feeForStartWeek(2), 0.01);
+        $this->assertEqualsWithDelta(225000.0, $class->feeForStartWeek(3), 0.01);
+        $this->assertEqualsWithDelta(112500.0, $class->feeForStartWeek(4), 0.01);
+    }
+
+    /** Uang pendaftaran menumpang di atas iuran prorata, bukan ikut dipotong. */
+    public function test_prorata_dan_uang_pendaftaran_ditagih_bersama(): void
+    {
+        $class = $this->makeClass(400000, 100000);
+        $student = $this->makeStudent('Murid Baru', $class, 4);
+
+        // 100.000 (seperempat iuran) + 100.000 (pendaftaran)
+        $this->assertEqualsWithDelta(200000.0, $student->invoiceAmount(), 0.01);
+    }
+
+    /** Mulai pekan pertama berarti sebulan penuh — tidak ada potongan. */
+    public function test_mulai_pekan_pertama_menagih_penuh(): void
+    {
+        $class = $this->makeClass(450000);
+        $student = $this->makeStudent('Murid Awal Bulan', $class, 1);
+
+        $this->assertEqualsWithDelta(450000.0, $student->invoiceAmount(), 0.01);
+        $this->assertEqualsWithDelta(0.0, $student->firstMonthDiscount(), 0.01);
+    }
+
+    /**
+     * Pendaftaran lama tidak punya catatan pekan. Menebak dari tanggal daftar
+     * lebih baik daripada memaksa semuanya jadi pekan ke-1 — yang berarti semua
+     * murid lama tertagih penuh padahal masuk di pertengahan bulan.
+     */
+    public function test_pendaftaran_tanpa_catatan_pekan_diturunkan_dari_tanggal_daftar(): void
+    {
+        $class = $this->makeClass(450000);
+        $student = $this->makeStudent('Murid Lama', $class);
+
+        // Tanggal 17 jatuh di pekan ke-3: (17 - 1) div 7 + 1.
+        $student->classes()->updateExistingPivot($class->id, [
+            'enrolled_at' => '2026-08-17',
+            'start_week' => null,
+        ]);
+        $student = Student::with('classes')->find($student->id);
+
+        $this->assertSame(3, $student->startWeek());
+        $this->assertEqualsWithDelta(225000.0, $student->firstMonthFee(), 0.01);
+    }
+
+    /** Tanggal 29 ke atas tetap pekan ke-4: sebulan dipatok empat pekan. */
+    public function test_akhir_bulan_tetap_terhitung_pekan_keempat(): void
+    {
+        $class = $this->makeClass(450000);
+        $student = $this->makeStudent('Murid Akhir Bulan', $class);
+
+        $student->classes()->updateExistingPivot($class->id, [
+            'enrolled_at' => '2026-08-31',
+            'start_week' => null,
+        ]);
+        $student = Student::with('classes')->find($student->id);
+
+        $this->assertSame(4, $student->startWeek());
+        $this->assertEqualsWithDelta(112500.0, $student->firstMonthFee(), 0.01);
+    }
+
+    /** Pratinjau memakai nominal prorata itu, dan menyebutkan selisihnya. */
+    public function test_pratinjau_menjelaskan_harga_bulan_pertama(): void
+    {
+        $class = $this->makeClass(450000);
+        $this->makeStudent('Murid Tengah Bulan', $class, 2);
+
+        $this->actingAs($this->admin())
+            ->get(route('payments.create', ['period' => '2026-08']))
+            ->assertOk()
+            ->assertSee('value="337500"', false)
+            ->assertSee('Harga bulan pertama')
+            ->assertSee('Minggu ke-2');
     }
 }

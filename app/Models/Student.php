@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
 #[ObservedBy(StudentObserver::class)]
 class Student extends Model
@@ -215,6 +216,119 @@ class Student extends Model
     }
 
     /**
+     * Uang pendaftaran kelas-kelas yang diikuti.
+     *
+     * Ini bukan iuran bulanan: nilainya hanya berlaku sekali, saat murid pertama
+     * kali ditagih. Pertanyaan "berapa" dijawab di sini, "masih perlu atau tidak"
+     * dijawab registrationFeeDue().
+     */
+    public function registrationFee(): float
+    {
+        return (float) $this->classes->sum('registration_fee');
+    }
+
+    /**
+     * Murid ini sudah pernah punya invoice — periode apa pun, lunas atau belum.
+     *
+     * Memakai `payments_count` dari withCount() bila tersedia. Itu bukan sekadar
+     * penghindar N+1: halaman pratinjau memuat relasi `payments` yang SUDAH
+     * disaring per periode, jadi menghitung dari relasi termuat akan menjawab
+     * "belum pernah ditagih" untuk murid yang sebenarnya sudah ditagih
+     * bulan-bulan sebelumnya.
+     */
+    public function hasBeenBilled(): bool
+    {
+        if (! is_null($this->payments_count)) {
+            return (int) $this->payments_count > 0;
+        }
+
+        return $this->payments()->exists();
+    }
+
+    /**
+     * Uang pendaftaran yang masih harus ditagih: penuh pada invoice pertama
+     * murid, nol setelahnya.
+     */
+    public function registrationFeeDue(): float
+    {
+        return $this->hasBeenBilled() ? 0.0 : $this->registrationFee();
+    }
+
+    /**
+     * Pekan ke berapa murid ini mulai — angka yang menentukan harga bulan
+     * pertamanya.
+     *
+     * Dicatat per pendaftaran (pivot `student_class.start_week`) karena satu
+     * kelas dimasuki anak-anak yang datang di pekan berbeda. Pendaftaran lama
+     * belum punya catatan itu, jadi diturunkan dari tanggal daftarnya —
+     * tebakan yang wajar, dan admin bisa mengoreksinya lewat form murid.
+     */
+    public function startWeek(): int
+    {
+        $pivotWeek = $this->classes
+            ->map(fn (ClassRoom $class) => $class->pivot->start_week)
+            ->first(fn ($week) => ! is_null($week));
+
+        if (! is_null($pivotWeek)) {
+            return (int) $pivotWeek;
+        }
+
+        $enrolled = $this->classes->first()?->pivot?->enrolled_at;
+
+        return ClassRoom::weekOfMonth(
+            $enrolled ? Carbon::parse($enrolled) : ($this->join_date ?? Carbon::now())
+        );
+    }
+
+    /**
+     * Iuran bulan pertama: hanya pekan yang benar-benar didapat murid.
+     *
+     * Masuk pekan ke-2 berarti kebagian pekan 2, 3, dan 4 — tiga perempat bulan,
+     * tiga perempat iuran. Murid yang mulai dari pekan pertama membayar penuh,
+     * jadi hasilnya sama dengan billableFee().
+     */
+    public function firstMonthFee(): float
+    {
+        $week = $this->startWeek();
+
+        return (float) $this->classes->sum(fn (ClassRoom $class) => $class->feeForStartWeek($week));
+    }
+
+    /**
+     * Nominal bawaan satu invoice.
+     *
+     * Invoice pertama murid berbeda dari bulan-bulan sesudahnya dalam dua hal,
+     * dan keduanya hanya berlaku sekali: iurannya mengikuti pekan ia mulai, dan
+     * uang pendaftarannya ikut ditagih.
+     *
+     * Terpisah dari billableFee() karena keduanya menjawab hal berbeda:
+     * billableFee() dipakai aturan "murid ini perlu ditagih atau tidak" —
+     * yang mesti tetap soal iuran berjalan penuh, bukan potongan sekali pakai.
+     */
+    public function invoiceAmount(): float
+    {
+        $iuran = $this->hasBeenBilled() ? $this->billableFee() : $this->firstMonthFee();
+
+        return $iuran + $this->registrationFeeDue();
+    }
+
+    /**
+     * Potongan bulan pertama dibanding iuran penuh; 0 bila tidak ada bedanya.
+     *
+     * Dipakai pratinjau invoice untuk menjelaskan nominal yang lebih kecil dari
+     * biaya kelas — angka yang tidak dijelaskan akan terbaca sebagai salah hitung,
+     * persis seperti nominal yang lebih besar karena uang pendaftaran.
+     */
+    public function firstMonthDiscount(): float
+    {
+        if ($this->hasBeenBilled()) {
+            return 0.0;
+        }
+
+        return max(0.0, $this->billableFee() - $this->firstMonthFee());
+    }
+
+    /**
      * Alasan murid ini TIDAK ditagih untuk sebuah periode, beserta nada
      * tampilannya. null berarti sebaliknya: layak ditagih, invoicenya belum ada.
      *
@@ -354,7 +468,7 @@ class Student extends Model
     public function classes(): BelongsToMany
     {
         return $this->belongsToMany(ClassRoom::class, 'student_class', 'student_id', 'class_id')
-            ->withPivot(['status', 'enrolled_at'])
+            ->withPivot(['status', 'enrolled_at', 'start_week'])
             ->withTimestamps();
     }
 

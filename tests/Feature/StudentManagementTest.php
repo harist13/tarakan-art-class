@@ -152,6 +152,60 @@ class StudentManagementTest extends TestCase
         $this->assertDatabaseHas('activity_logs', ['action' => 'created']);
     }
 
+    /**
+     * Pekan mulai dicatat pada pendaftaran murid ke kelas, bukan pada muridnya:
+     * satu kelas dimasuki anak-anak yang datang di pekan berbeda-beda.
+     */
+    public function test_store_menyimpan_pekan_mulai_di_pendaftaran_kelas(): void
+    {
+        $class = $this->makeClass('drawing');
+        $admin = $this->makeUser('admin');
+
+        $this->actingAs($admin)->post(route('students.store'), $this->validPayload([
+            'start_week' => 3,
+        ]))->assertRedirect(route('students.index'))->assertSessionHasNoErrors();
+
+        $student = Student::with('classes')->first();
+
+        $this->assertSame(3, (int) $student->classes->first()->pivot->start_week);
+        $this->assertSame(3, $student->startWeek());
+    }
+
+    /**
+     * Tanpa pilihan admin, pekan diturunkan dari tanggal murid terdaftar ke
+     * kelas — bukan dibiarkan kosong lalu tertagih harga termahal.
+     */
+    public function test_pekan_mulai_terisi_sendiri_dari_tanggal_pendaftaran(): void
+    {
+        $this->makeClass('drawing');
+        $admin = $this->makeUser('admin');
+
+        $this->actingAs($admin)->post(route('students.store'), $this->validPayload())
+            ->assertRedirect(route('students.index'))->assertSessionHasNoErrors();
+
+        $student = Student::with('classes')->first();
+        $harapan = min(\App\Models\ClassRoom::WEEKS_PER_MONTH, intdiv(now()->day - 1, 7) + 1);
+
+        $this->assertSame($harapan, (int) $student->classes->first()->pivot->start_week);
+    }
+
+    /**
+     * Pekan mulai tampil sebagai keterangan yang terisi sendiri, bukan kotak isian
+     * tersendiri — tapi pilihannya tetap ada di balik "Ubah" dan tetap terkirim.
+     */
+    public function test_form_murid_menampilkan_pekan_mulai_yang_bisa_diubah(): void
+    {
+        $this->makeClass('drawing');
+
+        $this->actingAs($this->makeUser('admin'))
+            ->get(route('students.create'))
+            ->assertOk()
+            ->assertSee('Minggu ke-1')
+            ->assertSee('dari 4 pekan di bulan pertama')
+            ->assertSee('Ubah')
+            ->assertSee('name="start_week"', false);
+    }
+
     public function test_student_id_auto_increments(): void
     {
         $this->makeClass('drawing');

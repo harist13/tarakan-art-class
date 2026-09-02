@@ -57,7 +57,8 @@ class ClassRoomValidationTest extends TestCase
                 'capacity' => 10,
                 'schedule_date' => now()->toDateString(),
                 'schedule_time' => '10:00',
-                'is_recurring' => 1,
+                'schedule_end_time' => '11:00',
+                'class_type' => 'regular',
                 'class_fee' => 150000,
             ]);
 
@@ -86,7 +87,8 @@ class ClassRoomValidationTest extends TestCase
                 'capacity' => 12,
                 'schedule_date' => now()->toDateString(),
                 'schedule_time' => '09:00',
-                'is_recurring' => 1,
+                'schedule_end_time' => '10:00',
+                'class_type' => 'regular',
                 'class_fee' => 150000,
             ]);
 
@@ -124,7 +126,8 @@ class ClassRoomValidationTest extends TestCase
                 'capacity' => 10,
                 'schedule_date' => now()->toDateString(),
                 'schedule_time' => '09:00',
-                'is_recurring' => 1,
+                'schedule_end_time' => '10:00',
+                'class_type' => 'regular',
                 'class_fee' => 150000,
             ]);
 
@@ -153,7 +156,8 @@ class ClassRoomValidationTest extends TestCase
                 'capacity' => 10,
                 'schedule_date' => now()->toDateString(),
                 'schedule_time' => '10:00',
-                'is_recurring' => 1,
+                'schedule_end_time' => '11:00',
+                'class_type' => 'regular',
                 'class_fee' => 150000,
             ]);
 

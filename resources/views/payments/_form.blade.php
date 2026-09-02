@@ -5,13 +5,13 @@
             <option value="">— Pilih Murid —</option>
             @foreach($students as $student)
                 <option value="{{ $student->id }}"
-                        data-fee="{{ $student->classes->sum('class_fee') }}"
+                        data-fee="{{ $student->invoiceAmount() }}"
                         @selected(old('student_id', $payment->student_id ?? '') == $student->id)>
                     {{ $student->name }} ({{ $student->student_id }})
                 </option>
             @endforeach
         </select>
-        <small class="text-muted">Jumlah invoice terisi otomatis dari biaya kelas murid.</small>
+        <small class="text-muted">Jumlah invoice terisi otomatis dari biaya kelas murid — ditambah uang pendaftaran bila murid itu belum pernah ditagih sama sekali.</small>
     </div>
     {{-- Periode tagihan menjawab "invoice ini UNTUK bulan apa", terpisah dari
          Tanggal Invoice yang hanya mencatat kapan invoice diterbitkan. Keduanya
