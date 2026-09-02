@@ -112,6 +112,7 @@ class ScheduleController extends Controller
         return view('schedules.calendar', [
             'events' => $calendar->events(),
             'students' => $calendar->students(),
+            'rosters' => $calendar->rosters(),
         ]);
     }
 

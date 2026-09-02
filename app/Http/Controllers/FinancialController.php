@@ -43,11 +43,15 @@ class FinancialController extends Controller
             ->paginate(15)
             ->withQueryString();
 
-        $totalIncome = (float) (clone $scope)->where('type', 'income')->sum('amount');
-        $totalExpense = (float) (clone $scope)->where('type', 'expense')->sum('amount');
+        // Ringkasan pemasukan/pengeluaran/saldo hanya untuk Super Admin — admin biasa
+        // tetap boleh mencatat dan melihat rincian transaksi, tapi tidak totalnya.
+        $canViewSummary = auth()->user()?->isSuperAdmin() ?? false;
+
+        $totalIncome = $canViewSummary ? (float) (clone $scope)->where('type', 'income')->sum('amount') : 0.0;
+        $totalExpense = $canViewSummary ? (float) (clone $scope)->where('type', 'expense')->sum('amount') : 0.0;
         $balance = $totalIncome - $totalExpense;
 
-        return view('financials.index', compact('transactions', 'totalIncome', 'totalExpense', 'balance', 'type', 'month', 'search', 'periodLabel'));
+        return view('financials.index', compact('transactions', 'canViewSummary', 'totalIncome', 'totalExpense', 'balance', 'type', 'month', 'search', 'periodLabel'));
     }
 
     public function create()

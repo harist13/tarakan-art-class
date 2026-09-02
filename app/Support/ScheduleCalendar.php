@@ -39,6 +39,55 @@ class ScheduleCalendar
     }
 
     /**
+     * Daftar isi tiap kelas: tutor, jam, dan murid aktifnya.
+     *
+     * Dikirim terpisah dari events, bukan ditempelkan ke tiap kejadian: satu slot
+     * mingguan merentang jadi puluhan kejadian, dan menyalin seluruh daftar murid
+     * ke masing-masingnya akan melipatgandakan muatan halaman tanpa menambah satu
+     * pun keterangan baru. Penelusuran di layar menyambungkannya lewat classId.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function rosters(): array
+    {
+        $classes = ClassRoom::with([
+            'tutor',
+            'students' => fn ($q) => $q->where('student_class.status', 'active')->orderBy('name'),
+        ])->get();
+
+        $rosters = [];
+
+        foreach ($classes as $class) {
+            $rosters[$class->id] = [
+                'id' => $class->id,
+                'code' => $class->class_code,
+                'category' => $class->class_category,
+                'tutor' => $class->tutor->name ?? null,
+                'tutorPhone' => $class->tutor->phone_number ?? null,
+                'dayName' => $class->dayName(),
+                'time' => $class->timeRangeLabel(),
+                'schedule' => $class->scheduleLabel(),
+                'capacity' => $class->capacity,
+                'enrolled' => $class->students->count(),
+                'availability' => $class->availability()['text'],
+                'editUrl' => route('classes.edit', $class),
+                'students' => $class->students->map(fn (Student $s) => [
+                    'id' => $s->id,
+                    'name' => $s->name,
+                    'studentId' => $s->student_id,
+                    'age' => $s->age,
+                    'parent' => $s->parent_name,
+                    'phone' => $s->phone_number,
+                    'category' => $s->class_type,
+                    'url' => route('students.edit', $s),
+                ])->all(),
+            ];
+        }
+
+        return $rosters;
+    }
+
+    /**
      * Murid yang masih ikut kelas & tidak menunggak, untuk mode "Cari kelas
      * pengganti" (filter slot per level murid).
      *
@@ -68,6 +117,7 @@ class ScheduleCalendar
 
         $from = Carbon::today()->subDays(self::PAST_DAYS);
         $to = Carbon::today()->addDays(self::FUTURE_DAYS);
+        $guests = $this->approvedGuests();
         $events = [];
 
         foreach ($classes as $class) {
@@ -104,6 +154,10 @@ class ScheduleCalendar
                         'past' => $past,
                         'occupancy' => $class->enrolledCount().' / '.$class->capacity,
                         'editUrl' => route('classes.edit', $class),
+                        // Murid titipan hari itu saja — replacement melekat pada satu
+                        // tanggal, jadi tidak bisa ikut di roster kelas yang berlaku
+                        // untuk seluruh pekan.
+                        'guests' => $guests[$class->id][$at->toDateString()] ?? [],
                     ],
                 ];
             }
@@ -179,6 +233,39 @@ class ScheduleCalendar
         }
 
         return $events;
+    }
+
+    /**
+     * Murid replacement yang disetujui, dikelompokkan per kelas & tanggal.
+     *
+     * Hanya yang approved: pengajuan pending belum tentu jadi, dan menampilkannya
+     * sebagai peserta membuat tutor menyiapkan kursi untuk anak yang mungkin
+     * tidak datang.
+     *
+     * @return array<int, array<string, list<array<string, mixed>>>>
+     */
+    private function approvedGuests(): array
+    {
+        $guests = [];
+
+        $requests = ReplacementRequest::with('student')
+            ->where('request_status', 'approved')
+            ->get();
+
+        foreach ($requests as $req) {
+            if (! $req->class_id || ! $req->student) {
+                continue;
+            }
+
+            $guests[$req->class_id][$req->replacement_date->toDateString()][] = [
+                'id' => $req->student->id,
+                'name' => $req->student->name,
+                'studentId' => $req->student->student_id,
+                'url' => route('students.edit', $req->student),
+            ];
+        }
+
+        return $guests;
     }
 
     /**

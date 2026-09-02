@@ -38,7 +38,7 @@
     <h1 class="h3 mb-0 text-gray-800 fw-bold" id="pageTitle">Manajemen Kelas & Tutor</h1>
     <div class="d-flex gap-2">
         <button id="btnAddTutor" class="btn btn-sm btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#tutorModal" style="display:none;"><i class="bi bi-person-plus"></i> Tambah Tutor</button>
-        <a id="btnReplacement" href="{{ route('schedules.create') }}" class="btn btn-sm btn-primary shadow-sm" style="display:none;"><i class="bi bi-plus-lg"></i> Ajukan Replacement</a>
+        <button type="button" id="btnReplacement" class="btn btn-sm btn-primary shadow-sm" style="display:none;"><i class="bi bi-pencil-square"></i> Ubah</button>
         <a id="btnAddClass" href="{{ route('classes.create') }}" class="btn btn-sm btn-primary shadow-sm"><i class="bi bi-plus-lg"></i> Tambah Kelas</a>
     </div>
 </div>
@@ -381,7 +381,11 @@
      kosong dan tersembunyi. --}}
 <div id="panelKalender" @if($tab !== 'kalender') style="display:none;" @endif>
     @if($tab === 'kalender')
-        @include('schedules._calendar-panel', ['events' => $calendarEvents, 'students' => $calendarStudents])
+        @include('schedules._calendar-panel', [
+            'events' => $calendarEvents,
+            'students' => $calendarStudents,
+            'rosters' => $calendarRosters,
+        ])
     @endif
 </div>
 

@@ -19,17 +19,28 @@ class DashboardController extends Controller
         $totalClasses = ClassRoom::count();
         $activeClasses = ClassRoom::where('status', 'open')->count();
 
-        $totalIncome = Transaction::where('type', 'income')->sum('amount');
+        // Angka pendapatan hanya untuk Super Admin. Untuk admin biasa nominalnya
+        // tidak dihitung dan tidak dikirim ke view sama sekali, bukan sekadar
+        // disembunyikan di tampilan.
+        $canViewFinance = auth()->user()?->isSuperAdmin() ?? false;
 
-        $monthIncome = Transaction::where('type', 'income')
-            ->whereYear('transaction_date', now()->year)
-            ->whereMonth('transaction_date', now()->month)
-            ->sum('amount');
+        $totalIncome = $canViewFinance
+            ? Transaction::where('type', 'income')->sum('amount')
+            : 0;
 
-        $monthExpense = Transaction::where('type', 'expense')
-            ->whereYear('transaction_date', now()->year)
-            ->whereMonth('transaction_date', now()->month)
-            ->sum('amount');
+        $monthIncome = $canViewFinance
+            ? Transaction::where('type', 'income')
+                ->whereYear('transaction_date', now()->year)
+                ->whereMonth('transaction_date', now()->month)
+                ->sum('amount')
+            : 0;
+
+        $monthExpense = $canViewFinance
+            ? Transaction::where('type', 'expense')
+                ->whereYear('transaction_date', now()->year)
+                ->whereMonth('transaction_date', now()->month)
+                ->sum('amount')
+            : 0;
 
         $unpaidCount = Payment::where('payment_status', 'unpaid')->count();
 
@@ -126,6 +137,7 @@ class DashboardController extends Controller
         $recentPayments = Payment::with('student')->orderByDesc('id')->limit(5)->get();
 
         return view('dashboard.index', compact(
+            'canViewFinance',
             'totalStudents',
             'activeStudents',
             'inactiveStudents',

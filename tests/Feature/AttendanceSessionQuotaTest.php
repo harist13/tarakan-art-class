@@ -231,6 +231,33 @@ class AttendanceSessionQuotaTest extends TestCase
     }
 
     /**
+     * Mengabsen sesi yang sama dua kali memperbarui catatannya, bukan menumpuk
+     * baris baru — kalau tidak, satu sesi bisa punya dua kehadiran untuk satu
+     * murid dan rekapnya ikut terhitung dobel.
+     */
+    public function test_menyimpan_ulang_sesi_yang_sama_memperbarui_catatannya(): void
+    {
+        $kelas = $this->makeClass('Kelas Drawing');
+        $murid = $this->makeStudent('Sari', $kelas);
+        $tanggal = $this->tanggalBulanIni(10);
+
+        $admin = $this->admin();
+
+        $simpan = fn (string $status) => $this->actingAs($admin)
+            ->post(route('attendances.store'), [
+                'class_id' => $kelas->id,
+                'attendance_date' => $tanggal,
+                'records' => [['student_id' => $murid->id, 'status' => $status]],
+            ])->assertSessionHasNoErrors();
+
+        $simpan('present');
+        $simpan('absent');
+
+        $this->assertDatabaseCount('attendances', 1);
+        $this->assertSame('absent', Attendance::first()->status);
+    }
+
+    /**
      * Murid yang masih punya sesi pengganti belum terlampaui tidak ikut diabsen
      * di sesi reguler — kehadirannya dicatat di sesi penggantinya. Berlaku walau
      * missed_date-nya menunjuk tanggal lain: kolom itu sering terisi otomatis.

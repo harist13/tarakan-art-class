@@ -18,7 +18,7 @@
             @else
                 Menampilkan periode <span class="fw-semibold">{{ $periodLabel }}</span> — transaksi di luar bulan ini tidak ikut terhitung.
             @endif
-            @if(in_array($type, ['income', 'expense'], true))
+            @if($canViewSummary && in_array($type, ['income', 'expense'], true))
                 <span class="d-block">Filter tipe hanya menyaring tabel; ringkasan di bawah tetap menghitung pemasukan &amp; pengeluaran periode ini.</span>
             @endif
         </div>
@@ -29,6 +29,8 @@
     </div>
 </div>
 
+{{-- Ringkasan nominal keuangan hanya untuk Super Admin. --}}
+@if($canViewSummary)
 <div class="row">
     <div class="col-md-4 mb-4">
         <div class="card border-left-success h-100 py-2"><div class="card-body">
@@ -49,6 +51,7 @@
         </div></div>
     </div>
 </div>
+@endif
 
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-3">

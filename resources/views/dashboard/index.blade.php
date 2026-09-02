@@ -18,9 +18,14 @@
 </div>
 
 <!-- Scorecards -->
+@php
+    // Tanpa kartu Total Pendapatan (admin biasa), tiga kartu sisanya dilebarkan
+    // supaya barisnya tetap penuh dan tidak menyisakan kolom kosong.
+    $scoreCol = $canViewFinance ? 'col-xl-3' : 'col-xl-4';
+@endphp
 <div class="row mb-4">
     <!-- Total Murid -->
-    <div class="col-xl-3 col-md-6 mb-3 mb-xl-0">
+    <div class="{{ $scoreCol }} col-md-6 mb-3 mb-xl-0">
         <div class="card h-100 border-0 shadow-sm rounded-4 position-relative overflow-hidden"
              style="background: var(--surface); border: 1px solid var(--border) !important;">
             <div class="position-absolute top-0 start-0 end-0" style="height: 3.5px; background: #0EA5E9;"></div>
@@ -45,8 +50,9 @@
         </div>
     </div>
 
-    <!-- Total Pendapatan -->
-    <div class="col-xl-3 col-md-6 mb-3 mb-xl-0">
+    {{-- Total Pendapatan — hanya Super Admin --}}
+    @if($canViewFinance)
+    <div class="{{ $scoreCol }} col-md-6 mb-3 mb-xl-0">
         <div class="card h-100 border-0 shadow-sm rounded-4 position-relative overflow-hidden"
              style="background: var(--surface); border: 1px solid var(--border) !important;">
             <div class="position-absolute top-0 start-0 end-0" style="height: 3.5px; background: #10B981;"></div>
@@ -70,9 +76,10 @@
             </div>
         </div>
     </div>
+    @endif
 
     <!-- Total Kelas -->
-    <div class="col-xl-3 col-md-6 mb-3 mb-xl-0">
+    <div class="{{ $scoreCol }} col-md-6 mb-3 mb-xl-0">
         <div class="card h-100 border-0 shadow-sm rounded-4 position-relative overflow-hidden"
              style="background: var(--surface); border: 1px solid var(--border) !important;">
             <div class="position-absolute top-0 start-0 end-0" style="height: 3.5px; background: #6366F1;"></div>
@@ -98,7 +105,7 @@
     </div>
 
     <!-- Perlu Perhatian -->
-    <div class="col-xl-3 col-md-6 mb-3 mb-xl-0">
+    <div class="{{ $scoreCol }} col-md-6 mb-3 mb-xl-0">
         <div class="card h-100 border-0 shadow-sm rounded-4 position-relative overflow-hidden"
              style="background: var(--surface); border: 1px solid var(--border) !important;">
             <div class="position-absolute top-0 start-0 end-0" style="height: 3.5px; background: rgba(245, 136, 12, 1);"></div>

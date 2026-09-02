@@ -135,17 +135,19 @@ class ClassRoomController extends Controller
         // — lihat tombolnya di classes/index.
         $calendarEvents = [];
         $calendarStudents = collect();
+        $calendarRosters = [];
 
         if ($tab === 'kalender') {
             $calendar = app(ScheduleCalendar::class);
             $calendarEvents = $calendar->events();
             $calendarStudents = $calendar->students();
+            $calendarRosters = $calendar->rosters();
         }
 
         return view('classes.index', compact(
             'classes', 'search', 'tutors', 'status', 'category', 'day',
             'tab', 'tutorSearch', 'tutorClassId', 'tutorStatus', 'allClasses', 'categories',
-            'calendarEvents', 'calendarStudents'
+            'calendarEvents', 'calendarStudents', 'calendarRosters'
         ));
     }
 

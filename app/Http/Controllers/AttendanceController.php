@@ -256,18 +256,32 @@ class AttendanceController extends Controller
 
         DB::transaction(function () use ($data) {
             foreach ($data['records'] as $record) {
-                Attendance::updateOrCreate(
-                    [
-                        'student_id' => $record['student_id'],
-                        'class_id' => $data['class_id'],
-                        'attendance_date' => $data['attendance_date'],
-                    ],
-                    [
-                        'status' => $record['status'],
-                        'notes' => $record['notes'] ?? null,
-                        'recorded_by' => auth()->id(),
-                    ]
-                );
+                // Catatan lama dicari dengan whereDate, bukan updateOrCreate:
+                // tanggalnya bisa tersimpan sebagai datetime, dan mencocokkan
+                // "2026-09-02" apa adanya lalu meleset — sesi yang diabsen dua
+                // kali akan berbaris ganda alih-alih diperbarui.
+                $catatan = Attendance::where('student_id', $record['student_id'])
+                    ->where('class_id', $data['class_id'])
+                    ->whereDate('attendance_date', $data['attendance_date'])
+                    ->first();
+
+                $nilai = [
+                    'status' => $record['status'],
+                    'notes' => $record['notes'] ?? null,
+                    'recorded_by' => auth()->id(),
+                ];
+
+                if ($catatan) {
+                    $catatan->update($nilai);
+
+                    continue;
+                }
+
+                Attendance::create($nilai + [
+                    'student_id' => $record['student_id'],
+                    'class_id' => $data['class_id'],
+                    'attendance_date' => $data['attendance_date'],
+                ]);
             }
 
             ActivityLog::record('created', null, 'Input absensi kelas');
