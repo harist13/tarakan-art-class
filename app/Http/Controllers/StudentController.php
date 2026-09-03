@@ -174,12 +174,18 @@ class StudentController extends Controller
                         return;
                     }
 
-                    $hasAvailable = $classes->contains(fn ($c) => $c->isAvailable());
-                    if (! $hasAvailable) {
-                        $allClosed = $classes->every(fn ($c) => $c->isClosed());
-                        $reason = $allClosed ? 'ditutup' : 'penuh';
-                        $fail("Kelas untuk kategori {$value} saat ini sedang {$reason}.");
+                    if ($classes->contains(fn (ClassRoom $c) => $c->isAvailable())) {
+                        return;
                     }
+
+                    // Alasannya diambil dari availability(), bukan disimpulkan ulang
+                    // dari isClosed()/isFull(). Dua sebab lain — tutor kosong dan
+                    // sesinya sudah lewat — tidak terwakili oleh keduanya, dan
+                    // dulu keduanya dilaporkan sebagai "penuh".
+                    $alasan = $classes->map(fn (ClassRoom $c) => $c->availability()['text'])->unique();
+                    $sebab = $alasan->count() === 1 ? $alasan->first() : 'tidak ada slot yang bisa diisi';
+
+                    $fail("Kelas untuk kategori {$value} tidak bisa dipilih: {$sebab}.");
                 },
             ],
             // Jadwal yang dipilih admin. Boleh kosong — resolveClass() lalu
@@ -279,10 +285,29 @@ class StudentController extends Controller
             $payload[$id] = [
                 'status' => 'active',
                 'enrolled_at' => $enrolledAt,
-                'start_week' => $startWeek ?? ClassRoom::weekOfMonth(Carbon::parse($enrolledAt)),
+                'start_week' => $startWeek ?? $this->weekOfFirstSession($id, $enrolledAt),
             ];
         }
 
         $student->classes()->sync($payload);
+    }
+
+    /**
+     * Pekan mulai bawaan bila form tidak mengirimkannya.
+     *
+     * Diambil dari pertemuan pertama kelasnya, bukan tanggal murid didaftarkan:
+     * yang dijawab harga bulan pertama adalah "anak ini dapat berapa pekan",
+     * dan itu ditentukan kapan ia mulai masuk. Murid yang didaftarkan 29 Agustus
+     * untuk kelas yang sesinya baru mulai 3 September dapat sebulan penuh —
+     * membacanya sebagai pekan ke-4 hanya menagih seperempatnya.
+     *
+     * Kelas yang tak punya sesi mendatang (slot sekali jalan yang sudah lewat)
+     * kembali memakai tanggal pendaftaran; tak ada yang lebih baik untuk ditebak.
+     */
+    private function weekOfFirstSession(int $classId, string $enrolledAt): int
+    {
+        $sesi = ClassRoom::find($classId)?->nextOccurrence();
+
+        return ClassRoom::weekOfMonth($sesi ?? Carbon::parse($enrolledAt));
     }
 }

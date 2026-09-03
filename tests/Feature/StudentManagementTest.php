@@ -133,6 +133,50 @@ class StudentManagementTest extends TestCase
     }
 
     /**
+     * Slot penuh ditolak server, tapi itu jaring terakhir — di layar pun ia harus
+     * sudah tidak bisa diklik.
+     *
+     * Penonaktifannya ditegaskan dua kali: atribut `disabled` sejak dari server,
+     * dan `data-no-search` supaya dropdown ini tetap select asli. Tom Select
+     * menyalin daftar opsi sekali saat inisialisasi dan tidak pernah membacanya
+     * lagi, sehingga slot yang dinonaktifkan penyaring tetap bisa diklik di daftar
+     * yang terlihat — persis jalur yang membuat kelas penuh sempat terpilih.
+     */
+    public function test_jadwal_penuh_tidak_bisa_dipilih_di_layar(): void
+    {
+        $penuh = $this->makeClass('drawing', capacity: 1);
+        $penuh->students()->attach(
+            Student::create($this->validPayload(['name' => 'Anak Lama']))->id,
+            ['status' => 'active', 'enrolled_at' => now()->toDateString()]
+        );
+        $kosong = $this->makeClass('coloring');
+
+        $html = $this->actingAs($this->makeUser('admin'))
+            ->get(route('students.create'))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertMatchesRegularExpression(
+            '/<select name="class_id"[^>]*data-no-search/',
+            $html,
+            'Dropdown jadwal harus tetap select asli agar opsinya benar-benar bisa dinonaktifkan.'
+        );
+
+        // Slot penuh tetap terlihat sebagai keterangan, tapi mati.
+        $this->assertMatchesRegularExpression(
+            '/<option value="'.$penuh->id.'"[^>]*disabled/s',
+            $html,
+            'Slot penuh harus dinonaktifkan sejak dari server.'
+        );
+
+        // Slot yang masih muat tidak ikut terkena.
+        $this->assertDoesNotMatchRegularExpression(
+            '/<option value="'.$kosong->id.'"[^>]*disabled/s',
+            $html
+        );
+    }
+
+    /**
      * Kategori diganti tapi jadwal lama tertinggal di form: yang tertinggal
      * diabaikan, bukan dipakai mendaftarkan anak ke kategori yang salah.
      */
@@ -275,38 +319,130 @@ class StudentManagementTest extends TestCase
     }
 
     /**
-     * Tanpa pilihan admin, pekan diturunkan dari tanggal murid terdaftar ke
-     * kelas — bukan dibiarkan kosong lalu tertagih harga termahal.
+     * Tanpa pilihan admin, pekan diturunkan dari PERTEMUAN PERTAMA kelasnya —
+     * bukan dari tanggal murid didaftarkan.
+     *
+     * Yang dijawab harga bulan pertama adalah "anak ini dapat berapa pekan", dan
+     * itu ditentukan kapan ia mulai masuk, bukan kapan orang tuanya mendaftar.
      */
-    public function test_pekan_mulai_terisi_sendiri_dari_tanggal_pendaftaran(): void
+    public function test_pekan_mulai_terisi_sendiri_dari_pertemuan_pertama(): void
     {
-        $this->makeClass('drawing');
+        $class = $this->makeClass('drawing');
         $admin = $this->makeUser('admin');
 
         $this->actingAs($admin)->post(route('students.store'), $this->validPayload())
             ->assertRedirect(route('students.index'))->assertSessionHasNoErrors();
 
         $student = Student::with('classes')->first();
-        $harapan = min(\App\Models\ClassRoom::WEEKS_PER_MONTH, intdiv(now()->day - 1, 7) + 1);
+        $harapan = \App\Models\ClassRoom::weekOfMonth($class->nextOccurrence());
 
         $this->assertSame($harapan, (int) $student->classes->first()->pivot->start_week);
     }
 
     /**
-     * Pekan mulai tampil sebagai keterangan yang terisi sendiri, bukan kotak isian
-     * tersendiri — tapi pilihannya tetap ada di balik "Ubah" dan tetap terkirim.
+     * Bedanya nyata, bukan teoretis: didaftarkan di pekan pertama untuk kelas
+     * yang sesinya baru jalan di pekan ketiga.
+     *
+     * Aturan lama membaca "pekan ke-1" dari tanggal pendaftaran lalu menagih
+     * sebulan penuh, padahal anaknya cuma kebagian dua pertemuan.
      */
-    public function test_form_murid_menampilkan_pekan_mulai_yang_bisa_diubah(): void
+    public function test_pekan_mulai_mengabaikan_tanggal_pendaftaran_yang_beda_pekan(): void
+    {
+        $this->travelTo(\Illuminate\Support\Carbon::parse('2026-09-01 08:00'));
+
+        $class = $this->makeClass('drawing');
+        // Sesi tunggal di pekan ketiga — 16 September.
+        $class->update([
+            'class_type' => 'trial',
+            'is_recurring' => false,
+            'schedule_date' => '2026-09-16',
+        ]);
+
+        $admin = $this->makeUser('admin');
+
+        $this->actingAs($admin)->post(route('students.store'), $this->validPayload())
+            ->assertRedirect(route('students.index'))->assertSessionHasNoErrors();
+
+        $student = Student::with('classes')->first();
+
+        // Didaftarkan 1 September (pekan ke-1), tapi pertemuan pertamanya
+        // 16 September (pekan ke-3) — yang berlaku pertemuannya.
+        $this->assertSame(1, \App\Models\ClassRoom::weekOfMonth(now()));
+        $this->assertSame(3, (int) $student->classes->first()->pivot->start_week);
+    }
+
+    /**
+     * Sambungan ujung-ke-ujung: dari kiriman form sampai nominal invoicenya.
+     *
+     * Tiap potong rantainya sudah punya tesnya sendiri — form → pivot di sini,
+     * pivot → nominal di BillingPeriodTest — tapi tanpa tes ini keduanya bisa
+     * tetap hijau sementara sambungannya putus, dan yang keliru adalah angka
+     * rupiah yang ditagihkan ke orang tua.
+     */
+    public function test_nominal_invoice_pertama_mengikuti_pertemuan_pertama(): void
+    {
+        $this->travelTo(\Illuminate\Support\Carbon::parse('2026-09-01 08:00'));
+
+        $class = $this->makeClass('drawing');
+        $class->update([
+            'class_type' => 'trial',
+            'is_recurring' => false,
+            // Pertemuan pertamanya pekan ke-3, sedangkan muridnya didaftarkan
+            // di pekan ke-1.
+            'schedule_date' => '2026-09-16',
+            'class_fee' => 450000,
+            'registration_fee' => 50000,
+        ]);
+
+        $this->actingAs($this->makeUser('admin'))
+            ->post(route('students.store'), $this->validPayload())
+            ->assertRedirect(route('students.index'))
+            ->assertSessionHasNoErrors();
+
+        $student = Student::with('classes')->first();
+
+        // Masuk pekan ke-3 → kebagian 2 dari 4 pekan → 2 × (450.000 / 4).
+        $this->assertEqualsWithDelta(225000.0, $student->firstMonthFee(), 0.01);
+
+        // Uang pendaftaran menumpang di atasnya, hanya untuk invoice pertama.
+        $this->assertEqualsWithDelta(275000.0, $student->invoiceAmount(), 0.01);
+
+        // Kalau pekannya dibaca dari tanggal pendaftaran (1 Sep = pekan ke-1),
+        // angkanya akan jadi 450.000 + 50.000. Ini yang dijaga tes ini.
+        $this->assertNotEqualsWithDelta(500000.0, $student->invoiceAmount(), 0.01);
+    }
+
+    /** Nominal & tanggal pertemuan pertama ikut dikirim ke form, bukan dihitung ulang di layar. */
+    public function test_form_membawa_biaya_dan_sesi_pertama_tiap_jadwal(): void
+    {
+        $class = $this->makeClass('drawing');
+        $class->update(['class_fee' => 450000, 'registration_fee' => 50000]);
+
+        $html = $this->actingAs($this->makeUser('admin'))
+            ->get(route('students.create'))->assertOk()->getContent();
+
+        $this->assertStringContainsString('data-fee="450000"', $html);
+        $this->assertStringContainsString('data-registration="50000"', $html);
+        $this->assertStringContainsString('data-session-date="'.$class->nextOccurrence()->toDateString().'"', $html);
+    }
+
+    /**
+     * Pekan mulai adalah kotak isian tersendiri, dengan keterangan yang menyebut
+     * akibatnya: pekan ke berapa menentukan berapa pekan yang ditagih di bulan
+     * pertama, dan itu yang perlu dilihat admin — bukan angkanya diulang.
+     */
+    public function test_form_murid_menampilkan_dropdown_pekan_mulai(): void
     {
         $this->makeClass('drawing');
 
         $this->actingAs($this->makeUser('admin'))
             ->get(route('students.create'))
             ->assertOk()
+            ->assertSee('Mulai Minggu Ke-')
+            ->assertSee('name="start_week"', false)
             ->assertSee('Minggu ke-1')
-            ->assertSee('dari 4 pekan di bulan pertama')
-            ->assertSee('Ubah')
-            ->assertSee('name="start_week"', false);
+            ->assertSee('Minggu ke-'.\App\Models\ClassRoom::WEEKS_PER_MONTH)
+            ->assertSee('pekan di bulan pertama');
     }
 
     public function test_student_id_auto_increments(): void
@@ -349,6 +485,66 @@ class StudentManagementTest extends TestCase
         $this->actingAs($this->makeUser('admin'))
             ->post(route('students.store'), $this->validPayload(['class_type' => 'drawing']))
             ->assertSessionHasErrors('class_type');
+    }
+
+    /**
+     * Trial class yang tanggalnya sudah lewat tidak punya sesi mendatang, jadi
+     * kategorinya tidak bisa diisi murid baru — walau kursinya masih kosong dan
+     * kelasnya tidak ditutup.
+     *
+     * Dulu hanya "semua ditutup" & "semua penuh" yang menghalangi, sehingga
+     * kategori seperti ini ditawarkan sebagai "Tersedia (1 kursi)" lalu mentok di
+     * dropdown jadwal yang seluruh pilihannya mati.
+     */
+    public function test_kategori_yang_slotnya_sudah_lewat_tidak_bisa_dipilih(): void
+    {
+        $lewat = $this->makeClass('trial ra');
+        $lewat->update([
+            'class_type' => 'trial',
+            'is_recurring' => false,
+            'schedule_date' => now()->subWeek()->toDateString(),
+        ]);
+        $lewat->refresh();
+
+        $this->assertSame('Sudah lewat', $lewat->availability()['text'], 'Prasyarat: slotnya memang sudah lewat.');
+        $this->assertGreaterThan(0, $lewat->remainingSeats(), 'Prasyarat: kursinya justru masih kosong.');
+
+        $admin = $this->makeUser('admin');
+
+        // Di layar: tidak ditawarkan sebagai tersedia, dan tidak bisa dipilih.
+        $html = $this->actingAs($admin)->get(route('students.create'))->assertOk()->getContent();
+
+        $this->assertStringContainsString('trial ra — Sudah lewat', $html);
+        $this->assertStringNotContainsString('trial ra — Tersedia', $html);
+        $this->assertMatchesRegularExpression(
+            '/<option value="trial ra"[^>]*disabled/s',
+            $html,
+            'Kategori tanpa slot yang bisa diisi harus mati, sama seperti kelas penuh.'
+        );
+
+        // Di server: ditolak, dengan alasan yang benar — bukan "penuh".
+        $this->actingAs($admin)
+            ->post(route('students.store'), $this->validPayload(['class_type' => 'trial ra']))
+            ->assertSessionHasErrors(['class_type' => 'Kelas untuk kategori trial ra tidak bisa dipilih: Sudah lewat.']);
+    }
+
+    /** Kursi yang dihitung hanya milik slot yang benar-benar bisa diisi. */
+    public function test_kursi_tersedia_tidak_menghitung_slot_yang_sudah_lewat(): void
+    {
+        $aktif = $this->makeClass('drawing', capacity: 3);
+        $lewat = $this->makeClass('drawing', capacity: 9);
+        $lewat->update([
+            'class_type' => 'trial',
+            'is_recurring' => false,
+            'schedule_date' => now()->subWeek()->toDateString(),
+        ]);
+
+        $html = $this->actingAs($this->makeUser('admin'))
+            ->get(route('students.create'))->assertOk()->getContent();
+
+        // 3 kursi dari slot yang aktif saja — bukan 12.
+        $this->assertStringContainsString('drawing — Tersedia (3 kursi)', $html);
+        $this->assertSame(3, $aktif->remainingSeats());
     }
 
     // ─── EDIT + UPDATE ─────────────────────────────────────────────
