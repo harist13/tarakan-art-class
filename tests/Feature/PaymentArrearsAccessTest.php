@@ -150,11 +150,11 @@ class PaymentArrearsAccessTest extends TestCase
         $this->invoice($student, 'unpaid', -10);
 
         $this->actingAs($this->admin())
-            ->get(route('attendances.create', ['class_id' => $class->id]))
+            ->get(route('attendances.create', ['date' => now()->addDay()->toDateString()]))
             ->assertOk()
             ->assertSee('Murid Nunggak')
-            ->assertSee('name="records[0][student_id]" value="'.$student->id.'"', false)
-            ->assertSee('Menunggak 10 hari');
+            ->assertSee('name="students[]" value="'.$student->id.'"', false)
+            ->assertSee('menunggak 10 hari');
     }
 
     public function test_attendance_store_accepts_student_in_arrears(): void
@@ -167,7 +167,8 @@ class PaymentArrearsAccessTest extends TestCase
             ->post(route('attendances.store'), [
                 'class_id' => $class->id,
                 'attendance_date' => now()->toDateString(),
-                'records' => [['student_id' => $student->id, 'status' => 'present']],
+                'students' => [$student->id],
+                'present' => [$student->id],
             ])
             ->assertSessionHasNoErrors();
 
@@ -364,10 +365,10 @@ class PaymentArrearsAccessTest extends TestCase
 
         // Keluar dari daftar absensi kelas berikutnya…
         $this->actingAs($this->admin())
-            ->get(route('attendances.create', ['class_id' => $class->id]))
+            ->get(route('attendances.create', ['date' => now()->addDay()->toDateString()]))
             ->assertOk()
-            ->assertSee('sedang ditangguhkan karena tunggakan')
-            ->assertDontSee('name="records[0][student_id]" value="'.$student->id.'"', false);
+            ->assertSee('Ditangguhkan karena tunggakan')
+            ->assertDontSee('name="students[]" value="'.$student->id.'"', false);
 
         // …tapi histori kehadirannya tetap utuh & terlihat.
         $this->actingAs($this->admin())

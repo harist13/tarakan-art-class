@@ -92,7 +92,7 @@ class AttendanceReplacementTest extends TestCase
             ->get(route('attendances.create', ['class_id' => $tujuan->id, 'date' => $tanggal]))
             ->assertOk()
             ->assertSee('Sari')
-            ->assertSee('Murid pengganti dari');
+            ->assertSee('pengganti dari');
     }
 
     /** Di tanggal lain, murid pengganti itu tidak ikut muncul. */
@@ -137,12 +137,12 @@ class AttendanceReplacementTest extends TestCase
             ->get(route('attendances.create', ['class_id' => $asal->id, 'date' => $missed]))
             ->assertOk()
             ->assertSee('Budi')
-            ->assertSee('memindahkan sesi ini');
+            ->assertSee('Jadwalnya pindah');
 
         // Namanya tetap disebut di panel penjelas, tapi tak ada baris absen untuknya
         // — dicek lewat hidden input-nya, apa pun urutan barisnya.
-        $response->assertDontSee('[student_id]" value="'.$pindah->id.'"', false);
-        $response->assertSee('[student_id]" value="'.$tetap->id.'"', false);
+        $response->assertDontSee('students[]" value="'.$pindah->id.'"', false);
+        $response->assertSee('students[]" value="'.$tetap->id.'"', false);
     }
 
     /** Request yang belum disetujui belum memindahkan siapa pun. */
@@ -170,7 +170,7 @@ class AttendanceReplacementTest extends TestCase
             ->get(route('attendances.create', ['class_id' => $asal->id, 'date' => $missed]))
             ->assertOk()
             ->assertSee('Sari')
-            ->assertDontSee('memindahkan sesi ini');
+            ->assertDontSee('Jadwalnya pindah');
 
         // …dan belum muncul di kelas tujuan.
         $this->actingAs($admin)
@@ -204,7 +204,7 @@ class AttendanceReplacementTest extends TestCase
 
         $this->assertSame(
             1,
-            substr_count($html, '[student_id]" value="'.$murid->id.'"'),
+            substr_count($html, 'students[]" value="'.$murid->id.'"'),
             'Murid seharusnya hanya punya satu baris absen.'
         );
     }
@@ -236,29 +236,36 @@ class AttendanceReplacementTest extends TestCase
         $this->actingAs($admin)
             ->get(route('attendances.create', ['class_id' => $kelas->id, 'date' => $missed]))
             ->assertOk()
-            ->assertDontSee('[student_id]" value="'.$pindah->id.'"', false)
-            ->assertSee('[student_id]" value="'.$tetap->id.'"', false)
-            ->assertSee('memindahkan sesi ini');
+            ->assertDontSee('students[]" value="'.$pindah->id.'"', false)
+            ->assertSee('students[]" value="'.$tetap->id.'"', false)
+            ->assertSee('Jadwalnya pindah');
 
         // Tanggal pengganti: Sari kembali muncul, ditandai sebagai pengganti,
         // berdampingan dengan Budi yang memang sesi rutinnya.
         $this->actingAs($admin)
             ->get(route('attendances.create', ['class_id' => $kelas->id, 'date' => $pengganti]))
             ->assertOk()
-            ->assertSee('[student_id]" value="'.$pindah->id.'"', false)
-            ->assertSee('[student_id]" value="'.$tetap->id.'"', false)
-            ->assertSee('Murid pengganti dari');
+            ->assertSee('students[]" value="'.$pindah->id.'"', false)
+            ->assertSee('students[]" value="'.$tetap->id.'"', false)
+            ->assertSee('pengganti dari');
     }
 
-    /** Absensi yang sudah tersimpan harus terisi ulang, bukan kembali ke "Hadir". */
+    /** Absensi yang sudah tersimpan harus menyalakan kembali centang & izinnya. */
     public function test_absensi_tersimpan_terisi_ulang_di_form(): void
     {
         $kelas = $this->makeClass('Kelas Drawing');
-        $murid = $this->makeStudent('Sari', $kelas);
+        $hadir = $this->makeStudent('Sari', $kelas);
+        $izin = $this->makeStudent('Budi', $kelas);
         $tanggal = now()->addDay()->toDateString();
 
         Attendance::create([
-            'student_id' => $murid->id,
+            'student_id' => $hadir->id,
+            'class_id' => $kelas->id,
+            'attendance_date' => $tanggal,
+            'status' => 'present',
+        ]);
+        Attendance::create([
+            'student_id' => $izin->id,
             'class_id' => $kelas->id,
             'attendance_date' => $tanggal,
             'status' => 'permit',
@@ -266,9 +273,12 @@ class AttendanceReplacementTest extends TestCase
         ]);
 
         $this->actingAs($this->admin())
-            ->get(route('attendances.create', ['class_id' => $kelas->id, 'date' => $tanggal]))
+            ->get(route('attendances.create', ['date' => $tanggal]))
             ->assertOk()
+            ->assertSee('name="present[]" value="'.$hadir->id.'" checked', false)
+            ->assertSee('name="permit[]" value="'.$izin->id.'" data-izin checked', false)
+            // Catatan lama tetap terbawa walau kotaknya tersembunyi.
             ->assertSee('Ada acara keluarga')
-            ->assertSee('sudah tercatat');
+            ->assertSee('sudah diabsen');
     }
 }

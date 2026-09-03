@@ -33,7 +33,10 @@
         <div class="table-responsive">
             <table class="table table-hover align-middle">
                 <thead>
-                    <tr><th>Tanggal</th><th>Murid</th><th>Kelas</th><th>Status</th><th>Catatan</th><th class="text-end">Aksi</th></tr>
+                    {{-- Tanpa kolom Catatan: catatan kini hanya diisi seperlunya di
+                         layar absensi, dan menyediakan kolomnya di sini membuat
+                         rekap penuh tanda "-". Isinya tetap ikut ke Export. --}}
+                    <tr><th>Tanggal</th><th>Murid</th><th>Kelas</th><th>Status</th><th class="text-end">Aksi</th></tr>
                 </thead>
                 <tbody>
                     @forelse($attendances as $att)
@@ -54,7 +57,6 @@
                                     {{ $st['label'] }}
                                 </span>
                             </td>
-                            <td class="small">{{ $att->notes ?: '-' }}</td>
                             <td class="text-end">
                                 <form action="{{ route('attendances.destroy', $att) }}" method="POST" class="d-inline" onsubmit="return confirm('Hapus data absensi ini?')">
                                     @csrf @method('DELETE')
@@ -63,7 +65,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="6" class="text-center text-muted">Belum ada data absensi.</td></tr>
+                        <tr><td colspan="5" class="text-center text-muted">Belum ada data absensi.</td></tr>
                     @endforelse
                 </tbody>
             </table>
