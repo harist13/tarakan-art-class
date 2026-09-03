@@ -53,11 +53,15 @@ class ScheduleCalendar
         $classes = ClassRoom::with([
             'tutor',
             'students' => fn ($q) => $q->where('student_class.status', 'active')->orderBy('name'),
-        ])->get();
+        ])->withCount(['students as enrolled_count' => fn ($q) => $q->where('student_class.status', 'active')])
+            ->get();
 
         $rosters = [];
 
         foreach ($classes as $class) {
+            $av = $class->availability();
+            $next = $class->nextOccurrence();
+
             $rosters[$class->id] = [
                 'id' => $class->id,
                 'code' => $class->class_code,
@@ -69,8 +73,22 @@ class ScheduleCalendar
                 'schedule' => $class->scheduleLabel(),
                 'capacity' => $class->capacity,
                 'enrolled' => $class->students->count(),
-                'availability' => $class->availability()['text'],
+                'availability' => $av['text'],
+                // Dipakai daftar slot per kategori di layar Scheduler: status,
+                // sesi terdekat, dan pintu ke pendaftaran anak semuanya turun
+                // dari roster yang sama dengan yang menggerakkan kalender.
+                'availabilityColor' => $av['color'],
+                'available' => $class->isAvailable(),
+                'closed' => $class->isClosed(),
+                'remaining' => $class->remainingSeats(),
+                'recurring' => (bool) $class->is_recurring,
+                'nextSession' => $next?->format('d M Y'),
                 'editUrl' => route('classes.edit', $class),
+                // Mendaftarkan anak langsung ke slot ini — form murid menerima
+                // class_id dan memakai slot itu apa adanya, bukan menebak sendiri
+                // kelas mana dalam kategori yang kebetulan masih kosong.
+                'enrollUrl' => route('students.create', ['class_id' => $class->id]),
+                'toggleUrl' => route('classes.toggle-status', $class),
                 'students' => $class->students->map(fn (Student $s) => [
                     'id' => $s->id,
                     'name' => $s->name,

@@ -1,5 +1,188 @@
 @extends('layouts.app')
 
+@push('styles')
+<style>
+    /* ── Kartu ringkasan ──
+       Warnanya satu variabel per kartu (--stat-color), bukan tiga kelas utilitas:
+       nada kartu di sini berubah menurut isinya (nol pengajuan tidak berwarna
+       sama dengan sepuluh), dan itu keputusan di Blade, bukan di stylesheet.
+
+       Warnanya sendiri bukan --badge-*-bg: token itu warna latar badge yang
+       dipasangkan dengan teks putih, dan amber-nya cuma 2,6:1 di atas kartu putih
+       — persis kegagalan kontras .text-warning yang dulu dipakai di sini. Yang di
+       bawah dipilih agar lolos 4,5:1 sebagai teks; sebagai garis, chip, dan meter
+       ia otomatis lolos juga. */
+    :root {
+        --stat-warning: #B45309;
+        --stat-success: #15803D;
+        --stat-danger: #B91C1C;
+        --stat-neutral: #475569;
+    }
+    [data-bs-theme="dark"] {
+        --stat-warning: #FCD34D;
+        --stat-success: #4ADE80;
+        --stat-danger: #FCA5A5;
+        --stat-neutral: #CBD5E1;
+    }
+
+    .stat-card {
+        --stat-tint: color-mix(in srgb, var(--stat-color) 12%, transparent);
+        display: flex;
+        flex-direction: column;
+        gap: 0.55rem;
+        height: 100%;
+        padding: 1.15rem 1.35rem;
+        border: 1px solid var(--border);
+        border-left: 0.35rem solid var(--stat-color);
+        border-radius: 1rem;
+        background: var(--surface);
+        box-shadow: 0 1px 2px var(--shadow-sm);
+        color: var(--text);
+        text-decoration: none;
+        transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+    }
+    /* Seluruh kartu memang tautan, jadi ia harus terlihat begitu — sebelumnya
+       tak ada satu pun isyarat bahwa kartu ini bisa diklik. */
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px var(--shadow-md);
+        border-color: var(--stat-color);
+        color: var(--text);
+    }
+    .stat-card:focus-visible {
+        outline: 2px solid var(--stat-color);
+        outline-offset: 2px;
+    }
+
+    .stat-head { display: flex; align-items: center; gap: 0.55rem; }
+    .stat-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 1.9rem;
+        height: 1.9rem;
+        border-radius: 0.55rem;
+        background: var(--surface-2);
+        background: var(--stat-tint);
+        color: var(--stat-color);
+        font-size: 0.95rem;
+        flex-shrink: 0;
+    }
+    .stat-label {
+        font-size: 0.7rem;
+        font-weight: 800;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        /* Token badge yang memang sudah diuji kontrasnya, bukan .text-warning
+           yang tak terbaca di atas putih. */
+        color: var(--stat-color);
+    }
+
+    .stat-value {
+        display: flex;
+        align-items: baseline;
+        gap: 0.35rem;
+        font-size: 2rem;
+        font-weight: 800;
+        line-height: 1;
+        /* Angka selebar sama: nilai yang berubah tidak menggeser tata letak. */
+        font-variant-numeric: tabular-nums;
+    }
+    .stat-total { font-size: 1rem; font-weight: 600; color: var(--text-muted); }
+
+    /* Perbandingan tersedia/total sulit dinilai dari dua angka saja; meter
+       menjawabnya tanpa perlu dibaca. */
+    .stat-meter {
+        height: 5px;
+        border-radius: 999px;
+        background: var(--border);
+        background: color-mix(in srgb, var(--stat-color) 18%, transparent);
+        overflow: hidden;
+    }
+    .stat-meter-fill {
+        display: block;
+        height: 100%;
+        border-radius: inherit;
+        background: var(--stat-color);
+    }
+
+    .stat-foot {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        margin-top: auto;
+    }
+    .stat-note { font-size: 0.8rem; color: var(--text-muted); }
+    .stat-action {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        font-size: 0.78rem;
+        font-weight: 700;
+        color: var(--stat-color);
+        white-space: nowrap;
+    }
+    .stat-action i { transition: transform 0.15s ease; }
+    .stat-card:hover .stat-action i { transform: translateX(3px); }
+
+    @media (prefers-reduced-motion: reduce) {
+        .stat-card,
+        .stat-action i { transition: none; }
+        .stat-card:hover { transform: none; }
+        .stat-card:hover .stat-action i { transform: none; }
+    }
+
+    /* ── Daftar slot per kategori ── */
+    .slot-group + .slot-group { margin-top: 0.6rem; }
+    .slot-group-head {
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+        width: 100%;
+        padding: 0.7rem 0.9rem;
+        border: 1px solid var(--border);
+        border-radius: 0.6rem;
+        background: var(--surface);
+        color: var(--text);
+        text-align: left;
+        transition: border-color 0.15s ease, background 0.15s ease;
+    }
+    .slot-group-head:hover { border-color: var(--primary-color); }
+    .slot-group-head[aria-expanded="true"] { border-color: var(--primary-color); }
+    .slot-group-name { font-weight: 700; flex-grow: 1; }
+    .slot-chevron { transition: transform 0.15s ease; color: var(--text-muted); }
+    .slot-group-head[aria-expanded="true"] .slot-chevron { transform: rotate(90deg); }
+    .slot-group-body { padding: 0.6rem 0 0.2rem 1.6rem; }
+
+    .slot-item { display: flex; align-items: stretch; gap: 0.5rem; margin-bottom: 0.5rem; }
+    .slot-item-action { display: flex; align-items: center; }
+    .slot-row {
+        display: flex;
+        align-items: center;
+        gap: 0.85rem;
+        flex-grow: 1;
+        min-width: 0;
+        padding: 0.7rem 0.9rem;
+        border: 1px solid var(--border);
+        border-radius: 0.6rem;
+        background: var(--surface);
+        color: var(--text);
+        text-align: left;
+        transition: border-color 0.15s ease, transform 0.15s ease;
+    }
+    .slot-row:hover { border-color: var(--primary-color); transform: translateX(2px); }
+    .slot-time { font-weight: 700; font-size: 0.9rem; line-height: 1.3; min-width: 9rem; }
+    .slot-empty { padding: 2rem 1rem; text-align: center; color: var(--text-muted); }
+
+    @media (max-width: 575.98px) {
+        .slot-group-body { padding-left: 0.4rem; }
+        .slot-row { flex-wrap: wrap; gap: 0.5rem; }
+        .slot-time { min-width: 100%; }
+    }
+</style>
+@endpush
+
 @section('content')
 <div class="d-sm-flex align-items-start justify-content-between mb-3">
     <div>
@@ -12,40 +195,65 @@
     </div>
 </div>
 
-{{-- ── Ringkasan ────────────────────────────────────────────────── --}}
-<div class="row">
-    <div class="col-lg-6 col-md-6 mb-4">
-        <a href="{{ route('schedules.index', ['status' => 'pending']) }}" class="text-decoration-none">
-            <div class="card border-left-warning h-100 py-2 shadow-sm">
-                <div class="card-body">
-                    <div class="row align-items-center">
-                        <div class="col">
-                            <div class="text-warning text-uppercase mb-1" style="font-size:0.7rem; font-weight:800; letter-spacing:.5px;">Replacement Pending</div>
-                            <div class="h4 mb-0 fw-bold text-gray-800">{{ $pendingCount }}</div>
-                            <div class="small text-muted mt-1">menunggu persetujuan</div>
-                        </div>
-                        <div class="col-auto"><i class="bi bi-hourglass-split fs-1" style="color:#E2E8F0;"></i></div>
-                    </div>
-                </div>
-            </div>
+{{-- ── Ringkasan ──────────────────────────────────────────────────
+     Tiap kartu membuka panel yang mengelolanya — angka yang menarik perhatian
+     dan tempat menindaklanjutinya jadi satu klik. --}}
+@php
+    // Nol pengajuan bukan angka yang perlu diteriaki. Kartunya berganti nada:
+    // amber selama ada yang menunggu, hijau tenang begitu bersih — supaya warna
+    // di layar ini selalu berarti "ada yang harus dikerjakan", bukan sekadar
+    // penanda kartu mana yang mana.
+    $adaPending = $pendingCount > 0;
+
+    // Slot: hijau selama masih ada yang bisa dipakai, merah bila kelas ada tapi
+    // tak satu pun bisa dipilih (itu keadaan yang perlu ditindak), kelabu bila
+    // memang belum ada kelas sama sekali — belum diisi bukan kesalahan.
+    $slotColor = $totalSlots === 0
+        ? 'var(--stat-neutral)'
+        : ($availableSlots > 0 ? 'var(--stat-success)' : 'var(--stat-danger)');
+    $slotPersen = $totalSlots > 0 ? round($availableSlots / $totalSlots * 100) : 0;
+@endphp
+<div class="row g-3 mb-4">
+    <div class="col-md-6">
+        <a href="{{ route('schedules.index', ['status' => 'pending']) }}" class="stat-card"
+            style="--stat-color: {{ $adaPending ? 'var(--stat-warning)' : 'var(--stat-success)' }};"
+            aria-label="{{ $adaPending ? $pendingCount.' request replacement menunggu persetujuan. Buka daftarnya.' : 'Tidak ada request replacement yang menunggu. Buka riwayatnya.' }}">
+            <span class="stat-head">
+                <span class="stat-icon"><i class="bi {{ $adaPending ? 'bi-hourglass-split' : 'bi-check2-circle' }}" aria-hidden="true"></i></span>
+                <span class="stat-label">Replacement Pending</span>
+            </span>
+            <span class="stat-value">{{ $pendingCount }}</span>
+            <span class="stat-foot">
+                <span class="stat-note">{{ $adaPending ? 'menunggu persetujuan' : 'semua request sudah ditinjau' }}</span>
+                <span class="stat-action">{{ $adaPending ? 'Tinjau' : 'Lihat daftar' }}<i class="bi bi-arrow-right" aria-hidden="true"></i></span>
+            </span>
         </a>
     </div>
-    {{-- Tiap scorecard membuka panel yang mengelolanya — angka yang menarik
-         perhatian dan tempat menindaklanjutinya jadi satu klik. --}}
-    <div class="col-lg-6 col-md-6 mb-4">
-        <a href="{{ route('schedules.index', ['tab' => 'slots']) }}" class="text-decoration-none">
-            <div class="card border-left-success h-100 py-2 shadow-sm">
-                <div class="card-body">
-                    <div class="row align-items-center">
-                        <div class="col">
-                            <div class="text-success text-uppercase mb-1" style="font-size:0.7rem; font-weight:800; letter-spacing:.5px;">Slot Tersedia</div>
-                            <div class="h4 mb-0 fw-bold text-gray-800">{{ $availableSlots }} <span class="small text-muted fw-normal">/ {{ $totalSlots }}</span></div>
-                            <div class="small text-muted mt-1">bisa dipilih untuk pengganti</div>
-                        </div>
-                        <div class="col-auto"><i class="bi bi-check-circle fs-1" style="color:#E2E8F0;"></i></div>
-                    </div>
-                </div>
-            </div>
+
+    <div class="col-md-6">
+        <a href="{{ route('schedules.index', ['tab' => 'slots']) }}" class="stat-card"
+            style="--stat-color: {{ $slotColor }};"
+            aria-label="{{ $availableSlots }} dari {{ $totalSlots }} slot kelas bisa dipakai sebagai kelas pengganti. Buka pengaturan slot.">
+            <span class="stat-head">
+                <span class="stat-icon"><i class="bi {{ $availableSlots > 0 ? 'bi-check-circle' : 'bi-slash-circle' }}" aria-hidden="true"></i></span>
+                <span class="stat-label">Slot Tersedia</span>
+            </span>
+            <span class="stat-value">{{ $availableSlots }}<span class="stat-total">/ {{ $totalSlots }}</span></span>
+            <span class="stat-meter" aria-hidden="true">
+                <span class="stat-meter-fill" style="width: {{ $slotPersen }}%;"></span>
+            </span>
+            <span class="stat-foot">
+                <span class="stat-note">
+                    @if($totalSlots === 0)
+                        belum ada kelas terdaftar
+                    @elseif($availableSlots > 0)
+                        bisa dipilih untuk kelas pengganti
+                    @else
+                        tak ada slot yang bisa dipakai
+                    @endif
+                </span>
+                <span class="stat-action">Atur slot<i class="bi bi-arrow-right" aria-hidden="true"></i></span>
+            </span>
         </a>
     </div>
 </div>
@@ -206,53 +414,117 @@
             <span><span class="badge bg-dark">Sudah lewat</span> tak punya sesi mendatang</span>
             <span><span class="badge bg-secondary">Ditutup</span> ditutup admin</span>
         </div>
-        {{-- Tanpa max-height: di panelnya sendiri tabel ini tak perlu diperas
-             jadi kotak bergulir di dalam halaman yang juga bergulir. --}}
-        <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-                <thead class="text-muted small text-uppercase">
-                    <tr><th>Kelas</th><th>Jadwal</th><th>Terisi</th><th>Status</th><th class="text-end">Aksi</th></tr>
-                </thead>
-                <tbody>
-                    @forelse($slots as $slot)
-                        @php $av = $slot->availability(); @endphp
-                        <tr>
-                            <td class="fw-bold">{{ $slot->class_category }}<br><small class="text-muted">{{ $slot->class_code }}</small></td>
-                            @php $nextSession = $slot->nextOccurrence(); @endphp
-                            <td>
-                                {{ $slot->scheduleLabel() }}
-                                @if($slot->is_recurring)
-                                    <br><small class="text-muted">{{ $nextSession ? 'Sesi berikutnya '.$nextSession->format('d M Y') : 'Belum ada sesi mendatang' }}</small>
-                                @endif
-                            </td>
-                            <td>{{ $slot->enrolledCount() }} / {{ $slot->capacity }}</td>
-                            <td><span class="badge bg-{{ $av['color'] }}">{{ $av['text'] }}</span></td>
-                            <td class="text-end">
-                                @if($slot->isClosed())
-                                    <form action="{{ route('classes.toggle-status', $slot) }}" method="POST" class="d-inline">
-                                        @csrf @method('PATCH')
-                                        <button class="btn btn-sm btn-outline-success" title="Buka slot"><i class="bi bi-unlock me-1"></i>Buka</button>
-                                    </form>
-                                @else
-                                    <button type="button" class="btn btn-sm btn-outline-secondary btn-close-slot"
-                                        data-action="{{ route('classes.toggle-status', $slot) }}"
-                                        data-name="{{ $slot->class_category }}"
-                                        title="Tutup slot"><i class="bi bi-lock me-1"></i>Tutup</button>
-                                @endif
-                            </td>
-                        </tr>
-                    @empty
-                        <tr><td colspan="5" class="text-center text-muted py-4">
-                            {{ ($slotSearch !== '' || $slotStatus !== '') ? 'Tidak ada slot yang cocok dengan filter.' : 'Belum ada kelas.' }}
-                        </td></tr>
-                    @endforelse
-                </tbody>
-            </table>
+        {{-- Dikelompokkan per kategori: satu kategori dibuka, seluruh jadwalnya
+             terlihat sekaligus. Sedang menyaring berarti daftarnya sudah pendek
+             dan memang ingin dilihat, jadi semuanya dibuka; begitu juga bila
+             kategorinya cuma satu — menyembunyikan satu-satunya isi halaman
+             hanya menambah satu klik tanpa merapikan apa pun. --}}
+        @php $bukaSemua = $slotSearch !== '' || $slotStatus !== '' || $slotGroups->count() <= 1; @endphp
+        <div class="slot-groups">
+            @forelse($slotGroups as $group)
+                @php $groupId = 'slotGroup'.$loop->index; @endphp
+                <div class="slot-group">
+                    <button type="button" class="slot-group-head @if(! $bukaSemua) collapsed @endif"
+                        data-bs-toggle="collapse" data-bs-target="#{{ $groupId }}"
+                        aria-expanded="{{ $bukaSemua ? 'true' : 'false' }}" aria-controls="{{ $groupId }}">
+                        <i class="bi bi-chevron-right slot-chevron"></i>
+                        <span class="slot-group-name text-capitalize">{{ $group['label'] }}</span>
+                        <span class="badge rounded-pill bg-primary-subtle text-primary-emphasis border border-primary-subtle">
+                            {{ $group['total'] }} jadwal
+                        </span>
+                        @if($group['seats'] > 0)
+                            <span class="badge rounded-pill text-white" style="background-color:#15803D;">{{ $group['seats'] }} kursi tersisa</span>
+                        @else
+                            <span class="badge rounded-pill bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle">Tak ada kursi</span>
+                        @endif
+                    </button>
+
+                    <div class="collapse @if($bukaSemua) show @endif" id="{{ $groupId }}">
+                        <div class="slot-group-body">
+                            @foreach($group['slots'] as $slot)
+                                @php
+                                    $av = $slot->availability();
+                                    $nextSession = $slot->nextOccurrence();
+                                @endphp
+                                <div class="slot-item">
+                                    {{-- Baris kelas dan tombol tutup/buka bersebelahan, bukan
+                                         bersarang: tombol di dalam tombol bukan HTML yang sah,
+                                         dan formnya butuh POST sendiri. --}}
+                                    <button type="button" class="slot-row" data-class-id="{{ $slot->id }}">
+                                        <span class="slot-time">
+                                            {{ $slot->is_recurring ? 'Setiap '.$slot->dayName() : $slot->dayName().', '.$slot->schedule_date->format('d M Y') }}
+                                            <br><span class="text-muted fw-normal">{{ $slot->timeRangeLabel() }}</span>
+                                        </span>
+                                        <span class="flex-grow-1">
+                                            <span class="fw-semibold">{{ $slot->class_code }}</span>
+                                            <span class="badge rounded-pill ms-1 bg-{{ $av['color'] }}">{{ $av['text'] }}</span>
+                                            <br><span class="small text-muted">
+                                                <i class="bi bi-person-video3 me-1"></i>{{ $slot->tutor->name ?? 'Tutor kosong' }}
+                                                @if($slot->is_recurring)
+                                                    &middot; {{ $nextSession ? 'Sesi berikutnya '.$nextSession->format('d M Y') : 'Belum ada sesi mendatang' }}
+                                                @endif
+                                            </span>
+                                        </span>
+                                        <span class="badge bg-primary-subtle text-primary-emphasis border border-primary-subtle text-nowrap">
+                                            {{ $slot->enrolledCount() }} / {{ $slot->capacity }} murid
+                                        </span>
+                                        <i class="bi bi-chevron-right text-muted"></i>
+                                    </button>
+                                    <div class="slot-item-action">
+                                        @if($slot->isClosed())
+                                            <form action="{{ route('classes.toggle-status', $slot) }}" method="POST">
+                                                @csrf @method('PATCH')
+                                                <button class="btn btn-sm btn-outline-success" title="Buka slot"><i class="bi bi-unlock me-1"></i>Buka</button>
+                                            </form>
+                                        @else
+                                            <button type="button" class="btn btn-sm btn-outline-secondary btn-close-slot"
+                                                data-action="{{ route('classes.toggle-status', $slot) }}"
+                                                data-name="{{ $slot->class_category }} — {{ $slot->scheduleLabel() }}"
+                                                title="Tutup slot"><i class="bi bi-lock me-1"></i>Tutup</button>
+                                        @endif
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+            @empty
+                <div class="text-center text-muted py-4">
+                    <i class="bi bi-inbox fs-3 d-block mb-2 opacity-50"></i>
+                    {{ ($slotSearch !== '' || $slotStatus !== '') ? 'Tidak ada slot yang cocok dengan filter.' : 'Belum ada kelas.' }}
+                </div>
+            @endforelse
         </div>
     </div>
 </div>
 
 </div>{{-- /panelSlots --}}
+
+{{-- Pop-up detail slot: tutor & murid yang benar-benar terdaftar di kelas itu.
+     Isinya dibaca dari roster yang sama dengan kalender, jadi angka terisi di
+     sini, di kalender, dan di badge baris slot tak bisa berbeda-beda. --}}
+<div class="modal fade" id="slotDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h5 class="modal-title mb-0 text-capitalize" id="slotDetailTitle">Detail Kelas</h5>
+                    <small class="text-muted" id="slotDetailSubtitle"></small>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="slotDetailBody"></div>
+            <div class="modal-footer">
+                {{-- Pintu ke pendaftaran anak: slot yang sedang dilihat ikut
+                     terbawa, jadi anaknya masuk ke jadwal ini — bukan ke kelas
+                     lain sekategori yang kebetulan dipilihkan sistem. --}}
+                <a href="#" id="slotDetailEnroll" class="btn btn-primary"><i class="bi bi-person-plus me-1"></i>Tambah Anak ke Slot Ini</a>
+                <a href="#" id="slotDetailEdit" class="btn btn-outline-primary"><i class="bi bi-pencil me-1"></i>Ubah Jadwal Kelas</a>
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Tutup</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 {{-- Modal alasan saat menutup slot manual. --}}
 <div class="modal fade" id="closeSlotModal" tabindex="-1">
@@ -309,6 +581,99 @@ document.addEventListener('DOMContentLoaded', function () {
             toggle.addEventListener('change', function () { applyPanel(p.tab); });
         });
         applyPanel(aktif);
+    })();
+
+    // ── Pop-up detail slot: tutor & murid satu kelas ──
+    (function () {
+        const rosters = @json($rosters ?? []);
+        const detailEl = document.getElementById('slotDetailModal');
+        if (!detailEl) return;
+
+        const detail = new bootstrap.Modal(detailEl);
+        const judul = document.getElementById('slotDetailTitle');
+        const subJudul = document.getElementById('slotDetailSubtitle');
+        const isi = document.getElementById('slotDetailBody');
+        const tombolDaftar = document.getElementById('slotDetailEnroll');
+        const tombolUbah = document.getElementById('slotDetailEdit');
+
+        function escapeHtml(teks) {
+            return String(teks ?? '').replace(/[&<>"']/g, function (c) {
+                return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+            });
+        }
+
+        function buka(classId) {
+            const roster = rosters[classId];
+            if (!roster) return;
+
+            judul.textContent = roster.category;
+            subJudul.textContent = roster.code + ' · ' + roster.schedule;
+
+            let html =
+                `<div class="row g-3 mb-3">
+                    <div class="col-sm-5">
+                        <div class="border rounded p-2 h-100">
+                            <div class="small text-muted">Tutor</div>
+                            <div class="fw-semibold">${escapeHtml(roster.tutor || 'Belum ada tutor')}</div>
+                            ${roster.tutorPhone ? `<div class="small text-muted">${escapeHtml(roster.tutorPhone)}</div>` : ''}
+                        </div>
+                    </div>
+                    <div class="col-sm-3">
+                        <div class="border rounded p-2 h-100">
+                            <div class="small text-muted">Jam</div>
+                            <div class="fw-semibold">${escapeHtml(roster.time)}</div>
+                        </div>
+                    </div>
+                    <div class="col-sm-4">
+                        <div class="border rounded p-2 h-100">
+                            <div class="small text-muted">Terisi</div>
+                            <div class="fw-semibold">${roster.enrolled} / ${roster.capacity}</div>
+                            <span class="badge bg-${escapeHtml(roster.availabilityColor)}">${escapeHtml(roster.availability)}</span>
+                        </div>
+                    </div>
+                </div>`;
+
+            if (roster.nextSession) {
+                html += `<p class="small text-muted mb-3"><i class="bi bi-calendar3 me-1"></i>Sesi berikutnya ${escapeHtml(roster.nextSession)}.</p>`;
+            }
+
+            if (!roster.students.length) {
+                html += '<div class="slot-empty"><i class="bi bi-people fs-3 d-block mb-2"></i>Belum ada murid di kelas ini.</div>';
+            } else {
+                html +=
+                    `<div class="fw-semibold mb-2"><i class="bi bi-people me-1"></i>Murid terdaftar (${roster.students.length})</div>
+                     <div class="table-responsive"><table class="table table-hover align-middle mb-0">
+                     <thead class="text-muted small text-uppercase"><tr><th>Nama</th><th>ID</th><th>Usia</th><th>Wali</th><th class="text-end">Data</th></tr></thead><tbody>` +
+                    roster.students.map(function (murid) {
+                        return `<tr class="slot-murid" data-url="${escapeHtml(murid.url)}" style="cursor:pointer;">
+                            <td class="fw-semibold">${escapeHtml(murid.name)}</td>
+                            <td class="small text-muted">${escapeHtml(murid.studentId)}</td>
+                            <td class="small">${murid.age ? escapeHtml(murid.age) + ' th' : '-'}</td>
+                            <td class="small">${escapeHtml(murid.parent || '-')}</td>
+                            <td class="text-end"><i class="bi bi-pencil-square text-primary"></i></td>
+                        </tr>`;
+                    }).join('') +
+                    '</tbody></table></div>';
+            }
+
+            isi.innerHTML = html;
+            isi.querySelectorAll('.slot-murid').forEach(function (baris) {
+                baris.addEventListener('click', function () { window.location = baris.dataset.url; });
+            });
+
+            // Slot penuh/ditutup tetap bisa dibuka detailnya — yang ditutup hanya
+            // jalan pintas mendaftarkan anak ke dalamnya.
+            tombolDaftar.href = roster.enrollUrl;
+            tombolDaftar.classList.toggle('disabled', !roster.available);
+            tombolDaftar.title = roster.available ? '' : 'Slot ini tidak menerima murid baru: ' + roster.availability;
+            tombolUbah.href = roster.editUrl;
+
+            detail.show();
+        }
+
+        document.querySelectorAll('.slot-row').forEach(function (baris) {
+            baris.addEventListener('click', function () { buka(baris.dataset.classId); });
+        });
     })();
 
     const modalEl = document.getElementById('closeSlotModal');

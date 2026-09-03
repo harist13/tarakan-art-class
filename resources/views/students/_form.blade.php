@@ -25,7 +25,10 @@
         <div class="col-md-6">
             <label class="form-label fw-semibold">Tipe / Kategori Kelas <span class="text-danger">*</span></label>
             @php
-                $selectedType = old('class_type', $student->class_type ?? '');
+                $selectedClass = $selectedClass ?? null;
+                // Datang dari layar Ketersediaan Slot: kategori slot itulah yang
+                // dimaksud, jadi tak perlu dipilih ulang.
+                $selectedType = old('class_type', $student->class_type ?? ($selectedClass->class_category ?? ''));
                 $categories = $classes->pluck('class_category')->filter(fn ($c) => !empty(trim($c)))->unique()->values();
             @endphp
             <div class="input-group">
@@ -77,6 +80,39 @@
             </div>
             <div class="form-text mt-1" id="class_type_hint">
                 <i class="bi bi-info-circle me-1"></i>Pilih kategori kelas yang diambil dari data kelas.
+            </div>
+        </div>
+
+        {{-- Jadwal yang benar-benar diisi anak ini. Sebelumnya sistem yang
+             menebak — slot pertama di kategori itu yang kebetulan masih muat —
+             sehingga admin tak pernah tahu anaknya masuk hari apa. Sekarang slot
+             yang dilihat kosong di layar Ketersediaan Slot itu juga yang terisi. --}}
+        <div class="col-md-6">
+            <label class="form-label fw-semibold">Jadwal Kelas</label>
+            @php $selectedClassId = (int) old('class_id', $selectedClass->id ?? 0); @endphp
+            <div class="input-group">
+                <span class="input-group-text bg-light text-muted"><i class="bi bi-calendar-week"></i></span>
+                <select name="class_id" id="class_id" class="form-select @error('class_id') is-invalid @enderror">
+                    <option value="">-- Pilihkan otomatis --</option>
+                    @foreach($classes as $slot)
+                        @php
+                            $slotAv = $slot->availability();
+                            // Kelas yang sedang diikuti murid ini tetap bisa dipilih
+                            // walau penuh — dialah salah satu yang mengisinya.
+                            $slotSelectable = $slot->isAvailable() || $selectedClassId === $slot->id;
+                        @endphp
+                        <option value="{{ $slot->id }}"
+                            data-category="{{ mb_strtolower(trim((string) $slot->class_category)) }}"
+                            data-selectable="{{ $slotSelectable ? '1' : '0' }}"
+                            @selected($selectedClassId === $slot->id)>
+                            {{ $slot->scheduleLabel() }} — {{ $slot->class_code }} ({{ $slotAv['text'] }})
+                        </option>
+                    @endforeach
+                </select>
+                @error('class_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
+            </div>
+            <div class="form-text mt-1" id="class_id_hint">
+                <i class="bi bi-info-circle me-1"></i>Pilih kategori kelas dulu untuk melihat jadwalnya.
             </div>
         </div>
 
@@ -370,6 +406,56 @@ document.addEventListener('DOMContentLoaded', function () {
 
         updateTypeHint();
         typeSelect.addEventListener('change', updateTypeHint);
+
+        // ── Jadwal mengikuti kategori ──
+        const slotSelect = document.getElementById('class_id');
+        const slotHint = document.getElementById('class_id_hint');
+        if (!slotSelect || !slotHint) return;
+
+        function syncSlots() {
+            const kategori = (typeSelect.value || '').trim().toLowerCase();
+            let sekategori = 0;
+            let bisaDipilih = 0;
+
+            Array.from(slotSelect.options).forEach(function (opt) {
+                if (!opt.value) return;
+
+                const cocok = kategori !== '' && opt.dataset.category === kategori;
+                opt.hidden = !cocok;
+                // Sebagian browser masih bisa menyorot option yang hidden lewat
+                // keyboard, jadi ketaklayakannya ditegaskan lewat disabled.
+                opt.disabled = !cocok || opt.dataset.selectable === '0';
+
+                if (cocok) {
+                    sekategori++;
+                    if (opt.dataset.selectable !== '0') bisaDipilih++;
+                }
+            });
+
+            // Pilihan yang kategorinya sudah tak cocok dilepas, bukan dibiarkan
+            // tersembunyi tapi ikut terkirim.
+            const terpilih = slotSelect.selectedOptions[0];
+            if (terpilih && terpilih.value && terpilih.hidden) {
+                slotSelect.value = '';
+            }
+
+            if (kategori === '') {
+                slotHint.innerHTML = '<i class="bi bi-info-circle me-1"></i>Pilih kategori kelas dulu untuk melihat jadwalnya.';
+                slotHint.className = 'form-text mt-1 text-muted';
+            } else if (sekategori === 0) {
+                slotHint.innerHTML = '<i class="bi bi-info-circle-fill me-1"></i>Belum ada jadwal untuk kategori ini.';
+                slotHint.className = 'form-text mt-1 text-warning';
+            } else if (bisaDipilih === 0) {
+                slotHint.innerHTML = '<i class="bi bi-exclamation-triangle-fill me-1"></i>Semua jadwal kategori ini penuh atau ditutup.';
+                slotHint.className = 'form-text mt-1 text-danger';
+            } else {
+                slotHint.innerHTML = '<i class="bi bi-calendar-check me-1"></i><strong>' + bisaDipilih + ' jadwal</strong> bisa diisi. Dibiarkan kosong berarti dipilihkan otomatis.';
+                slotHint.className = 'form-text mt-1 text-success';
+            }
+        }
+
+        syncSlots();
+        typeSelect.addEventListener('change', syncSlots);
     })();
 </script>
 @endpush

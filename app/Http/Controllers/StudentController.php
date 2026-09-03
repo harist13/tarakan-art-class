@@ -46,12 +46,19 @@ class StudentController extends Controller
         ));
     }
 
-    public function create()
+    public function create(Request $request)
     {
-        $classes = ClassRoom::withCount(['students as enrolled_count' => fn ($q) => $q->where('student_class.status', 'active')])
+        $classes = ClassRoom::with('tutor')
+            ->withCount(['students as enrolled_count' => fn ($q) => $q->where('student_class.status', 'active')])
             ->orderBy('class_category')->get();
 
-        return view('students.create', compact('classes'));
+        // Slot yang diklik di layar Ketersediaan Slot ikut lewat query string,
+        // jadi form terbuka dengan kategori & jadwal itu sudah terpilih — admin
+        // tinggal mengisi data anaknya, dan kursi yang tadi dilihat kosong itu
+        // pula yang terisi.
+        $selectedClass = $classes->firstWhere('id', $request->integer('class_id'));
+
+        return view('students.create', compact('classes', 'selectedClass'));
     }
 
     public function store(Request $request)
@@ -63,10 +70,12 @@ class StudentController extends Controller
         $startWeek = $data['start_week'] ?? null;
         unset($data['start_week']);
 
-        $matchingClass = ClassRoom::whereRaw('LOWER(class_category) = ?', [strtolower($data['class_type'])])
-            ->get()
-            ->first(fn ($c) => $c->isAvailable())
-            ?? ClassRoom::whereRaw('LOWER(class_category) = ?', [strtolower($data['class_type'])])->first();
+        // Jadwal bukan kolom murid — ia pendaftaran ke kelas, jadi dikeluarkan
+        // sebelum $data dipakai mengisi model.
+        $classId = $data['class_id'] ?? null;
+        unset($data['class_id']);
+
+        $matchingClass = $this->resolveClass($classId, $data['class_type']);
 
         DB::transaction(function () use ($data, $matchingClass, $startWeek) {
             $student = Student::create($data);
@@ -81,11 +90,14 @@ class StudentController extends Controller
 
     public function edit(Student $student)
     {
-        $classes = ClassRoom::withCount(['students as enrolled_count' => fn ($q) => $q->where('student_class.status', 'active')])
+        $classes = ClassRoom::with('tutor')
+            ->withCount(['students as enrolled_count' => fn ($q) => $q->where('student_class.status', 'active')])
             ->orderBy('class_category')->get();
         $student->load('classes');
 
-        return view('students.edit', compact('student', 'classes'));
+        $selectedClass = $classes->firstWhere('id', $student->classes->first()?->id);
+
+        return view('students.edit', compact('student', 'classes', 'selectedClass'));
     }
 
     public function update(Request $request, Student $student)
@@ -94,6 +106,9 @@ class StudentController extends Controller
 
         $startWeek = $data['start_week'] ?? null;
         unset($data['start_week']);
+
+        $classId = $data['class_id'] ?? null;
+        unset($data['class_id']);
 
         // Pindah tipe kelas ditahan selama menunggak — itu keputusan yang bisa
         // ditunda tanpa merusak catatan apa pun. Perubahan data lain tetap boleh.
@@ -104,16 +119,14 @@ class StudentController extends Controller
             ]);
         }
 
-        $matchingClass = null;
-        if ($typeChanged) {
-            $matchingClass = ClassRoom::whereRaw('LOWER(class_category) = ?', [strtolower($data['class_type'])])
-                ->get()
-                ->first(fn ($c) => $c->isAvailable())
-                ?? ClassRoom::whereRaw('LOWER(class_category) = ?', [strtolower($data['class_type'])])->first();
-        } else {
-            $matchingClass = $student->classes->first()
-                ?? ClassRoom::whereRaw('LOWER(class_category) = ?', [strtolower($data['class_type'])])->first();
-        }
+        // Kelas yang sekarang hanya layak dipertahankan selama kategorinya tak
+        // berubah; begitu admin pindah kategori, jadwal lamanya bukan lagi
+        // jawaban yang benar.
+        $matchingClass = $this->resolveClass(
+            $classId,
+            $data['class_type'],
+            $typeChanged ? null : $student->classes->first()
+        );
 
         DB::transaction(function () use ($student, $data, $matchingClass, $startWeek) {
             $student->update($data);
@@ -169,6 +182,31 @@ class StudentController extends Controller
                     }
                 },
             ],
+            // Jadwal yang dipilih admin. Boleh kosong — resolveClass() lalu
+            // memilihkan slot pertama yang masih muat di kategori itu, seperti
+            // sebelum form punya pilihan jadwal.
+            'class_id' => [
+                'nullable',
+                'integer',
+                function ($attribute, $value, $fail) use ($student) {
+                    $class = ClassRoom::find($value);
+                    if (! $class) {
+                        $fail('Jadwal kelas yang dipilih tidak ditemukan.');
+
+                        return;
+                    }
+
+                    // Kelas yang sedang diikuti murid ini tetap boleh dipilih walau
+                    // sudah penuh — dialah salah satu yang mengisinya.
+                    if ($student && $student->classes()->where('classes.id', $class->id)->exists()) {
+                        return;
+                    }
+
+                    if (! $class->isAvailable()) {
+                        $fail("Jadwal {$class->scheduleLabel()} tidak bisa dipilih: {$class->availability()['text']}.");
+                    }
+                },
+            ],
             'status' => ['required', Rule::in(['active', 'inactive'])],
             'join_date' => ['required', 'date'],
             // Pekan murid mulai ikut kelas — penentu harga bulan pertamanya.
@@ -183,6 +221,39 @@ class StudentController extends Controller
             'age.min' => 'Usia tidak boleh kurang dari 0.',
             'age.max' => 'Usia tidak masuk akal (maksimal 120).',
         ]);
+    }
+
+    /**
+     * Kelas yang akan diisi murid ini.
+     *
+     * Urutannya disengaja: jadwal yang dipilih admin di form menang atas apa pun,
+     * lalu kelas yang sedang diikuti murid, baru tebakan "slot pertama yang masih
+     * muat di kategori ini". Tebakan itu dipertahankan sebagai jaring pengaman —
+     * pendaftaran lewat jalur lain (impor, form lama yang di-cache) tidak boleh
+     * gagal hanya karena tak menyertakan jadwal.
+     *
+     * Pilihan yang kategorinya tak lagi cocok dengan tipe kelas di form diabaikan:
+     * mengganti kategori tanpa mengganti jadwal jangan sampai mendaftarkan anak ke
+     * kelas kategori lama.
+     */
+    private function resolveClass(?int $classId, string $category, ?ClassRoom $current = null): ?ClassRoom
+    {
+        $cocok = fn (?ClassRoom $c) => $c && mb_strtolower(trim((string) $c->class_category)) === mb_strtolower(trim($category));
+
+        if ($classId) {
+            $chosen = ClassRoom::find($classId);
+            if ($cocok($chosen)) {
+                return $chosen;
+            }
+        }
+
+        if ($cocok($current)) {
+            return $current;
+        }
+
+        $inCategory = ClassRoom::whereRaw('LOWER(class_category) = ?', [strtolower($category)])->get();
+
+        return $inCategory->first(fn (ClassRoom $c) => $c->isAvailable()) ?? $inCategory->first();
     }
 
     /**

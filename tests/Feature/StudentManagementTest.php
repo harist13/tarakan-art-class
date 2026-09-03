@@ -65,6 +65,109 @@ class StudentManagementTest extends TestCase
         ], $overrides);
     }
 
+    // ─── PENDAFTARAN KE SLOT TERPILIH ──────────────────────────────
+
+    /**
+     * Slot yang diklik di layar Ketersediaan Slot itulah yang terisi — bukan slot
+     * lain sekategori yang kebetulan dipilihkan sistem.
+     */
+    public function test_murid_terdaftar_ke_jadwal_yang_dipilih(): void
+    {
+        // Slot pagi lebih dulu dibuat, jadi dialah yang akan ditebak sistem bila
+        // jadwalnya tidak disebut — justru itu yang diuji tidak terjadi.
+        $pagi = $this->makeClass('drawing');
+        $sore = $this->makeClass('drawing');
+        $sore->update(['schedule_time' => '15:00']);
+
+        $this->actingAs($this->makeUser('admin'))
+            ->post(route('students.store'), $this->validPayload(['class_id' => $sore->id]))
+            ->assertRedirect(route('students.index'))
+            ->assertSessionHasNoErrors();
+
+        $student = Student::where('name', 'Budi Santoso')->firstOrFail();
+
+        $this->assertSame([$sore->id], $student->classes->pluck('id')->all());
+        $this->assertSame(0, $pagi->students()->count());
+    }
+
+    /**
+     * Tanpa jadwal yang disebut, perilaku lama dipertahankan: slot pertama di
+     * kategori itu yang masih muat. Pendaftaran lewat jalur lain tidak boleh gagal
+     * hanya karena tak menyertakan jadwal.
+     */
+    public function test_tanpa_jadwal_terpilih_sistem_memilihkan_slot_yang_muat(): void
+    {
+        $penuh = $this->makeClass('drawing', capacity: 1);
+        $penuh->students()->attach(
+            Student::create($this->validPayload(['name' => 'Anak Lama']))->id,
+            ['status' => 'active', 'enrolled_at' => now()->toDateString()]
+        );
+        $kosong = $this->makeClass('drawing');
+
+        $this->actingAs($this->makeUser('admin'))
+            ->post(route('students.store'), $this->validPayload())
+            ->assertRedirect(route('students.index'))
+            ->assertSessionHasNoErrors();
+
+        $student = Student::where('name', 'Budi Santoso')->firstOrFail();
+
+        $this->assertSame([$kosong->id], $student->classes->pluck('id')->all());
+    }
+
+    public function test_jadwal_yang_penuh_ditolak(): void
+    {
+        $penuh = $this->makeClass('drawing', capacity: 1);
+        $penuh->students()->attach(
+            Student::create($this->validPayload(['name' => 'Anak Lama']))->id,
+            ['status' => 'active', 'enrolled_at' => now()->toDateString()]
+        );
+        // Slot kedua yang masih kosong membuat kategorinya lolos validasi
+        // class_type — jadi yang menolak di sini benar-benar cek per jadwal.
+        $this->makeClass('drawing');
+
+        $this->actingAs($this->makeUser('admin'))
+            ->post(route('students.store'), $this->validPayload(['class_id' => $penuh->id]))
+            ->assertSessionHasErrors('class_id');
+
+        $this->assertSame(1, $penuh->students()->count());
+    }
+
+    /**
+     * Kategori diganti tapi jadwal lama tertinggal di form: yang tertinggal
+     * diabaikan, bukan dipakai mendaftarkan anak ke kategori yang salah.
+     */
+    public function test_jadwal_beda_kategori_diabaikan(): void
+    {
+        $drawing = $this->makeClass('drawing');
+        $coloring = $this->makeClass('coloring');
+
+        $this->actingAs($this->makeUser('admin'))
+            ->post(route('students.store'), $this->validPayload([
+                'class_type' => 'coloring',
+                'class_id' => $drawing->id,
+            ]))
+            ->assertRedirect(route('students.index'))
+            ->assertSessionHasNoErrors();
+
+        $student = Student::where('name', 'Budi Santoso')->firstOrFail();
+
+        $this->assertSame([$coloring->id], $student->classes->pluck('id')->all());
+    }
+
+    public function test_form_tambah_murid_terisi_dari_slot_yang_diklik(): void
+    {
+        $this->makeClass('drawing');
+        $coloring = $this->makeClass('coloring');
+
+        $this->actingAs($this->makeUser('admin'))
+            ->get(route('students.create', ['class_id' => $coloring->id]))
+            ->assertOk()
+            ->assertSee('Jadwal Kelas')
+            ->assertSee('name="class_id"', false)
+            // Kategori slot itu ikut terpilih, jadi tak perlu dipilih ulang.
+            ->assertSee('value="coloring"', false);
+    }
+
     // ─── INDEX + FILTER ────────────────────────────────────────────
 
     public function test_index_page_loads(): void

@@ -31,7 +31,7 @@ class ScheduleController extends Controller
         'ditutup' => 'secondary',
     ];
 
-    public function index(Request $request)
+    public function index(Request $request, ScheduleCalendar $calendar)
     {
         $status = $request->string('status')->toString();
         $search = $request->string('search')->toString();
@@ -81,6 +81,32 @@ class ScheduleController extends Controller
             ))
             ->values();
 
+        // Slot dikelompokkan per kategori kelas, bukan dijejer satu baris per
+        // kelas: yang dicari admin hampir selalu "jadwal Coloring apa saja yang
+        // masih muat", dan itu pertanyaan tentang kategori. Daftar rata membuat
+        // jawabannya tersebar di antara kategori lain yang tak sedang ditanyakan.
+        //
+        // Kuncinya huruf kecil karena kategori diketik bebas — "Coloring" dan
+        // "coloring" satu kelompok, sama seperti pencocokan di ClassRoom::matchesLevel().
+        $slotGroups = $slots
+            ->groupBy(fn (ClassRoom $s) => mb_strtolower(trim((string) $s->class_category)))
+            ->map(fn ($items) => [
+                'label' => trim((string) $items->first()->class_category) ?: 'Tanpa kategori',
+                'slots' => $items->values(),
+                'total' => $items->count(),
+                // Hanya slot yang benar-benar bisa diisi yang dihitung kursinya —
+                // kursi di kelas yang ditutup atau tanpa tutor bukan kursi yang
+                // bisa dijanjikan ke orang tua.
+                'available' => $items->filter->isAvailable()->count(),
+                'seats' => $items->sum(fn (ClassRoom $s) => $s->isAvailable() ? $s->remainingSeats() : 0),
+            ])
+            ->sortKeys();
+
+        // Roster yang sama persis dengan yang menggerakkan kalender — pop-up detail
+        // slot (tutor + murid) karenanya tak pernah bisa bercerita lain dari yang
+        // ditampilkan kalender untuk kelas yang sama.
+        $rosters = $calendar->rosters();
+
         // Ringkasan untuk scorecard di atas halaman — dihitung dari seluruh slot,
         // bukan dari hasil filter panel: ini gambaran keadaan, bukan cerminan
         // pencarian yang sedang dilakukan admin.
@@ -95,7 +121,7 @@ class ScheduleController extends Controller
             ->count();
 
         return view('schedules.index', compact(
-            'requests', 'status', 'search', 'slots',
+            'requests', 'status', 'search', 'slotGroups', 'rosters',
             'pendingCount', 'availableSlots', 'totalSlots', 'arrearsCount', 'tab',
             'slotSearch', 'slotStatus'
         ));

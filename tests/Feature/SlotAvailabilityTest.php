@@ -712,6 +712,69 @@ class SlotAvailabilityTest extends TestCase
             ->assertSee('Ketersediaan Slot Kelas');
     }
 
+    public function test_panel_slot_mengelompokkan_kelas_per_kategori(): void
+    {
+        $this->actingAs($this->makeUser());
+
+        // Dua jadwal Coloring & satu Drawing: kategori harus jadi satu kepala
+        // kelompok, bukan tiga baris sejajar.
+        $this->makeClass(['class_category' => 'coloring', 'capacity' => 10]);
+        $this->makeClass(['class_category' => 'Coloring', 'schedule_time' => '13:00', 'capacity' => 4]);
+        $this->makeClass(['class_category' => 'drawing', 'capacity' => 6]);
+
+        $halaman = $this->get(route('schedules.index', ['tab' => 'slots']))->assertOk();
+
+        $halaman->assertSee('slot-group-head', false)
+            // 10 + 4 kursi Coloring dijumlahkan di kepala kelompoknya.
+            ->assertSee('14 kursi tersisa')
+            ->assertSee('6 kursi tersisa');
+    }
+
+    /**
+     * Kategori diketik bebas admin, jadi "Coloring" dan "coloring" harus jatuh di
+     * satu kelompok — sama seperti pencocokan tipe kelas di tempat lain.
+     */
+    public function test_kategori_beda_besar_kecil_huruf_jadi_satu_kelompok(): void
+    {
+        $this->actingAs($this->makeUser());
+
+        $this->makeClass(['class_category' => 'coloring']);
+        $this->makeClass(['class_category' => 'COLORING', 'schedule_time' => '13:00']);
+
+        $groups = $this->get(route('schedules.index', ['tab' => 'slots']))
+            ->assertOk()
+            ->viewData('slotGroups');
+
+        $this->assertCount(1, $groups);
+        $this->assertSame(2, $groups->first()['total']);
+    }
+
+    /**
+     * Pop-up detail slot dan kalender dijalankan roster yang sama, jadi keduanya
+     * tak bisa menyebut tutor atau jumlah murid yang berbeda untuk kelas yang sama.
+     */
+    public function test_panel_slot_mengirim_roster_berisi_tutor_dan_murid(): void
+    {
+        $this->actingAs($this->makeUser());
+
+        $class = $this->makeClass();
+        $student = $this->makeStudent();
+        $student->classes()->attach($class->id, ['status' => 'active', 'enrolled_at' => now()->toDateString()]);
+
+        $rosters = $this->get(route('schedules.index', ['tab' => 'slots']))
+            ->assertOk()
+            ->viewData('rosters');
+
+        $roster = $rosters[$class->id];
+
+        $this->assertSame('Kak Tutor', $roster['tutor']);
+        $this->assertSame(1, $roster['enrolled']);
+        $this->assertTrue($roster['available']);
+        $this->assertSame([$student->name], array_column($roster['students'], 'name'));
+        // Pintu ke pendaftaran anak membawa slot ini, bukan sekadar kategorinya.
+        $this->assertStringContainsString('class_id='.$class->id, $roster['enrollUrl']);
+    }
+
     public function test_kalender_menampilkan_pemilih_murid_untuk_cari_pengganti(): void
     {
         $this->actingAs($this->makeUser());
