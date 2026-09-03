@@ -3,13 +3,16 @@
 namespace Tests\Feature;
 
 use App\Mail\NewLeadNotification;
+use App\Models\Artwork;
 use App\Models\ClassRoom;
 use App\Models\Lead;
+use App\Models\Student;
 use App\Models\Tutor;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
@@ -299,6 +302,117 @@ class PublicSiteTest extends TestCase
     public function test_filter_galeri_yang_tidak_valid_diabaikan(): void
     {
         $this->get(route('public.gallery', ['kategori' => '<script>']))->assertOk();
+    }
+
+    /**
+     * Foto karya yang diunggah admin di modul Galeri Karya.
+     */
+    private function makeArtwork(string $name, string $classType, ?string $description = null): Artwork
+    {
+        $student = Student::create([
+            'name' => $name, 'date_of_birth' => '2018-01-01', 'parent_name' => 'Wali',
+            'phone_number' => '0812', 'class_type' => $classType, 'status' => 'active',
+            'join_date' => now()->subYear()->toDateString(),
+        ]);
+
+        $path = 'artworks/'.uniqid().'.jpg';
+        Storage::disk('public')->put($path, 'foto');
+
+        return Artwork::create([
+            'student_id' => $student->id,
+            'photo_path' => $path,
+            'taken_on' => now()->toDateString(),
+            'description' => $description,
+        ]);
+    }
+
+    public function test_karya_dari_modul_galeri_karya_tampil_di_beranda_dan_galeri(): void
+    {
+        Storage::fake('public');
+
+        $karya = $this->makeArtwork('Bella Safira', 'drawing', 'Pemandangan sore');
+
+        $this->get(route('public.home'))
+            ->assertOk()
+            ->assertSee($karya->photoUrl(), false)
+            ->assertSee('Pemandangan sore');
+
+        $this->get(route('public.gallery'))
+            ->assertOk()
+            ->assertSee($karya->photoUrl(), false)
+            ->assertSee('Pemandangan sore');
+    }
+
+    public function test_karya_tanpa_deskripsi_hanya_menyebut_nama_depan_murid(): void
+    {
+        Storage::fake('public');
+
+        $this->makeArtwork('Bella Safira', 'drawing');
+
+        $this->get(route('public.gallery'))
+            ->assertOk()
+            ->assertSee('Karya Bella')
+            ->assertDontSee('Safira');
+    }
+
+    public function test_filter_kategori_galeri_mengikuti_tipe_kelas_murid(): void
+    {
+        Storage::fake('public');
+
+        $drawing = $this->makeArtwork('Bella', 'drawing', 'Sketsa rumah');
+        $coloring = $this->makeArtwork('Cika', 'coloring', 'Mewarnai bunga');
+
+        $this->get(route('public.gallery', ['kategori' => 'drawing']))
+            ->assertOk()
+            ->assertSee($drawing->photoUrl(), false)
+            ->assertDontSee($coloring->photoUrl(), false);
+
+        // Kategori tanpa satu pun karya tidak ditawarkan sebagai tombol filter.
+        $this->get(route('public.gallery'))
+            ->assertOk()
+            ->assertDontSee(route('public.gallery', ['kategori' => 'preschool']), false);
+    }
+
+    public function test_galeri_publik_terbagi_halaman_saat_karya_menumpuk(): void
+    {
+        Storage::fake('public');
+
+        $karya = $this->makeArtwork('Bella', 'drawing', 'Karya ke-1');
+
+        // 24 karya per halaman: satu lagi sudah cukup untuk menggeser yang terlama.
+        for ($i = 2; $i <= 25; $i++) {
+            $path = 'artworks/'.uniqid().'.jpg';
+            Storage::disk('public')->put($path, 'foto');
+            Artwork::create([
+                'student_id' => $karya->student_id,
+                'photo_path' => $path,
+                'taken_on' => now()->toDateString(),
+                'description' => 'Karya ke-'.$i,
+            ]);
+        }
+
+        $this->get(route('public.gallery'))
+            ->assertOk()
+            ->assertSee('Karya ke-25')
+            ->assertSee(route('public.gallery').'?page=2', false);
+
+        // Karya terlama terdorong ke halaman kedua.
+        $this->get(route('public.gallery', ['page' => 2]))
+            ->assertOk()
+            ->assertSee('Karya ke-1')
+            ->assertDontSee('Karya ke-25');
+    }
+
+    public function test_foto_karya_yang_berkasnya_hilang_tidak_ditampilkan(): void
+    {
+        Storage::fake('public');
+
+        $karya = $this->makeArtwork('Bella', 'drawing', 'Sketsa rumah');
+        Storage::disk('public')->delete($karya->photo_path);
+
+        $this->get(route('public.gallery'))
+            ->assertOk()
+            ->assertDontSee($karya->photoUrl(), false);
     }
 
     public function test_sitemap_memuat_seluruh_halaman_publik(): void

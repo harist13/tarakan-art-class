@@ -4,14 +4,17 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreLeadRequest;
 use App\Mail\NewLeadNotification;
+use App\Models\Artwork;
 use App\Models\ClassRoom;
 use App\Models\HolidayClass;
 use App\Models\Lead;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * Website publik (marketing & informasi) — terpisah dari sistem admin.
@@ -26,6 +29,12 @@ class PublicSiteController extends Controller
 
     /** Berapa sesi Holiday Class mendatang yang diumumkan sekaligus. */
     private const HOLIDAY_SESSION_LIMIT = 4;
+
+    /** Berapa karya yang diintip di blok galeri halaman depan. */
+    private const GALLERY_PREVIEW_LIMIT = 6;
+
+    /** Berapa karya per halaman pada galeri lengkap. */
+    private const GALLERY_PER_PAGE = 24;
 
     /**
      * Nama hari & bulan dalam bahasa Indonesia — tidak bergantung pada locale
@@ -42,7 +51,7 @@ class PublicSiteController extends Controller
         return view('public.home', [
             'programs' => $this->programsWithLiveData(),
             'testimonials' => config('site.testimonials', []),
-            'galleryPreview' => $this->galleryItems()->take(6),
+            'galleryPreview' => $this->galleryItems(limit: self::GALLERY_PREVIEW_LIMIT),
             'stats' => config('site.about.stats', []),
             'holidayClasses' => HolidayClass::upcoming()->limit(4)->get(),
         ]);
@@ -64,19 +73,21 @@ class PublicSiteController extends Controller
 
     public function gallery(Request $request)
     {
-        $items = $this->galleryItems();
-        $active = $request->query('kategori');
+        // Kategori dihitung dari seluruh arsip (bukan halaman yang sedang dibuka)
+        // supaya tombol filter tidak hilang-timbul saat pengunjung berpindah halaman.
+        $used = $this->galleryCategorySlugs();
 
-        // Hanya kategori yang benar-benar punya karya yang ditawarkan sebagai filter.
         $categories = collect(config('site.gallery_categories', []))
-            ->filter(fn ($label, $slug) => $items->contains(fn ($i) => $i['category'] === $slug));
+            ->filter(fn ($label, $slug) => $used->contains($slug));
+
+        $active = $request->query('kategori');
 
         if ($active && ! $categories->has($active)) {
             $active = null;
         }
 
         return view('public.gallery', [
-            'items' => $active ? $items->where('category', $active)->values() : $items,
+            'items' => $this->paginateItems($this->galleryItems($active), $request),
             'categories' => $categories,
             'active' => $active,
         ]);
@@ -497,20 +508,138 @@ class PublicSiteController extends Controller
     }
 
     /**
-     * Item galeri dari config, disaring ke file yang benar-benar ada agar
+     * Item galeri publik: foto karya murid dari modul Galeri Karya (terbaru dulu),
+     * disusul foto statis yang didaftarkan manual di config/site.php.
+     *
+     * Config tetap dipakai karena tidak semua foto punya pemiliknya di tabel
+     * `artworks` — dokumentasi kegiatan & pameran ("kegiatan") tidak diunggah
+     * lewat modul karya murid.
+     *
+     * @param  string|null  $category  slug kategori; null = semua
+     * @param  int|null  $limit  batas jumlah item (untuk preview halaman depan)
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function galleryItems(?string $category = null, ?int $limit = null): Collection
+    {
+        $items = $this->artworkItems($category, $limit)
+            ->concat($this->configGalleryItems($category));
+
+        return ($limit ? $items->take($limit) : $items)->values();
+    }
+
+    /**
+     * Foto karya murid sebagai item galeri publik.
+     *
+     * Kategori diambil dari `class_type` murid — nilainya sama persis dengan slug
+     * program di config (preschool/coloring/drawing), jadi filter kategori pada
+     * halaman galeri langsung berlaku tanpa tabel pemetaan tambahan.
+     *
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function artworkItems(?string $category = null, ?int $limit = null): Collection
+    {
+        return Artwork::query()
+            ->with('student')
+            ->when($category, fn ($q, $slug) => $q->whereHas('student', fn ($s) => $s->where('class_type', $slug)))
+            ->orderByDesc('taken_on')
+            ->orderByDesc('id')
+            ->when($limit, fn ($q, $n) => $q->limit($n))
+            ->get()
+            // File bisa saja hilang dari disk (mis. storage belum di-link atau
+            // dibersihkan manual) — jangan sampai grid menampilkan gambar rusak.
+            ->filter(fn (Artwork $artwork) => Storage::disk('public')->exists($artwork->photo_path))
+            ->map(fn (Artwork $artwork) => [
+                'category' => $artwork->student?->class_type,
+                'caption' => $this->artworkCaption($artwork),
+                'url' => $artwork->photoUrl(),
+            ])
+            ->values();
+    }
+
+    /**
+     * Keterangan foto di galeri publik.
+     *
+     * Deskripsi dari admin dipakai apa adanya bila ada. Bila kosong, dipakai nama
+     * depan murid saja — cukup untuk membuat karyanya terasa personal tanpa
+     * memajang nama lengkap anak di halaman publik.
+     */
+    private function artworkCaption(Artwork $artwork): string
+    {
+        if (filled($artwork->description)) {
+            return $artwork->description;
+        }
+
+        $student = $artwork->student;
+
+        if (! $student) {
+            return '';
+        }
+
+        $firstName = explode(' ', trim($student->name))[0];
+
+        return 'Karya '.$firstName.($student->age ? ', '.$student->age.' tahun' : '');
+    }
+
+    /**
+     * Foto statis dari config, disaring ke file yang benar-benar ada agar
      * grid tidak menampilkan gambar rusak.
      *
      * @return Collection<int, array<string, mixed>>
      */
-    private function galleryItems(): Collection
+    private function configGalleryItems(?string $category = null): Collection
     {
         return collect(config('site.gallery', []))
+            ->when($category, fn ($items, $slug) => $items->where('category', $slug))
             ->filter(fn (array $item) => is_file(public_path('images/gallery/'.$item['file'])))
             ->map(fn (array $item) => $item + [
                 'url' => asset('images/gallery/'.$item['file']),
                 'caption' => $item['caption'] ?? '',
             ])
             ->values();
+    }
+
+    /**
+     * Slug kategori yang benar-benar punya foto — dipakai untuk menampilkan
+     * tombol filter seperlunya saja.
+     *
+     * @return Collection<int, string>
+     */
+    private function galleryCategorySlugs(): Collection
+    {
+        $fromArtworks = Artwork::query()
+            ->join('students', 'students.id', '=', 'artworks.student_id')
+            ->distinct()
+            ->pluck('students.class_type');
+
+        return $fromArtworks
+            ->concat($this->configGalleryItems()->pluck('category'))
+            ->filter()
+            ->unique()
+            ->values();
+    }
+
+    /**
+     * Bagi item galeri menjadi halaman.
+     *
+     * Pemenggalannya dilakukan setelah koleksi tersusun, bukan lewat LIMIT di
+     * database, karena satu halaman bisa memuat dua sumber sekaligus (karya murid
+     * + foto statis config). Yang dimuat hanya baris metadata, jadi ongkosnya
+     * masih ringan untuk ukuran arsip studio.
+     *
+     * @param  Collection<int, array<string, mixed>>  $items
+     * @return LengthAwarePaginator<array<string, mixed>>
+     */
+    private function paginateItems(Collection $items, Request $request): LengthAwarePaginator
+    {
+        $page = LengthAwarePaginator::resolveCurrentPage();
+
+        return new LengthAwarePaginator(
+            $items->forPage($page, self::GALLERY_PER_PAGE)->values(),
+            $items->count(),
+            self::GALLERY_PER_PAGE,
+            $page,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
     }
 
     /**

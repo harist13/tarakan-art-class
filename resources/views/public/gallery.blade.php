@@ -51,8 +51,15 @@
                 </div>
             @endforeach
         </div>
+
+        @if($items->hasPages())
+            <div class="d-flex justify-content-center mt-5">
+                {{ $items->links() }}
+            </div>
+        @endif
     @else
-        {{-- Belum ada foto terdaftar di config/site.php → arahkan ke Instagram. --}}
+        {{-- Belum ada karya yang diunggah admin (Galeri Karya) maupun foto statis
+             di config/site.php → arahkan ke Instagram. --}}
         <div class="mx-auto text-center" style="max-width: 34rem;">
             <span class="tac-dashed-box tac-thumb-placeholder mx-auto" style="width: 5rem; height: 5rem;" aria-hidden="true">🖼️</span>
             <h2 class="fs-3 mt-4 mb-3">Galeri sedang kami susun</h2>

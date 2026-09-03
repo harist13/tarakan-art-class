@@ -312,12 +312,19 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // ── Centang massal ───────────────────────────────────────────────
         // Mayoritas murid biasanya hadir, jadi menyetel satu kelas lalu
-        // membetulkan yang menyimpang jauh lebih cepat. Yang izin dilewati:
-        // menyetelnya jadi hadir justru menghapus keterangan yang sudah benar.
+        // membetulkan yang menyimpang jauh lebih cepat. Baris yang sudah
+        // ditandai izin atau sedang menulis catatan dilewati: keduanya berarti
+        // "tidak hadir", dan mencentangnya justru menghapus keterangan yang
+        // sudah benar.
         function setSemua(nilai) {
             form.querySelectorAll('[data-hadir]').forEach(function (kotak) {
-                var izin = kotak.closest('tr').querySelector('[data-izin]');
-                if (nilai && izin && izin.checked) {
+                var baris = kotak.closest('tr');
+                var izin = baris.querySelector('[data-izin]');
+                var catatan = baris.querySelector('[data-catatan]');
+                var ditandai = (izin && izin.checked)
+                    || (catatan && ! catatan.classList.contains('d-none'));
+
+                if (nilai && ditandai) {
                     return;
                 }
                 kotak.checked = nilai;
@@ -333,12 +340,16 @@ document.addEventListener('DOMContentLoaded', function () {
             kosong.addEventListener('click', function () { setSemua(false); });
         }
 
-        // ── Izin ⇄ hadir saling meniadakan ───────────────────────────────
+        // ── Izin ⇄ hadir: dua sisi dari satu saklar ──────────────────────
+        // Menyalakan izin melepas centang hadir, dan mematikannya mengembalikan
+        // centang itu — tombol yang tidak bisa dibatalkan memaksa admin
+        // mencentang ulang sendiri setelah salah pencet. Untuk menandai murid
+        // benar-benar tidak hadir, centang hadirnya yang dilepas langsung.
         form.querySelectorAll('[data-izin]').forEach(function (izin) {
             izin.addEventListener('change', function () {
                 var hadir = izin.closest('tr').querySelector('[data-hadir]');
-                if (izin.checked && hadir) {
-                    hadir.checked = false;
+                if (hadir) {
+                    hadir.checked = ! izin.checked;
                 }
             });
         });
@@ -352,16 +363,37 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         });
 
-        // ── Catatan: tersembunyi sampai diminta ──────────────────────────
+        // ── Catatan: tersembunyi sampai diminta, dan ikut jadi saklar ────
+        // Sama seperti izin: membuka catatan berarti murid tidak hadir,
+        // menutupnya mengembalikan centang hadirnya. Konsekuensinya, catatan
+        // untuk murid yang hadir tidak bisa ditulis tanpa melepas centangnya
+        // dulu — centang hadir tinggal dipasang lagi setelah catatannya diisi.
         form.querySelectorAll('[data-catatan-toggle]').forEach(function (tombol) {
             tombol.addEventListener('click', function () {
-                var kotak = tombol.closest('tr').querySelector('[data-catatan]');
+                var baris = tombol.closest('tr');
+                var kotak = baris.querySelector('[data-catatan]');
                 if (! kotak) {
                     return;
                 }
+
                 kotak.classList.toggle('d-none');
+                var terbuka = ! kotak.classList.contains('d-none');
+
+                var hadir = baris.querySelector('[data-hadir]');
+                if (hadir) {
+                    hadir.checked = ! terbuka;
+                }
+
+                // Menutup catatan mengembalikan murid ke "hadir", jadi tanda izin
+                // yang masih menyala harus ikut padam — kalau tidak, barisnya
+                // tampak hadir sekaligus izin, dan yang tersimpan izin.
+                var izin = baris.querySelector('[data-izin]');
+                if (izin && ! terbuka) {
+                    izin.checked = false;
+                }
+
                 var isian = kotak.querySelector('input');
-                if (isian && ! kotak.classList.contains('d-none')) {
+                if (isian && terbuka) {
                     isian.focus();
                 }
             });

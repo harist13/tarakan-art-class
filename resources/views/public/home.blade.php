@@ -257,7 +257,7 @@
             @endforeach
         </div>
     @else
-        {{-- Belum ada foto yang didaftarkan di config/site.php → arahkan ke Instagram. --}}
+        {{-- Belum ada karya yang diunggah admin (Galeri Karya) → arahkan ke Instagram. --}}
         <div class="row row-cols-2 row-cols-sm-3 g-4 mt-3" aria-hidden="true">
             @foreach(['tac-bg-coral-soft','tac-bg-sun-soft','tac-bg-sky-soft','tac-bg-leaf-soft','tac-bg-grape-soft','tac-bg-sun-soft'] as $tone)
                 <div class="col">
