@@ -192,7 +192,36 @@ class ReportController extends Controller
         $data = $request->validate([
             'student_id' => ['required', 'exists:students,id'],
             'period_start' => ['required', 'date'],
-            'period_end' => ['required', 'date', 'after_or_equal:period_start'],
+            // Periode wajib berada dalam satu bulan kalender. Modul ini memang
+            // disusun per bulan — raport dikelompokkan dari bulan `period_start`,
+            // satu murid hanya boleh punya satu raport per bulan (lihat cek
+            // duplikat di bawah), dan folder Galeri Karya juga per bulan. Periode
+            // yang melintasi bulan membuat "karya periode ini" (dihitung dari
+            // rentang) berbeda dari isi folder bulanannya.
+            //
+            // bail: closure di bawah memanggil Carbon::parse, jadi jangan sampai
+            // ikut jalan saat tanggalnya sendiri sudah tidak valid.
+            'period_end' => [
+                'bail', 'required', 'date', 'after_or_equal:period_start',
+                function ($attribute, $value, $fail) use ($request) {
+                    $mulai = $request->input('period_start');
+
+                    // Tanggal mulai yang bermasalah dilaporkan oleh aturannya sendiri.
+                    if (! is_string($mulai) || strtotime($mulai) === false) {
+                        return;
+                    }
+
+                    $mulai = \Carbon\Carbon::parse($mulai);
+
+                    if (! \Carbon\Carbon::parse($value)->isSameMonth($mulai)) {
+                        $fail('Periode raport harus berada dalam satu bulan. Untuk '
+                            .$mulai->locale('id')->translatedFormat('F Y')
+                            .', tanggal selesai paling jauh '
+                            .$mulai->copy()->endOfMonth()->format('d M Y')
+                            .'. Karya bulan berikutnya masuk ke raport bulan itu sendiri.');
+                    }
+                },
+            ],
             'activity_notes' => ['required', 'string'],
             'tutor_notes' => ['nullable', 'string'],
         ]);

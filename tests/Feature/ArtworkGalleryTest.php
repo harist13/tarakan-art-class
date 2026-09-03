@@ -193,6 +193,105 @@ class ArtworkGalleryTest extends TestCase
         $this->assertSame('Baru', $artwork->description);
     }
 
+    /**
+     * Gambarnya bisa diganti tanpa hapus-lalu-unggah-ulang; berkas lama dibuang
+     * agar tidak menumpuk sebagai file yatim di disk.
+     */
+    public function test_mengganti_gambar_karya_menukar_berkas_dan_membuang_yang_lama(): void
+    {
+        Storage::fake('public');
+        $student = $this->makeStudent();
+        $admin = $this->admin();
+        // Awal bulan berjalan: selalu ≤ hari ini, jadi lolos aturan
+        // 'before_or_equal:today' tanpa bergantung pada tanggal tertentu.
+        $tanggal = now()->startOfMonth()->toDateString();
+        $bulan = now()->format('Y-m');
+
+        $this->actingAs($admin)->post(route('artworks.store'), [
+            'student_id' => $student->id,
+            'taken_on' => $tanggal,
+            'description' => 'Melukis tema laut',
+            'photos' => [UploadedFile::fake()->image('lama.jpg')],
+        ])->assertRedirect();
+
+        $artwork = Artwork::firstOrFail();
+        $lama = $artwork->photo_path;
+
+        $this->actingAs($admin)->put(route('artworks.update', $artwork), [
+            'taken_on' => $tanggal,
+            'description' => 'Melukis tema laut',
+            'photo' => UploadedFile::fake()->image('baru.jpg'),
+        ])->assertRedirect(route('artworks.folder', ['student' => $student->id, 'month' => $bulan]))
+            ->assertSessionHasNoErrors();
+
+        $artwork->refresh();
+
+        $this->assertNotSame($lama, $artwork->photo_path, 'photo_path harus menunjuk berkas baru');
+        Storage::disk('public')->assertExists($artwork->photo_path);
+        Storage::disk('public')->assertMissing($lama);
+        // Keterangan yang tidak diubah tetap utuh.
+        $this->assertSame('Melukis tema laut', $artwork->description);
+    }
+
+    public function test_menyimpan_tanpa_memilih_gambar_mempertahankan_berkas_lama(): void
+    {
+        Storage::fake('public');
+        $student = $this->makeStudent();
+        $admin = $this->admin();
+        // Awal bulan berjalan: selalu ≤ hari ini, jadi lolos aturan
+        // 'before_or_equal:today' tanpa bergantung pada tanggal tertentu.
+        $tanggal = now()->startOfMonth()->toDateString();
+        $bulan = now()->format('Y-m');
+
+        $this->actingAs($admin)->post(route('artworks.store'), [
+            'student_id' => $student->id,
+            'taken_on' => $tanggal,
+            'photos' => [UploadedFile::fake()->image('asli.jpg')],
+        ])->assertRedirect();
+
+        $artwork = Artwork::firstOrFail();
+        $asli = $artwork->photo_path;
+
+        $this->actingAs($admin)->put(route('artworks.update', $artwork), [
+            'taken_on' => $tanggal,
+            'description' => 'Deskripsi baru',
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $artwork->refresh();
+
+        $this->assertSame($asli, $artwork->photo_path);
+        Storage::disk('public')->assertExists($asli);
+        $this->assertSame('Deskripsi baru', $artwork->description);
+    }
+
+    public function test_gambar_pengganti_bukan_gambar_ditolak_dan_berkas_lama_utuh(): void
+    {
+        Storage::fake('public');
+        $student = $this->makeStudent();
+        $admin = $this->admin();
+        // Awal bulan berjalan: selalu ≤ hari ini, jadi lolos aturan
+        // 'before_or_equal:today' tanpa bergantung pada tanggal tertentu.
+        $tanggal = now()->startOfMonth()->toDateString();
+        $bulan = now()->format('Y-m');
+
+        $this->actingAs($admin)->post(route('artworks.store'), [
+            'student_id' => $student->id,
+            'taken_on' => $tanggal,
+            'photos' => [UploadedFile::fake()->image('asli.jpg')],
+        ])->assertRedirect();
+
+        $artwork = Artwork::firstOrFail();
+        $asli = $artwork->photo_path;
+
+        $this->actingAs($admin)->put(route('artworks.update', $artwork), [
+            'taken_on' => $tanggal,
+            'photo' => UploadedFile::fake()->create('dokumen.pdf', 50, 'application/pdf'),
+        ])->assertSessionHasErrors('photo');
+
+        $this->assertSame($asli, $artwork->refresh()->photo_path);
+        Storage::disk('public')->assertExists($asli);
+    }
+
     public function test_menghapus_karya_ikut_menghapus_berkasnya(): void
     {
         Storage::fake('public');
@@ -373,6 +472,108 @@ class ArtworkGalleryTest extends TestCase
             ->getContent();
 
         $this->assertStringNotContainsString('value="'.$student->id.'" selected', $html);
+    }
+
+    // ─── Periode raport wajib satu bulan ────────────────────────
+
+    /**
+     * Modul ini disusun per bulan: raport dikelompokkan dari bulan `period_start`,
+     * satu murid hanya boleh punya satu raport per bulan, dan folder karya juga
+     * per bulan. Periode yang melintasi bulan membuat "karya periode ini"
+     * (dihitung dari rentang) berbeda dari isi folder bulanannya.
+     */
+    public function test_periode_raport_melintasi_bulan_ditolak(): void
+    {
+        $student = $this->makeStudent();
+
+        $this->actingAs($this->admin())->post(route('reports.store'), [
+            'student_id' => $student->id,
+            'period_start' => '2026-08-01',
+            'period_end' => '2026-09-04',
+            'activity_notes' => 'Berkembang baik',
+        ])->assertSessionHasErrors('period_end');
+
+        $this->assertDatabaseCount('student_reports', 0);
+    }
+
+    public function test_periode_raport_dalam_satu_bulan_diterima(): void
+    {
+        $student = $this->makeStudent();
+
+        $this->actingAs($this->admin())->post(route('reports.store'), [
+            'student_id' => $student->id,
+            'period_start' => '2026-08-01',
+            'period_end' => '2026-08-31',
+            'activity_notes' => 'Berkembang baik',
+        ])->assertRedirect(route('reports.index', ['month' => '2026-08']))
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseCount('student_reports', 1);
+    }
+
+    /** Bulan sama tapi tahun beda tetap dua bulan yang berbeda. */
+    public function test_periode_bulan_sama_beda_tahun_ditolak(): void
+    {
+        $student = $this->makeStudent();
+
+        $this->actingAs($this->admin())->post(route('reports.store'), [
+            'student_id' => $student->id,
+            'period_start' => '2025-08-01',
+            'period_end' => '2026-08-31',
+            'activity_notes' => 'Berkembang baik',
+        ])->assertSessionHasErrors('period_end');
+
+        $this->assertDatabaseCount('student_reports', 0);
+    }
+
+    /**
+     * Aturannya juga menggigit saat mengedit — raport lama yang periodenya
+     * terlanjur melintasi bulan harus dibetulkan sebelum bisa disimpan ulang.
+     */
+    public function test_edit_raport_juga_menolak_periode_lintas_bulan(): void
+    {
+        $student = $this->makeStudent();
+        $report = StudentReport::create([
+            'student_id' => $student->id,
+            'period_start' => '2026-08-01',
+            'period_end' => '2026-08-31',
+            'activity_notes' => 'Berkembang baik',
+        ]);
+
+        $this->actingAs($this->admin())->put(route('reports.update', $report), [
+            'student_id' => $student->id,
+            'period_start' => '2026-08-01',
+            'period_end' => '2026-09-04',
+            'activity_notes' => 'Berkembang baik',
+        ])->assertSessionHasErrors('period_end');
+
+        $this->assertSame('2026-08-31', $report->refresh()->period_end->toDateString());
+    }
+
+    /**
+     * Buah dari aturan di atas: "karya periode ini" di halaman raport selalu
+     * sama dengan isi folder bulanannya — sumber kebingungan angka 3 vs 2 hilang.
+     */
+    public function test_karya_periode_raport_sama_dengan_isi_folder_bulanan(): void
+    {
+        $student = $this->makeStudent();
+        $this->makeArtwork($student, '2026-08-01');
+        $this->makeArtwork($student, '2026-08-20');
+        $this->makeArtwork($student, '2026-09-02');
+
+        $report = StudentReport::create([
+            'student_id' => $student->id,
+            'period_start' => '2026-08-01',
+            'period_end' => '2026-08-31',
+            'activity_notes' => 'Berkembang baik',
+        ]);
+
+        $this->assertSame(
+            $student->artworks()->inMonth('2026-08')->count(),
+            $report->artworkQuery()->count(),
+            'Karya periode raport harus sama persis dengan isi folder bulan itu.'
+        );
+        $this->assertSame(2, $report->artworkQuery()->count());
     }
 
     public function test_tamu_tanpa_login_tidak_bisa_membuka_galeri_admin(): void

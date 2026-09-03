@@ -18,11 +18,14 @@
     </div>
     <div class="col-md-3 mb-3">
         <label class="form-label">Periode Mulai</label>
-        <input type="date" name="period_start" class="form-control" value="{{ old('period_start', isset($report) ? $report->period_start->format('Y-m-d') : ($defaultStart ?? '')) }}" required>
+        <input type="date" name="period_start" class="form-control @error('period_start') is-invalid @enderror" value="{{ old('period_start', isset($report) ? $report->period_start->format('Y-m-d') : ($defaultStart ?? '')) }}" required>
+        @error('period_start')<div class="invalid-feedback">{{ $message }}</div>@enderror
     </div>
     <div class="col-md-3 mb-3">
         <label class="form-label">Periode Selesai</label>
-        <input type="date" name="period_end" class="form-control" value="{{ old('period_end', isset($report) ? $report->period_end->format('Y-m-d') : ($defaultEnd ?? '')) }}" required>
+        <input type="date" name="period_end" class="form-control @error('period_end') is-invalid @enderror" value="{{ old('period_end', isset($report) ? $report->period_end->format('Y-m-d') : ($defaultEnd ?? '')) }}" required>
+        @error('period_end')<div class="invalid-feedback">{{ $message }}</div>@enderror
+        <small class="text-muted d-block mt-1">Harus di bulan yang sama dengan tanggal mulai.</small>
     </div>
     <div class="col-12 mb-3">
         <label class="form-label">Catatan Aktivitas / Perkembangan</label>

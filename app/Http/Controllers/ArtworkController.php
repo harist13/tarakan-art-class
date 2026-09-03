@@ -165,27 +165,57 @@ class ArtworkController extends Controller
     }
 
     /**
-     * Ubah tanggal / deskripsi satu foto.
+     * Ubah satu karya: tanggal, deskripsi, dan/atau gambarnya.
      *
      * Tanggal ikut bisa diubah karena itu yang menentukan foldernya — satu foto
-     * yang salah tanggal jadi tersangkut di bulan yang keliru.
+     * yang salah tanggal jadi tersangkut di bulan yang keliru. Gambarnya juga
+     * bisa diganti tanpa hapus-lalu-unggah-ulang, supaya tanggal & deskripsi yang
+     * sudah benar tidak perlu diketik lagi hanya karena fotonya salah/buram.
      */
     public function update(Request $request, Artwork $artwork)
     {
         $data = $request->validate([
             'taken_on' => ['required', 'date', 'before_or_equal:today'],
             'description' => ['nullable', 'string', 'max:255'],
+            'photo' => ['nullable', 'image', 'mimes:jpeg,jpg,png,webp', 'max:4096'],
         ], [
             'taken_on.before_or_equal' => 'Tanggal karya tidak boleh di masa depan.',
+            'photo.image' => 'Berkas pengganti harus berupa gambar.',
+            'photo.max' => 'Ukuran foto maksimal 4MB.',
         ]);
 
-        DB::transaction(function () use ($artwork, $data) {
-            $artwork->update($data);
-            ActivityLog::record('updated', $artwork->student, "Memperbarui keterangan karya {$artwork->student->name}");
-        });
+        unset($data['photo']);
+
+        // Sama seperti store(): tulis ke disk dulu di luar transaksi, karena
+        // penulisan file tidak ikut ter-rollback bila DB gagal.
+        $lama = $artwork->photo_path;
+        $baru = null;
+        if ($request->hasFile('photo')) {
+            $baru = $request->file('photo')->store('artworks', 'public');
+            $data['photo_path'] = $baru;
+        }
+
+        try {
+            DB::transaction(function () use ($artwork, $data, $baru) {
+                $artwork->update($data);
+                ActivityLog::record('updated', $artwork->student, $baru
+                    ? "Mengganti gambar karya {$artwork->student->name}"
+                    : "Memperbarui keterangan karya {$artwork->student->name}");
+            });
+        } catch (\Throwable $e) {
+            if ($baru) {
+                Storage::disk('public')->delete($baru);
+            }
+            throw $e;
+        }
+
+        // Buang berkas lama hanya setelah commit sukses & memang diganti.
+        if ($baru) {
+            Storage::disk('public')->delete($lama);
+        }
 
         return redirect()->route('artworks.folder', ['student' => $artwork->student_id, 'month' => $artwork->fresh()->month()])
-            ->with('success', 'Keterangan karya berhasil diperbarui.');
+            ->with('success', $baru ? 'Karya berhasil diperbarui beserta gambarnya.' : 'Keterangan karya berhasil diperbarui.');
     }
 
     public function destroy(Artwork $artwork)

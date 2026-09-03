@@ -66,7 +66,8 @@
                                         data-action="{{ route('artworks.update', $artwork) }}"
                                         data-date="{{ $artwork->taken_on->format('Y-m-d') }}"
                                         data-description="{{ $artwork->description }}"
-                                        title="Ubah keterangan"><i class="bi bi-pencil"></i></button>
+                                        data-photo="{{ $artwork->photoUrl() }}"
+                                        title="Ubah gambar &amp; keterangan"><i class="bi bi-pencil"></i></button>
                                 <form action="{{ route('artworks.destroy', $artwork) }}" method="POST" class="flex-grow-1"
                                       onsubmit="return confirm('Hapus foto karya ini? Berkasnya ikut terhapus.')">
                                     @csrf @method('DELETE')
@@ -89,18 +90,35 @@
     </div>
 </div>
 
-{{-- Ubah tanggal & deskripsi satu foto. Tanggal ikut bisa diubah karena itu yang
-     menentukan folder bulannya — foto yang salah tanggal tersangkut di bulan keliru. --}}
+{{-- Ubah gambar, tanggal & deskripsi satu karya. Tanggal ikut bisa diubah karena
+     itu yang menentukan folder bulannya — foto yang salah tanggal tersangkut di
+     bulan keliru. Gambarnya bisa diganti agar tak perlu hapus lalu unggah ulang. --}}
 <div class="modal fade" id="editArtworkModal" tabindex="-1">
     <div class="modal-dialog">
-        <form method="POST" id="editArtworkForm">
+        <form method="POST" id="editArtworkForm" enctype="multipart/form-data">
             @csrf @method('PUT')
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title"><i class="bi bi-pencil me-2 text-info"></i>Ubah Keterangan Karya</h5>
+                    <h5 class="modal-title"><i class="bi bi-pencil me-2 text-info"></i>Ubah Karya</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Gambar</label>
+                        <div class="d-flex gap-3 align-items-start">
+                            <img id="editArtworkPreview" alt="Gambar karya saat ini"
+                                 class="rounded border flex-shrink-0"
+                                 style="width:110px; height:110px; object-fit:cover; background:#f1f5f9;">
+                            <div class="flex-grow-1">
+                                <input type="file" name="photo" id="editArtworkPhoto" class="form-control"
+                                       accept="image/jpeg,image/png,image/webp">
+                                <small class="text-muted d-block mt-1">
+                                    Kosongkan bila gambarnya tidak diganti. JPG/PNG/WebP, maks 4MB.
+                                    Gambar lama ikut terhapus setelah diganti.
+                                </small>
+                            </div>
+                        </div>
+                    </div>
                     <div class="mb-3">
                         <label class="form-label">Tanggal Karya</label>
                         <input type="date" name="taken_on" class="form-control" max="{{ now()->toDateString() }}" required>
@@ -127,14 +145,30 @@ document.addEventListener('DOMContentLoaded', function () {
     const modalEl = document.getElementById('editArtworkModal');
     const modal = new bootstrap.Modal(modalEl);
     const form = document.getElementById('editArtworkForm');
+    const fileInput = document.getElementById('editArtworkPhoto');
+    const preview = document.getElementById('editArtworkPreview');
 
     document.querySelectorAll('.btn-edit-artwork').forEach(function (btn) {
         btn.addEventListener('click', function () {
             form.action = btn.dataset.action;
             form.querySelector('[name="taken_on"]').value = btn.dataset.date;
             form.querySelector('[name="description"]').value = btn.dataset.description || '';
+            // Modalnya dipakai bergantian untuk semua kartu, jadi pilihan berkas
+            // dari kartu sebelumnya harus dibuang — kalau tidak, gambar kartu ini
+            // ikut tertimpa berkas yang tadi dipilih untuk kartu lain.
+            fileInput.value = '';
+            preview.src = btn.dataset.photo;
             modal.show();
         });
+    });
+
+    // Pratinjau gambar pengganti sebelum disimpan.
+    fileInput.addEventListener('change', function () {
+        const file = this.files[0];
+        if (!file) return;
+        const url = URL.createObjectURL(file);
+        preview.onload = function () { URL.revokeObjectURL(url); };
+        preview.src = url;
     });
 });
 </script>
