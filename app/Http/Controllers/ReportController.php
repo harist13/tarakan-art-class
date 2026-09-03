@@ -63,10 +63,21 @@ class ReportController extends Controller
 
     public function create(Request $request)
     {
+        // Murid yang dituju bila form dibuka dari folder karya — lihat tombol
+        // "Buat Raport" di artworks/folder.
+        $prefillStudentId = $request->integer('student_id') ?: null;
+
         // Raport boleh disusun untuk semua murid yang masih ikut kelas — menahan
         // penulisannya hanya membuat pekerjaan tutor menumpuk. Yang tertahan saat
         // menunggak adalah akses orang tua ke hasilnya.
-        $students = Student::attendable()->orderBy('name')->get();
+        //
+        // Murid prefill ikut dimuat walau statusnya sudah tidak attendable: tombol
+        // itu menjanjikan murid tersebut terpilih, jangan sampai jatuh ke kosong.
+        $students = Student::query()
+            ->where(fn ($q) => $q->attendable()
+                ->when($prefillStudentId, fn ($s) => $s->orWhere('id', $prefillStudentId)))
+            ->orderBy('name')
+            ->get();
 
         // Pre-fill periode berdasarkan folder bulan yang sedang dibuka.
         $month = $request->string('month')->toString();
@@ -78,7 +89,7 @@ class ReportController extends Controller
             $defaultEnd = $dt->copy()->endOfMonth()->format('Y-m-d');
         }
 
-        return view('reports.create', compact('students', 'defaultStart', 'defaultEnd'));
+        return view('reports.create', compact('students', 'defaultStart', 'defaultEnd', 'prefillStudentId'));
     }
 
     public function store(Request $request)

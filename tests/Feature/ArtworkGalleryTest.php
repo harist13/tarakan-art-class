@@ -316,6 +316,65 @@ class ArtworkGalleryTest extends TestCase
             ->assertSee('Belum ada raport');
     }
 
+    /**
+     * Tombol "Buat Raport" di folder karya menjanjikan raport untuk murid itu,
+     * jadi muridnya harus ikut terbawa — bukan cuma bulannya.
+     */
+    public function test_tombol_buat_raport_di_folder_membawa_murid_dan_bulan(): void
+    {
+        $student = $this->makeStudent();
+        $this->makeArtwork($student, '2026-09-05');
+
+        $this->actingAs($this->admin())
+            ->get(route('artworks.folder', ['student' => $student->id, 'month' => '2026-09']))
+            ->assertOk()
+            // e(): Blade meng-escape '&' di href jadi '&amp;'.
+            ->assertSee(e(route('reports.create', ['month' => '2026-09', 'student_id' => $student->id])), false);
+    }
+
+    public function test_form_raport_memilih_murid_dari_prefill(): void
+    {
+        $student = $this->makeStudent('Indra Lesmana');
+        $lain = $this->makeStudent('Murid Lain');
+
+        $html = $this->actingAs($this->admin())
+            ->get(route('reports.create', ['month' => '2026-09', 'student_id' => $student->id]))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('value="'.$student->id.'" selected', $html);
+        $this->assertStringNotContainsString('value="'.$lain->id.'" selected', $html);
+    }
+
+    /**
+     * Murid yang sudah tidak aktif tetap muncul saat di-prefill: kalau tidak,
+     * tombolnya menjanjikan sesuatu yang tidak bisa dipenuhi dropdown.
+     */
+    public function test_murid_nonaktif_tetap_terpilih_saat_prefill(): void
+    {
+        $student = $this->makeStudent('Indra Lesmana');
+        $student->update(['status' => 'inactive']);
+
+        $html = $this->actingAs($this->admin())
+            ->get(route('reports.create', ['student_id' => $student->id]))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('value="'.$student->id.'" selected', $html);
+    }
+
+    public function test_form_raport_tanpa_prefill_tidak_memilih_murid_mana_pun(): void
+    {
+        $student = $this->makeStudent();
+
+        $html = $this->actingAs($this->admin())
+            ->get(route('reports.create'))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringNotContainsString('value="'.$student->id.'" selected', $html);
+    }
+
     public function test_tamu_tanpa_login_tidak_bisa_membuka_galeri_admin(): void
     {
         $student = $this->makeStudent();

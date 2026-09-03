@@ -4,7 +4,7 @@
         <select name="student_id" class="form-select" required>
             <option value="">— Pilih Murid —</option>
             @foreach($students as $student)
-                <option value="{{ $student->id }}" @selected(old('student_id', $report->student_id ?? '') == $student->id)>{{ $student->name }} ({{ $student->student_id }})</option>
+                <option value="{{ $student->id }}" @selected(old('student_id', $report->student_id ?? ($prefillStudentId ?? '')) == $student->id)>{{ $student->name }} ({{ $student->student_id }})</option>
             @endforeach
         </select>
         @error('student_id')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror

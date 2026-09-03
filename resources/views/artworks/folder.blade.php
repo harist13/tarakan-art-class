@@ -38,7 +38,7 @@
             <i class="bi bi-exclamation-triangle me-1"></i>Belum ada raport {{ $dt->locale('id')->translatedFormat('F Y') }} untuk {{ $student->name }},
             jadi karya ini belum bisa dibuka orang tua lewat credential key.
         </span>
-        <a href="{{ route('reports.create', ['month' => $month]) }}" class="btn btn-sm btn-outline-warning text-dark"><i class="bi bi-plus-lg me-1"></i>Buat Raport</a>
+        <a href="{{ route('reports.create', ['month' => $month, 'student_id' => $student->id]) }}" class="btn btn-sm btn-outline-warning text-dark"><i class="bi bi-plus-lg me-1"></i>Buat Raport</a>
     </div>
 @endif
 
