@@ -56,7 +56,7 @@ class FinancialController extends Controller
 
     public function create()
     {
-        return view('financials.create');
+        return view('financials.create', ['categories' => $this->categoryOptions()]);
     }
 
     public function store(Request $request)
@@ -74,20 +74,23 @@ class FinancialController extends Controller
 
     public function edit(Transaction $financial)
     {
-        if ($guard = $this->guardAutoTransaction($financial)) {
+        if ($guard = $this->guardAutoTransaction($financial) ?? $this->guardRestrictedCategory($financial)) {
             return $guard;
         }
 
-        return view('financials.edit', ['transaction' => $financial]);
+        return view('financials.edit', [
+            'transaction' => $financial,
+            'categories' => $this->categoryOptions($financial),
+        ]);
     }
 
     public function update(Request $request, Transaction $financial)
     {
-        if ($guard = $this->guardAutoTransaction($financial)) {
+        if ($guard = $this->guardAutoTransaction($financial) ?? $this->guardRestrictedCategory($financial)) {
             return $guard;
         }
 
-        $data = $this->validateData($request);
+        $data = $this->validateData($request, $financial);
 
         DB::transaction(function () use ($financial, $data) {
             $financial->update($data);
@@ -99,7 +102,7 @@ class FinancialController extends Controller
 
     public function destroy(Transaction $financial)
     {
-        if ($guard = $this->guardAutoTransaction($financial)) {
+        if ($guard = $this->guardAutoTransaction($financial) ?? $this->guardRestrictedCategory($financial)) {
             return $guard;
         }
 
@@ -146,11 +149,46 @@ class FinancialController extends Controller
             ->with('error', 'Transaksi ini otomatis dari pembayaran lunas. Ubah atau void invoicenya di menu Pembayaran.');
     }
 
-    private function validateData(Request $request): array
+    /**
+     * Daftar isi dropdown kategori. Kategori transaksi lama yang sudah tidak ada di
+     * daftar tetap disertakan supaya nilainya tidak ikut berubah saat transaksi itu diedit.
+     */
+    private function categoryOptions(?Transaction $transaction = null): array
+    {
+        $categories = auth()->user()?->isSuperAdmin()
+            ? Transaction::CATEGORIES
+            : array_values(array_diff(Transaction::CATEGORIES, Transaction::SUPER_ADMIN_CATEGORIES));
+
+        if ($transaction?->category && ! in_array($transaction->category, $categories, true)) {
+            $categories[] = $transaction->category;
+        }
+
+        return $categories;
+    }
+
+    /**
+     * Transaksi berkategori khusus Super Admin (mis. Gaji Tutor) tidak boleh
+     * diubah atau dihapus admin biasa.
+     */
+    private function guardRestrictedCategory(Transaction $transaction): ?RedirectResponse
+    {
+        if (! in_array($transaction->category, Transaction::SUPER_ADMIN_CATEGORIES, true)) {
+            return null;
+        }
+
+        if (auth()->user()?->isSuperAdmin()) {
+            return null;
+        }
+
+        return redirect()->route('financials.index')
+            ->with('error', "Transaksi kategori {$transaction->category} hanya bisa dikelola Super Admin.");
+    }
+
+    private function validateData(Request $request, ?Transaction $transaction = null): array
     {
         return $request->validate([
             'type' => ['required', Rule::in(['income', 'expense'])],
-            'category' => ['required', 'string', 'max:255'],
+            'category' => ['required', Rule::in($this->categoryOptions($transaction))],
             'amount' => ['required', 'numeric', 'min:0'],
             'transaction_date' => ['required', 'date'],
             'description' => ['nullable', 'string'],

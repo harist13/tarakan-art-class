@@ -8,10 +8,13 @@
     </div>
     <div class="col-md-6 mb-3">
         <label class="form-label">Kategori</label>
-        <input type="text" name="category" class="form-control" list="categoryList" value="{{ old('category', $transaction->category ?? '') }}" required>
-        <datalist id="categoryList">
-            <option value="SPP / Pembayaran Kelas"><option value="Gaji Tutor"><option value="Perlengkapan"><option value="Sewa Tempat"><option value="Operasional"><option value="Penjualan Barang">
-        </datalist>
+        @php($selectedCategory = old('category', $transaction->category ?? ''))
+        <select name="category" class="form-select" required>
+            <option value="">-- Pilih Kategori --</option>
+            @foreach ($categories as $category)
+                <option value="{{ $category }}" @selected($selectedCategory === $category)>{{ $category }}</option>
+            @endforeach
+        </select>
     </div>
     <div class="col-md-6 mb-3">
         <label class="form-label">Jumlah (Rp)</label>

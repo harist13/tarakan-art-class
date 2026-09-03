@@ -99,7 +99,7 @@ class SampleDataSeeder extends Seeder
         $expenses = [
             ['category' => 'Gaji Tutor', 'amount' => 3000000],
             ['category' => 'Perlengkapan', 'amount' => 750000],
-            ['category' => 'Sewa Tempat', 'amount' => 2000000],
+            ['category' => 'Operasional', 'amount' => 2000000],
         ];
         foreach ($expenses as $exp) {
             Transaction::firstOrCreate(

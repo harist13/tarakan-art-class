@@ -122,11 +122,14 @@
                                             <i class="bi bi-box-seam"></i>
                                         </a>
                                     @endif
-                                    <a href="{{ route('financials.edit', $trx) }}" class="btn btn-sm btn-info text-white"><i class="bi bi-pencil"></i></a>
-                                    <form action="{{ route('financials.destroy', $trx) }}" method="POST" class="d-inline" onsubmit="return confirm('Hapus transaksi ini?')">
-                                        @csrf @method('DELETE')
-                                        <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
-                                    </form>
+                                    {{-- Kategori khusus Super Admin (mis. Gaji Tutor) tidak bisa diubah admin biasa. --}}
+                                    @if(! in_array($trx->category, \App\Models\Transaction::SUPER_ADMIN_CATEGORIES, true) || auth()->user()?->isSuperAdmin())
+                                        <a href="{{ route('financials.edit', $trx) }}" class="btn btn-sm btn-info text-white"><i class="bi bi-pencil"></i></a>
+                                        <form action="{{ route('financials.destroy', $trx) }}" method="POST" class="d-inline" onsubmit="return confirm('Hapus transaksi ini?')">
+                                            @csrf @method('DELETE')
+                                            <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                                        </form>
+                                    @endif
                                 @endif
                             </td>
                         </tr>
