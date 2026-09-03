@@ -6,6 +6,7 @@ use App\Models\Payment;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use RuntimeException;
 
 /**
@@ -125,27 +126,42 @@ class MidtransSnap
     }
 
     /**
-     * order_id untuk Midtrans: INV001-17-1, INV001-17-2, …
+     * order_id untuk Midtrans: INV017-9-k3f9-1, INV017-9-k3f9-2, …
      *
-     * Susunannya {nomor invoice}-{id baris}-{percobaan}. Angka tengah wajib ada
-     * karena nomor invoice BISA terpakai ulang: Payment::generateInvoiceNumber()
-     * menghitung dari baris terakhir, jadi menghapus invoice terbaru membuat
-     * invoice berikutnya memakai nomor yang sama. Midtrans menuntut order_id
-     * unik selamanya — tanpa id baris, invoice pengganti langsung ditolak
-     * "transaction_details.order_id sudah digunakan" dan orang tua melihat
-     * halaman error. Id baris tidak pernah dipakai ulang (auto-increment).
+     * Susunannya {nomor invoice}-{id baris}-{token acak}-{percobaan}. Midtrans
+     * menuntut order_id unik SELAMANYA, sementara dua bagian pertama bisa
+     * terulang dan keduanya pernah mematikan tautan bayar:
+     *
+     *  - Nomor invoice dipakai ulang begitu invoice terakhir dihapus, karena
+     *    Payment::generateInvoiceNumber() menghitung dari baris terakhir. Id
+     *    baris yang auto-increment membedakan invoice pengganti dari yang lama.
+     *  - Id baris pun terulang setiap database di-reset: migrate:fresh
+     *    mengembalikan auto-increment ke 1, sedangkan Midtrans tetap mengingat
+     *    order_id dari database yang sudah dibuang. Tautan bayar lalu ditolak
+     *    "order_id sudah digunakan" dan orang tua hanya melihat "tautan sedang
+     *    tidak dapat dibuat" — kegagalan yang mustahil ditebak dari layar admin.
+     *    Token acak per transaksi menutup celah itu.
+     *
+     * Token diambil ulang dari order_id sebelumnya supaya seluruh percobaan
+     * untuk satu invoice tetap terbaca berkelompok di Dashboard Midtrans.
      */
     private function nextOrderId(Payment $payment): string
     {
+        $token = strtolower(Str::random(4));
         $attempt = 1;
 
-        if ($payment->snap_order_id && preg_match('/-(\d+)$/', $payment->snap_order_id, $m)) {
+        if ($payment->snap_order_id && preg_match('/-([a-z0-9]{4})-(\d+)$/', $payment->snap_order_id, $m)) {
+            $token = $m[1];
+            $attempt = (int) $m[2] + 1;
+        } elseif ($payment->snap_order_id && preg_match('/-(\d+)$/', $payment->snap_order_id, $m)) {
+            // Format lama {invoice}-{id}-{percobaan}: hitungannya dilanjutkan,
+            // tokennya baru — order_id-nya tetap berbeda dari yang sudah dipakai.
             $attempt = (int) $m[1] + 1;
         } elseif ($payment->snap_order_id) {
             $attempt = 2;
         }
 
-        return $payment->invoice_number.'-'.$payment->getKey().'-'.$attempt;
+        return $payment->invoice_number.'-'.$payment->getKey().'-'.$token.'-'.$attempt;
     }
 
     /**
@@ -181,7 +197,7 @@ class MidtransSnap
             'callbacks' => [
                 'finish' => route('pay.show', $payment->payToken()),
             ],
-        ]);
+        ] + $this->channelWhitelist());
 
         if ($response->failed()) {
             // error_messages berisi alasan yang bisa ditindaklanjuti admin
@@ -195,6 +211,25 @@ class MidtransSnap
             'token' => $response->json('token'),
             'redirect_url' => $response->json('redirect_url'),
         ];
+    }
+
+    /**
+     * Batasi channel yang muncul di popup Snap.
+     *
+     * Midtrans hanya mengenal daftar putih; tidak ada cara mematikan satu
+     * channel selain menyebut semua yang boleh tampil. Alasan QRIS & dompet
+     * digital tidak ikut didaftarkan ada di config/midtrans.php.
+     *
+     * Daftar kosong = kunci ini tidak dikirim sama sekali, sehingga Snap
+     * kembali menampilkan seluruh channel yang aktif di dashboard.
+     *
+     * @return array{enabled_payments?: list<string>}
+     */
+    private function channelWhitelist(): array
+    {
+        $channels = array_values(array_filter((array) config('midtrans.enabled_payments', [])));
+
+        return $channels === [] ? [] : ['enabled_payments' => $channels];
     }
 
     /** Status terkini dari Core API — dipakai bila webhook tidak sampai. */

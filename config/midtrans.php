@@ -28,6 +28,27 @@ return [
     'expiry_hours' => (int) env('MIDTRANS_EXPIRY_HOURS', 24),
 
     /*
+    | Channel yang boleh muncul di popup Snap (daftar putih `enabled_payments`).
+    |
+    | QRIS dan dompet digital sengaja TIDAK didaftarkan. Transaksinya tidak bisa
+    | ditelusuri lewat order_id di Core API, jadi tombol "cek status" tidak
+    | menolong: invoice hanya bisa lunas kalau notifikasi Midtrans sampai. Begitu
+    | webhook meleset sekali saja, uang sudah masuk tapi invoicenya tertinggal
+    | Unpaid dan tidak ada cara membetulkannya dari dalam aplikasi. Virtual
+    | Account dan gerai ritel selalu bisa diperiksa ulang lewat order_id.
+    |
+    | Kosongkan (MIDTRANS_ENABLED_PAYMENTS=) untuk kembali menampilkan seluruh
+    | channel yang aktif di Dashboard Midtrans, QRIS termasuk.
+    */
+    'enabled_payments' => array_values(array_filter(array_map(
+        'trim',
+        explode(',', (string) env(
+            'MIDTRANS_ENABLED_PAYMENTS',
+            'credit_card,bca_va,bni_va,bri_va,cimb_va,permata_va,other_va,echannel,indomaret,alfamart'
+        ))
+    ))),
+
+    /*
     | Endpoint resmi Midtrans. Snap dipakai untuk membuat transaksi, Core API
     | untuk mengambil ulang status (dipakai saat webhook tidak sampai).
     */

@@ -134,13 +134,49 @@ class MidtransSnapPaymentTest extends TestCase
             ->assertSee('snap-token-1', false);
 
         $payment->refresh();
-        $orderId = $payment->invoice_number.'-'.$payment->id.'-1';
-        $this->assertSame($orderId, $payment->snap_order_id);
+        $orderId = $payment->snap_order_id;
+        $this->assertMatchesRegularExpression(
+            '/^'.$payment->invoice_number.'-'.$payment->id.'-[a-z0-9]{4}-1$/',
+            $orderId
+        );
         $this->assertSame('snap-token-1', $payment->snap_token);
         $this->assertSame('pending', $payment->gateway_status);
 
         Http::assertSent(fn ($request) => $request['transaction_details']['gross_amount'] === 250000
             && $request['transaction_details']['order_id'] === $orderId);
+    }
+
+    public function test_popup_snap_tidak_menawarkan_qris_maupun_dompet_digital(): void
+    {
+        $this->fakeSnap();
+        $payment = $this->makePayment();
+
+        $this->get(route('pay.show', $payment->pay_token))->assertOk();
+
+        Http::assertSent(function ($request) {
+            $channels = $request['enabled_payments'] ?? [];
+
+            $this->assertContains('bca_va', $channels);
+            $this->assertEmpty(array_intersect(
+                ['qris', 'other_qris', 'gopay', 'shopeepay', 'dana'],
+                $channels
+            ));
+
+            return true;
+        });
+    }
+
+    public function test_daftar_channel_kosong_mengembalikan_seluruh_pilihan_midtrans(): void
+    {
+        config(['midtrans.enabled_payments' => []]);
+        $this->fakeSnap();
+        $payment = $this->makePayment();
+
+        $this->get(route('pay.show', $payment->pay_token))->assertOk();
+
+        // Tanpa daftar putih, kuncinya tidak boleh ikut terkirim — Snap
+        // menganggap array kosong sebagai "tidak ada channel yang boleh dipakai".
+        Http::assertSent(fn ($request) => ! array_key_exists('enabled_payments', $request->data()));
     }
 
     public function test_token_snap_dipakai_ulang_selama_belum_kedaluwarsa(): void
@@ -160,13 +196,45 @@ class MidtransSnapPaymentTest extends TestCase
         $payment = $this->makePayment();
         $this->get(route('pay.show', $payment->pay_token))->assertOk();
 
+        $token = explode('-', $payment->fresh()->snap_order_id)[2];
+
         $payment->update(['payment_amount' => 400000]);
         $this->assertNull($payment->fresh()->snap_token);
 
         $this->fakeSnap('snap-token-2');
         $this->get(route('pay.show', $payment->pay_token))->assertOk();
 
-        $this->assertSame($payment->invoice_number.'-'.$payment->id.'-2', $payment->fresh()->snap_order_id);
+        // Token acaknya dipertahankan, hanya angka percobaannya yang naik.
+        $this->assertMatchesRegularExpression(
+            '/^'.$payment->invoice_number.'-'.$payment->id.'-'.$token.'-2$/',
+            $payment->fresh()->snap_order_id
+        );
+    }
+
+    /**
+     * migrate:fresh mengembalikan auto-increment ke 1, jadi invoice dengan nomor
+     * DAN id yang sama persis bisa lahir lagi di database baru — sementara
+     * Midtrans masih mengingat order_id dari database lama dan menolaknya.
+     */
+    public function test_order_id_tidak_terulang_walau_nomor_dan_id_invoice_sama(): void
+    {
+        $this->fakeSnap();
+        $payment = $this->makePayment();
+        $this->get(route('pay.show', $payment->pay_token))->assertOk();
+        $orderLama = $payment->fresh()->snap_order_id;
+
+        // Meniru database yang di-reset: baris yang sama muncul lagi tanpa
+        // jejak transaksi Snap sebelumnya.
+        $payment->forceFill([
+            'snap_order_id' => null,
+            'snap_token' => null,
+            'snap_expires_at' => null,
+        ])->save();
+
+        $this->fakeSnap('snap-token-2');
+        $this->get(route('pay.show', $payment->pay_token))->assertOk();
+
+        $this->assertNotSame($orderLama, $payment->fresh()->snap_order_id);
     }
 
     /**
