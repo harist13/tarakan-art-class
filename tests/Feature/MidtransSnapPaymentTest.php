@@ -146,7 +146,7 @@ class MidtransSnapPaymentTest extends TestCase
             && $request['transaction_details']['order_id'] === $orderId);
     }
 
-    public function test_popup_snap_tidak_menawarkan_qris_maupun_dompet_digital(): void
+    public function test_popup_snap_hanya_menawarkan_virtual_account(): void
     {
         $this->fakeSnap();
         $payment = $this->makePayment();
@@ -158,7 +158,8 @@ class MidtransSnapPaymentTest extends TestCase
 
             $this->assertContains('bca_va', $channels);
             $this->assertEmpty(array_intersect(
-                ['qris', 'other_qris', 'gopay', 'shopeepay', 'dana'],
+                ['qris', 'other_qris', 'gopay', 'shopeepay', 'dana', 'credit_card',
+                    'indomaret', 'alfamart'],
                 $channels
             ));
 

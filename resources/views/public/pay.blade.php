@@ -98,9 +98,8 @@
                     </div>
 
                     <p class="text-center tac-muted-soft small mt-4 mb-0">
-                        Pembayaran diproses oleh Midtrans. Tersedia Virtual Account bank,
-                        kartu kredit, dan setor tunai di Indomaret/Alfamart. Status invoice
-                        diperbarui otomatis setelah pembayaran berhasil.
+                        Pembayaran diproses oleh Midtrans lewat Virtual Account seluruh bank.
+                        Status invoice diperbarui otomatis setelah pembayaran berhasil.
                     </p>
 
                 @elseif($state === 'unavailable')

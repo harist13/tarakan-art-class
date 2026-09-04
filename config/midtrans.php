@@ -35,7 +35,11 @@ return [
     | menolong: invoice hanya bisa lunas kalau notifikasi Midtrans sampai. Begitu
     | webhook meleset sekali saja, uang sudah masuk tapi invoicenya tertinggal
     | Unpaid dan tidak ada cara membetulkannya dari dalam aplikasi. Virtual
-    | Account dan gerai ritel selalu bisa diperiksa ulang lewat order_id.
+    | Account selalu bisa diperiksa ulang lewat order_id.
+    |
+    | Kartu kredit serta gerai ritel (Indomaret/Alfamart) juga tidak ditawarkan:
+    | biayanya paling mahal dan hampir tidak pernah dipakai orang tua untuk SPP
+    | bulanan. Yang tersisa hanyalah Virtual Account seluruh bank.
     |
     | Kosongkan (MIDTRANS_ENABLED_PAYMENTS=) untuk kembali menampilkan seluruh
     | channel yang aktif di Dashboard Midtrans, QRIS termasuk.
@@ -44,7 +48,7 @@ return [
         'trim',
         explode(',', (string) env(
             'MIDTRANS_ENABLED_PAYMENTS',
-            'credit_card,bca_va,bni_va,bri_va,cimb_va,permata_va,other_va,echannel,indomaret,alfamart'
+            'bca_va,bni_va,bri_va,cimb_va,permata_va,other_va,echannel'
         ))
     ))),
 
