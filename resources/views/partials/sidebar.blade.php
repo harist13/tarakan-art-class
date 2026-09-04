@@ -39,7 +39,10 @@
             <a href="{{ route('schedules.index') }}"><i class="bi bi-calendar-range-fill"></i> Jadwal & Replacement</a>
         </li>
         <li class="{{ request()->is('attendances*') ? 'active' : '' }}">
-            <a href="{{ route('attendances.index') }}"><i class="bi bi-person-check-fill"></i> Absensi Kelas</a>
+            {{-- Langsung ke daftar centang hari ini: mengabsen adalah pekerjaan
+                 harian, sedangkan rekapnya sesekali dibuka — tautannya ada di
+                 pojok kanan halaman itu. --}}
+            <a href="{{ route('attendances.create') }}"><i class="bi bi-person-check-fill"></i> Absensi Kelas</a>
         </li>
         <li class="{{ request()->is('reports*') ? 'active' : '' }}">
             <a href="{{ route('reports.index') }}"><i class="bi bi-journal-bookmark-fill"></i> Raport Siswa</a>
