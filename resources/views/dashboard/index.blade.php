@@ -65,11 +65,17 @@
                     </div>
                 </div>
                 <h3 class="fw-bold mb-3 text-gray-900" style="font-size: 1.55rem; line-height: 1.1;">Rp {{ number_format($totalIncome, 0, ',', '.') }}</h3>
-                <div class="d-flex align-items-center gap-2 flex-wrap">
-                    <span class="badge rounded-pill px-2 py-1 fw-semibold text-nowrap" style="font-size: 0.76rem; background: #DCFCE7; color: #16A34A;" title="Pendapatan bulan ini">
+                {{-- Pemasukan kiri, pengeluaran kanan — masing-masing separuh lebar dan
+                     tidak boleh turun baris. Angkanya sengaja tidak dikunci text-nowrap:
+                     nominal yang sangat panjang lebih baik melipat di dalam pill-nya
+                     daripada mendorong pasangannya ke baris berikutnya. --}}
+                <div class="d-flex align-items-stretch gap-2 flex-nowrap">
+                    <span class="badge rounded-pill px-2 py-1 fw-semibold flex-fill text-center d-flex align-items-center justify-content-center"
+                          style="font-size: 0.74rem; background: #DCFCE7; color: #16A34A;" title="Pendapatan bulan ini">
                         &uarr; Rp {{ number_format($monthIncome, 0, ',', '.') }}
                     </span>
-                    <span class="badge rounded-pill px-2 py-1 text-nowrap" style="font-size: 0.76rem; background: #F1F5F9; color: #374151; border: 1px solid #E2E8F0;" title="Pengeluaran bulan ini">
+                    <span class="badge rounded-pill px-2 py-1 flex-fill text-center d-flex align-items-center justify-content-center"
+                          style="font-size: 0.74rem; background: #F1F5F9; color: #374151; border: 1px solid #E2E8F0;" title="Pengeluaran bulan ini">
                         &darr; Rp {{ number_format($monthExpense, 0, ',', '.') }}
                     </span>
                 </div>
@@ -155,36 +161,45 @@
         <div class="card border-0 shadow-sm rounded-4 h-100" style="background: var(--surface); border: 1px solid var(--border) !important;">
             <div class="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center py-3 px-4">
                 <div>
-                    <h5 class="fw-bold mb-0 text-gray-800" style="font-size: 1.05rem;">Murid per Tipe Kelas</h5>
+                    <h5 class="fw-bold mb-0 text-gray-800" style="font-size: 1.05rem;">Murid per Kategori Kelas</h5>
                     <div class="text-muted small" style="font-size: 0.78rem;">Distribusi murid dan jumlah tutor</div>
                 </div>
                 <span class="badge bg-light text-dark border rounded-pill px-2 py-1" style="font-size: 0.75rem;">
                     {{ $totalStudents }} Total
                 </span>
             </div>
-            <div class="card-body p-3 p-md-4">
-                @forelse($studentsPerClassType as $type)
-                    <div class="d-flex align-items-center justify-content-between p-3 mb-2 rounded-3"
-                         style="background: {{ $type['bg_subtle'] }}; border: 1px solid rgba(0,0,0,0.04);">
-                        <div class="d-flex align-items-center gap-3">
-                            <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                                 style="width: 38px; height: 38px; background: white; color: {{ $type['text_color'] }}; box-shadow: 0 2px 6px rgba(0,0,0,0.06);">
-                                <i class="{{ $type['icon'] }} fs-6"></i>
-                            </div>
-                            <div>
-                                <div class="fw-bold text-gray-800 mb-0" style="font-size: 0.95rem;">{{ $type['label'] }}</div>
-                                <div class="small text-muted" style="font-size: 0.75rem;">
-                                    <i class="bi bi-person-badge me-1"></i>{{ $type['tutor_count'] }} tutor
+            {{-- Hanya 3 kategori yang terlihat; sisanya dicapai lewat scroll di dalam
+                 daftar, ditandai panah di tepi bawah selama masih ada yang tersembunyi. --}}
+            <div class="card-body p-3 p-md-4 position-relative">
+                <div id="classCategoryList" class="class-category-list">
+                    @forelse($studentsPerClassType as $type)
+                        <div class="d-flex align-items-center justify-content-between p-3 mb-2 rounded-3"
+                             style="background: {{ $type['bg_subtle'] }}; border: 1px solid rgba(0,0,0,0.04);">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                                     style="width: 38px; height: 38px; background: white; color: {{ $type['text_color'] }}; box-shadow: 0 2px 6px rgba(0,0,0,0.06);">
+                                    <i class="{{ $type['icon'] }} fs-6"></i>
+                                </div>
+                                <div>
+                                    <div class="fw-bold text-gray-800 mb-0" style="font-size: 0.95rem;">{{ $type['label'] }}</div>
+                                    <div class="small text-muted" style="font-size: 0.75rem;">
+                                        <i class="bi bi-person-badge me-1"></i>{{ $type['tutor_count'] }} tutor
+                                    </div>
                                 </div>
                             </div>
+                            <span class="badge bg-primary rounded-pill px-3 py-2 fw-bold" style="font-size: 0.8rem; box-shadow: 0 2px 6px rgba(14, 165, 233, 0.25);">
+                                {{ $type['total'] }} murid
+                            </span>
                         </div>
-                        <span class="badge bg-primary rounded-pill px-3 py-2 fw-bold" style="font-size: 0.8rem; box-shadow: 0 2px 6px rgba(14, 165, 233, 0.25);">
-                            {{ $type['total'] }} murid
-                        </span>
-                    </div>
-                @empty
-                    <p class="text-muted text-center py-4 mb-0">Belum ada data murid.</p>
-                @endforelse
+                    @empty
+                        <p class="text-muted text-center py-4 mb-0">Belum ada data murid.</p>
+                    @endforelse
+                </div>
+                @if(count($studentsPerClassType) > 3)
+                    <button type="button" id="classCategoryScrollHint" class="class-category-hint" aria-label="Lihat kategori lainnya">
+                        <i class="bi bi-chevron-down"></i>
+                    </button>
+                @endif
             </div>
         </div>
     </div>
@@ -277,7 +292,70 @@
 </div>
 @endsection
 
+@push('styles')
+<style>
+    /* 250px ≈ tiga baris kategori penuh plus sedikit potongan baris keempat, supaya
+       terlihat bahwa daftarnya masih berlanjut sebelum panahnya diperhatikan. */
+    .class-category-list {
+        max-height: 250px;
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scroll-behavior: smooth;
+        padding-right: 4px;
+    }
+    .class-category-list::-webkit-scrollbar { width: 6px; }
+    .class-category-list::-webkit-scrollbar-thumb {
+        background: rgba(148, 163, 184, 0.5);
+        border-radius: 999px;
+    }
+    .class-category-list::-webkit-scrollbar-track { background: transparent; }
+
+    .class-category-hint {
+        position: absolute;
+        right: 50%;
+        bottom: 6px;
+        transform: translateX(50%);
+        width: 30px;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--border, #E2E8F0);
+        border-radius: 999px;
+        background: var(--surface, #fff);
+        color: #0284C7;
+        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.12);
+        font-size: 0.8rem;
+        opacity: 1;
+        transition: opacity 0.2s ease;
+    }
+    /* Sudah mentok bawah: panahnya dilepas dari alur klik, bukan sekadar transparan. */
+    .class-category-hint.is-hidden {
+        opacity: 0;
+        pointer-events: none;
+    }
+</style>
+@endpush
+
 @push('scripts')
+<script>
+    (function () {
+        const list = document.getElementById('classCategoryList');
+        const hint = document.getElementById('classCategoryScrollHint');
+        if (!list || !hint) return;
+
+        const syncHint = () => {
+            const atBottom = list.scrollTop + list.clientHeight >= list.scrollHeight - 4;
+            hint.classList.toggle('is-hidden', atBottom);
+        };
+
+        // Satu klik menggeser kira-kira tiga baris — sejauh yang sedang terlihat.
+        hint.addEventListener('click', () => list.scrollBy({ top: list.clientHeight, behavior: 'smooth' }));
+        list.addEventListener('scroll', syncHint);
+        window.addEventListener('resize', syncHint);
+        syncHint();
+    })();
+</script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
     const ctx = document.getElementById('growthChart');

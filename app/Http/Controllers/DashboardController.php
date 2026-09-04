@@ -76,23 +76,31 @@ class DashboardController extends Controller
                 ->count();
         }
 
-        // Jumlah murid per tipe kelas (realtime).
+        // Jumlah murid per kategori kelas (realtime).
         //
-        // Kategorinya tidak lagi tetap: sejak `classes.class_category` menjadi teks
-        // bebas, daftar tipe di sini diturunkan dari data — gabungan tipe kelas yang
-        // dipakai murid dan kategori yang ada di Class Management. Kategori yang baru
-        // dibuat admin langsung muncul (walau belum ada muridnya), dan kategori yang
-        // tak lagi dipakai hilang sendiri, bukan tersisa sebagai baris nol permanen.
+        // Acuannya `classes.class_category` — kategori yang benar-benar dipakai di
+        // Class Management — bukan `students.class_type`. Muridnya dihitung lewat
+        // pendaftaran aktif di pivot `student_class`, jadi satu baris kategori selalu
+        // memuat murid dan tutor dari kelas yang sama, tidak terpecah dua seperti saat
+        // tipe murid dan kategori kelas dibaca terpisah.
         //
         // Pengelompokan memakai kunci huruf kecil supaya "Drawing" dan "drawing"
         // terhitung satu, tapi labelnya memakai ejaan asli seperti yang diketik admin.
-        $rawTypeCounts = Student::select('class_type')
-            ->selectRaw('count(*) as total')
-            ->selectRaw('sum(case when status = "active" then 1 else 0 end) as active_count')
-            ->selectRaw('sum(case when status = "inactive" then 1 else 0 end) as inactive_count')
-            ->groupBy('class_type')
+        //
+        // Satu murid yang terdaftar di dua kelas berkategori sama hanya dihitung
+        // sekali (count distinct), tapi tetap dihitung di tiap kategori berbeda yang
+        // diikutinya — karena itu jumlah semua baris bisa melebihi total murid.
+        $rawTypeCounts = \Illuminate\Support\Facades\DB::table('student_class')
+            ->join('classes', 'classes.id', '=', 'student_class.class_id')
+            ->join('students', 'students.id', '=', 'student_class.student_id')
+            ->where('student_class.status', 'active')
+            ->selectRaw('lower(classes.class_category) as category_key')
+            ->selectRaw('count(distinct students.id) as total')
+            ->selectRaw('count(distinct case when students.status = "active" then students.id end) as active_count')
+            ->selectRaw('count(distinct case when students.status = "inactive" then students.id end) as inactive_count')
+            ->groupByRaw('lower(classes.class_category)')
             ->get()
-            ->keyBy(fn ($item) => strtolower($item->class_type ?? 'other'));
+            ->keyBy('category_key');
 
         $tutorCounts = ClassRoom::whereNotNull('tutor_id')
             ->select('class_category')
@@ -101,11 +109,10 @@ class DashboardController extends Controller
             ->pluck('total_tutors', 'class_category')
             ->mapWithKeys(fn ($count, $key) => [strtolower((string) $key) => (int) $count]);
 
-        // Ejaan asli per kunci. Kategori di tabel `classes` didahulukan karena itulah
-        // yang diketik admin; `students.class_type` hanya jadi cadangan untuk tipe
-        // lama yang kelasnya sudah dihapus.
-        $typeLabels = Student::query()->distinct()->pluck('class_type')
-            ->concat(ClassRoom::query()->distinct()->pluck('class_category'))
+        // Ejaan asli per kunci, diambil dari kategori kelas yang ada. Kategori baru
+        // langsung muncul (walau belum ada muridnya), dan kategori yang kelasnya sudah
+        // dihapus hilang sendiri alih-alih tertinggal sebagai baris nol permanen.
+        $typeLabels = ClassRoom::query()->distinct()->pluck('class_category')
             ->filter(fn ($label) => filled($label))
             ->mapWithKeys(fn ($label) => [strtolower($label) => $label])
             ->all();
