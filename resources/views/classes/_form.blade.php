@@ -1,10 +1,10 @@
 {{-- Blok 1 — Identitas kelas: apa yang diajarkan, siapa tutornya, muat berapa
      anak, dan pola pertemuannya.
 
-     Pola Kelas duduk di sini, bukan di blok Jadwal: ia sepenuhnya turunan dari
-     Tipe Kelas di sebelahnya (trial sekali jalan, reguler mingguan), jadi
+     Pola kelas duduk di sini, bukan di blok Jadwal: ia sepenuhnya turunan dari
+     Tipe kelas di sebelahnya (trial sekali jalan, reguler mingguan), jadi
      tempatnya di samping penyebabnya — bukan di antara isian jam. --}}
-<h6 class="text-uppercase text-muted fw-bold small mb-3"><i class="bi bi-easel2 me-1"></i>Informasi Kelas</h6>
+<h6 class="text-uppercase text-muted fw-bold small mb-3"><i class="bi bi-easel2 me-1"></i>Informasi kelas</h6>
 <div class="row g-3">
     <div class="col-md-6">
         <label class="form-label fw-semibold">Kategori <span class="text-danger">*</span></label>
@@ -19,7 +19,7 @@
         <div class="input-group">
             <span class="input-group-text bg-light text-muted"><i class="bi bi-person-video3"></i></span>
             <select name="tutor_id" class="form-select @error('tutor_id') is-invalid @enderror" required>
-                <option value="">— Pilih Tutor —</option>
+                <option value="">— Pilih tutor —</option>
                 @foreach($tutors as $tutor)
                     <option value="{{ $tutor->id }}" @selected(old('tutor_id', $class->tutor_id ?? '') == $tutor->id)>{{ $tutor->name }}</option>
                 @endforeach
@@ -30,7 +30,7 @@
     <div class="col-md-4">
         {{-- Tipe kelas menggantikan saklar pengulangan: trial hanya sekali pertemuan,
              reguler berjalan tiap pekan. Controller yang menurunkan is_recurring. --}}
-        <label class="form-label fw-semibold">Tipe Kelas <span class="text-danger">*</span></label>
+        <label class="form-label fw-semibold">Tipe kelas <span class="text-danger">*</span></label>
         <div class="input-group">
             <span class="input-group-text bg-light text-muted"><i class="bi bi-bookmark"></i></span>
             <select name="class_type" id="class_type" class="form-select @error('class_type') is-invalid @enderror" data-no-search required>
@@ -54,7 +54,7 @@
         {{-- Kotak baca-saja setinggi kontrol di sebelahnya, supaya barisnya rata.
              Kalimat panjangnya turun ke keterangan di bawah — di dalam kotak ia
              akan membuat baris ini lebih tinggi dari dua kolom lainnya. --}}
-        <label class="form-label fw-semibold">Pola Kelas</label>
+        <label class="form-label fw-semibold">Pola kelas</label>
         <div class="input-group">
             <span class="input-group-text bg-light text-muted"><i class="bi bi-arrow-repeat"></i></span>
             <div class="form-control bg-body-secondary" id="recurringPattern">Berulang tiap pekan</div>
@@ -69,7 +69,7 @@
 <h6 class="text-uppercase text-muted fw-bold small mb-3"><i class="bi bi-calendar-week me-1"></i>Jadwal</h6>
 <div class="row g-3">
     <div class="col-md-4">
-        <label class="form-label fw-semibold">Tanggal Kelas <span class="text-danger">*</span></label>
+        <label class="form-label fw-semibold">Tanggal kelas <span class="text-danger">*</span></label>
         <div class="input-group">
             <span class="input-group-text bg-light text-muted"><i class="bi bi-calendar-event"></i></span>
             <input type="date" name="schedule_date" id="schedule_date" class="form-control @error('schedule_date') is-invalid @enderror"
@@ -79,7 +79,7 @@
         <small class="text-muted d-block mt-1" id="scheduleDateHint"><i class="bi bi-calendar-event me-1"></i>Hari kelas diambil dari tanggal ini.</small>
     </div>
     <div class="col-md-4">
-        <label class="form-label fw-semibold">Jam Mulai <span class="text-danger">*</span></label>
+        <label class="form-label fw-semibold">Jam mulai <span class="text-danger">*</span></label>
         <div class="input-group">
             <span class="input-group-text bg-light text-muted"><i class="bi bi-clock"></i></span>
             <input type="time" name="schedule_time" id="schedule_time" class="form-control @error('schedule_time') is-invalid @enderror" value="{{ old('schedule_time', isset($class) ? \Illuminate\Support\Str::of($class->schedule_time)->substr(0,5) : '') }}" required>
@@ -87,7 +87,7 @@
         </div>
     </div>
     <div class="col-md-4">
-        <label class="form-label fw-semibold">Jam Selesai <span class="text-danger">*</span></label>
+        <label class="form-label fw-semibold">Jam selesai <span class="text-danger">*</span></label>
         <div class="input-group">
             <span class="input-group-text bg-light text-muted"><i class="bi bi-clock-history"></i></span>
             <input type="time" name="schedule_end_time" id="schedule_end_time" class="form-control @error('schedule_end_time') is-invalid @enderror" value="{{ old('schedule_end_time', isset($class) ? \Illuminate\Support\Str::of($class->schedule_end_time)->substr(0,5) : '') }}" required>
@@ -104,7 +104,7 @@
 <h6 class="text-uppercase text-muted fw-bold small mb-3"><i class="bi bi-wallet2 me-1"></i>Biaya</h6>
 <div class="row g-3">
     <div class="col-md-4">
-        <label class="form-label fw-semibold">Biaya Kelas <span class="text-danger">*</span></label>
+        <label class="form-label fw-semibold">Biaya kelas <span class="text-danger">*</span></label>
         <div class="input-group">
             <span class="input-group-text bg-light text-muted">Rp</span>
             <input type="number" step="1000" min="0" name="class_fee" id="class_fee" class="form-control @error('class_fee') is-invalid @enderror" value="{{ old('class_fee', isset($class) ? (int) $class->class_fee : '') }}" placeholder="0" required>
@@ -113,7 +113,7 @@
         <small class="text-muted d-block mt-1">Iuran per bulan, ditagih penuh mulai bulan kedua.</small>
     </div>
     <div class="col-md-4">
-        <label class="form-label fw-semibold">Uang Pendaftaran <span class="badge bg-body-secondary text-body-secondary border fw-semibold ms-1">Opsional</span></label>
+        <label class="form-label fw-semibold">Uang pendaftaran <span class="badge bg-body-secondary text-body-secondary border fw-semibold ms-1">Opsional</span></label>
         <div class="input-group">
             <span class="input-group-text bg-light text-muted">Rp</span>
             <input type="number" step="1000" min="0" name="registration_fee" id="registration_fee" class="form-control @error('registration_fee') is-invalid @enderror" value="{{ old('registration_fee', isset($class) ? (int) $class->registration_fee : '') }}" placeholder="0">
@@ -122,7 +122,7 @@
         <small class="text-muted d-block mt-1">Kosongkan bila kelas ini tidak memungutnya.</small>
     </div>
     <div class="col-md-4">
-        <label class="form-label fw-semibold">Total Bayar Awal</label>
+        <label class="form-label fw-semibold">Total bayar awal</label>
         <div class="input-group">
             <span class="input-group-text bg-light text-muted"><i class="bi bi-calculator"></i></span>
             <div class="form-control bg-body-secondary fw-bold" id="totalFeePreview">Rp 0</div>
@@ -131,23 +131,23 @@
     </div>
 </div>
 
-{{-- Harga bulan pertama tidak diketik, melainkan diturunkan dari Biaya Kelas:
+{{-- Harga bulan pertama tidak diketik, melainkan diturunkan dari Biaya kelas:
      murid membayar pekan yang benar-benar ia dapat. Ditampilkan di sini supaya
      admin melihat akibat angka yang baru saja ia ketik, bukan menghitung sendiri
      saat orang tua bertanya. --}}
 <div class="mt-4">
-    <label class="form-label mb-1">Harga Bulan Pertama menurut Pekan Murid Masuk</label>
+    <label class="form-label mb-1">Harga bulan pertama menurut pekan murid masuk</label>
     <p class="text-muted small mb-3">
         Dihitung otomatis: sebulan {{ \App\Models\ClassRoom::WEEKS_PER_MONTH }} pekan, dan murid membayar
         pekan yang ia dapat saja. Berlaku hanya untuk <strong>invoice pertama</strong> —
-        pekan mulai dipilih di data murid, dan bulan-bulan berikutnya selalu Biaya Kelas penuh.
+        pekan mulai dipilih di data murid, dan bulan-bulan berikutnya selalu Biaya kelas penuh.
     </p>
     <div class="row g-2" id="weekLadder">
         @foreach(\App\Models\ClassRoom::START_WEEKS as $week)
             @php $sisa = \App\Models\ClassRoom::WEEKS_PER_MONTH - $week + 1; @endphp
             <div class="col-6 col-md-3">
                 <div class="border rounded p-2 h-100">
-                    <div class="small text-muted">Masuk Minggu ke-{{ $week }}</div>
+                    <div class="small text-muted">Masuk minggu ke-{{ $week }}</div>
                     <div class="fw-bold" data-week-fee="{{ $week }}">Rp 0</div>
                     <div class="small text-muted">{{ $sisa }} dari {{ \App\Models\ClassRoom::WEEKS_PER_MONTH }} pekan</div>
                 </div>
@@ -195,7 +195,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Kotaknya menyebut polanya sesingkat mungkin; alasan & akibatnya turun
         // ke keterangan di bawah, supaya tinggi barisnya tetap sama dengan
-        // Tipe Kelas & Kapasitas di sebelahnya.
+        // Tipe kelas & Kapasitas di sebelahnya.
         if (recurringPattern) {
             recurringPattern.textContent = trial
                 ? 'Sekali pertemuan'
@@ -204,11 +204,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (recurringHint) {
             if (trial) {
-                recurringHint.innerHTML = '<i class="bi bi-calendar-x me-1"></i>Berjalan sekali pada Tanggal Kelas, lalu ditandai sudah lewat.';
+                recurringHint.innerHTML = '<i class="bi bi-calendar-x me-1"></i>Berjalan sekali pada Tanggal kelas, lalu ditandai sudah lewat.';
             } else {
                 recurringHint.innerHTML = hari
-                    ? '<i class="bi bi-arrow-repeat me-1"></i>Berulang <strong>tiap ' + hari + '</strong> sejak Tanggal Kelas, sampai statusnya ditutup.'
-                    : '<i class="bi bi-arrow-repeat me-1"></i>Berulang tiap pekan sejak Tanggal Kelas.';
+                    ? '<i class="bi bi-arrow-repeat me-1"></i>Berulang <strong>tiap ' + hari + '</strong> sejak Tanggal kelas, sampai statusnya ditutup.'
+                    : '<i class="bi bi-arrow-repeat me-1"></i>Berulang tiap pekan sejak Tanggal kelas.';
             }
         }
     }
@@ -221,7 +221,7 @@ document.addEventListener('DOMContentLoaded', function () {
         totalPreview.textContent = 'Rp ' + total.toLocaleString('id-ID');
     }
 
-    // Tangga harga mengikuti Biaya Kelas seketika. Rumusnya disalin dari
+    // Tangga harga mengikuti Biaya kelas seketika. Rumusnya disalin dari
     // ClassRoom::feeForStartWeek() — ini hanya pratinjau; yang dipakai saat
     // menagih tetap hitungan di server.
     const PEKAN_SEBULAN = {{ \App\Models\ClassRoom::WEEKS_PER_MONTH }};

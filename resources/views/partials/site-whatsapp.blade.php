@@ -11,5 +11,5 @@
           style="width: 1.9rem; height: 1.9rem; place-items: center; background-color: #fff;">
         <img src="{{ asset('images/whatsapp.png') }}" alt="" width="30" height="30" decoding="async">
     </span>
-    <span class="tac-display fw-bold d-none d-sm-inline" style="font-size: 0.9rem; color: #ffffff !important;">Chat Admin</span>
+    <span class="tac-display fw-bold d-none d-sm-inline" style="font-size: 0.9rem; color: #ffffff !important;">Chat admin</span>
 </a>

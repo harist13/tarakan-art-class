@@ -81,12 +81,12 @@
             </div>
         </dl>
 
-        {{-- Dropdown Tipe Kelas (Reguler / Kelas Visit) --}}
+        {{-- Dropdown Tipe kelas (Reguler / Kelas Visit) --}}
         @if($visitPrice)
             <div class="mt-3 pt-3 tac-dashed-top">
                 <label for="{{ $selectId }}" class="form-label small fw-bold tac-text-ink mb-1 d-flex justify-content-between align-items-center">
-                    <span>Tipe Kelas</span>
-                    <span class="tac-badge tac-badge-outline" style="font-size: 0.6875rem; background-color: var(--tac-paper-light); color: var(--tac-ink-soft);">Pilih Paket</span>
+                    <span>Tipe kelas</span>
+                    <span class="tac-badge tac-badge-outline" style="font-size: 0.6875rem; background-color: var(--tac-paper-light); color: var(--tac-ink-soft);">Pilih paket</span>
                 </label>
                 <select id="{{ $selectId }}"
                         class="form-select form-select-sm tac-input tac-program-type-select"
@@ -112,8 +112,8 @@
                         "
                         aria-label="Pilih tipe kelas untuk {{ $program['name'] }}"
                         style="background-color: #ffffff; color: var(--tac-ink); border: 1.5px solid var(--tac-line-strong); border-radius: 0.75rem; font-size: 0.84rem; font-weight: 600; padding: 0.45rem 0.75rem; cursor: pointer;">
-                    <option value="regular" selected>Reguler (Bulanan)</option>
-                    <option value="visit">Kelas Visit (Sekali Datang)</option>
+                    <option value="regular" selected>Reguler (bulanan)</option>
+                    <option value="visit">Kelas Visit (sekali datang)</option>
                 </select>
             </div>
         @endif

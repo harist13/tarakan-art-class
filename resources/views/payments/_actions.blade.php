@@ -63,7 +63,7 @@
                 @csrf @method('PATCH')
                 {{-- Label "Lunas" disembunyikan di layar sempit; ikonnya sudah cukup
                      jelas dan tooltipnya tetap ada. --}}
-                <button class="btn btn-sm btn-success text-nowrap" title="Konfirmasi Lunas (pembayaran tunai)">
+                <button class="btn btn-sm btn-success text-nowrap" title="Konfirmasi lunas (pembayaran tunai)">
                     <i class="bi bi-check2-circle"></i><span class="d-none d-sm-inline ms-1">Lunas</span>
                 </button>
             </form>

@@ -6,8 +6,8 @@
             </div>
             <div class="col-md-6 text-center text-md-end">
                 <a href="#" class="text-decoration-none text-muted small me-3 fw-semibold">Bantuan</a>
-                <a href="#" class="text-decoration-none text-muted small me-3 fw-semibold">Kebijakan Privasi</a>
-                <a href="#" class="text-decoration-none text-muted small fw-semibold">Syarat & Ketentuan</a>
+                <a href="#" class="text-decoration-none text-muted small me-3 fw-semibold">Kebijakan privasi</a>
+                <a href="#" class="text-decoration-none text-muted small fw-semibold">Syarat & ketentuan</a>
             </div>
         </div>
     </div>

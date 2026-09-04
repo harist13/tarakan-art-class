@@ -2,23 +2,23 @@
 
 @section('content')
 <div class="d-sm-flex align-items-center justify-content-between mb-4">
-    <h1 class="h3 mb-0 text-gray-800 fw-bold">Absensi Kelas</h1>
+    <h1 class="h3 mb-0 text-gray-800 fw-bold">Absensi kelas</h1>
     <div class="d-flex gap-2">
         @include('partials.export-buttons', ['route' => 'export.attendances'])
-        <a href="{{ route('attendances.create') }}" class="btn btn-sm btn-primary shadow-sm"><i class="bi bi-plus-lg"></i> Input Absensi</a>
+        <a href="{{ route('attendances.create') }}" class="btn btn-sm btn-primary shadow-sm"><i class="bi bi-plus-lg"></i> Input absensi</a>
     </div>
 </div>
 
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-3">
-        <span class="fw-bold text-nowrap">Rekap Kehadiran</span>
+        <span class="fw-bold text-nowrap">Rekap kehadiran</span>
         <form method="GET" data-live class="d-flex flex-wrap align-items-center gap-2">
             <div class="input-group input-group-sm" style="width:190px;">
                 <span class="input-group-text bg-transparent border-end-0"><i class="bi bi-search text-muted"></i></span>
                 <input type="text" name="search" value="{{ $search }}" class="form-control border-start-0 ps-0 py-2" placeholder="Cari murid...">
             </div>
             <select name="class_id" class="form-select form-select-sm" style="width:190px;" aria-label="Filter kelas">
-                <option value="">Semua Kelas</option>
+                <option value="">Semua kelas</option>
                 @foreach($classes as $class)
                     <option value="{{ $class->id }}" @selected($classId == $class->id)>{{ $class->class_category }}</option>
                 @endforeach

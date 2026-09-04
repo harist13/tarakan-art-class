@@ -452,17 +452,17 @@ class PublicSiteTest extends TestCase
     {
         $this->get(route('public.programs'))
             ->assertOk()
-            ->assertSee('Tipe Kelas')
-            ->assertSee('Reguler (Bulanan)')
-            ->assertSee('Kelas Visit (Sekali Datang)')
+            ->assertSee('Tipe kelas')
+            ->assertSee('Reguler (bulanan)')
+            ->assertSee('Kelas Visit (sekali datang)')
             ->assertSee('Rp115.000 / visit')
             ->assertSee('Rp105.000 / visit');
 
         $this->get(route('public.home'))
             ->assertOk()
-            ->assertSee('Tipe Kelas')
-            ->assertSee('Reguler (Bulanan)')
-            ->assertSee('Kelas Visit (Sekali Datang)');
+            ->assertSee('Tipe kelas')
+            ->assertSee('Reguler (bulanan)')
+            ->assertSee('Kelas Visit (sekali datang)');
     }
 
     public function test_halaman_kontak_memuat_faq_dropdown(): void
@@ -478,7 +478,7 @@ class PublicSiteTest extends TestCase
     {
         $this->get(route('public.home'))
             ->assertOk()
-            ->assertSee('Pengumuman & Agenda Terkini', false);
+            ->assertSee('Pengumuman & agenda terkini', false);
     }
 
     private function makeClass(Carbon $date, int $capacity = 8): ClassRoom

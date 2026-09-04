@@ -7,11 +7,11 @@
 
 <div class="d-sm-flex align-items-center justify-content-between mb-4">
     <div>
-        <h1 class="h3 mb-0 text-gray-800 fw-bold">Galeri Karya</h1>
+        <h1 class="h3 mb-0 text-gray-800 fw-bold">Galeri karya</h1>
         @if($dt)
             <nav aria-label="breadcrumb" class="mt-1">
                 <ol class="breadcrumb mb-0 small">
-                    <li class="breadcrumb-item"><a href="{{ route('artworks.index') }}">Semua Bulan</a></li>
+                    <li class="breadcrumb-item"><a href="{{ route('artworks.index') }}">Semua bulan</a></li>
                     <li class="breadcrumb-item active">{{ $dt->locale('id')->translatedFormat('F Y') }}</li>
                 </ol>
             </nav>
@@ -20,7 +20,7 @@
         @endif
     </div>
     <a href="{{ route('artworks.create', $dt ? ['month' => $month] : []) }}" class="btn btn-sm btn-primary shadow-sm">
-        <i class="bi bi-cloud-arrow-up me-1"></i>Tambah Karya
+        <i class="bi bi-cloud-arrow-up me-1"></i>Tambah karya
     </a>
 </div>
 
@@ -30,7 +30,7 @@
             @if($dt)
                 {{ $dt->locale('id')->translatedFormat('F Y') }} — {{ $folders->count() }} murid
             @else
-                Daftar Folder per Bulan
+                Daftar folder per bulan
             @endif
         </span>
         @if($dt)
@@ -67,7 +67,7 @@
                 @endforelse
             </div>
         @else
-            {{-- Folder bulan, sepola dengan Raport Siswa. --}}
+            {{-- Folder bulan, sepola dengan Raport siswa. --}}
             <div class="row g-3">
                 @forelse($months as $item)
                     @php $bulan = \Carbon\Carbon::createFromFormat('Y-m', $item->month); @endphp
@@ -85,7 +85,7 @@
                         <i class="bi bi-images fs-1 d-block mb-3 opacity-50"></i>
                         <p class="mb-3">Belum ada foto karya yang diarsipkan.</p>
                         <a href="{{ route('artworks.create') }}" class="btn btn-sm btn-primary">
-                            <i class="bi bi-cloud-arrow-up me-1"></i>Tambah Karya Pertama
+                            <i class="bi bi-cloud-arrow-up me-1"></i>Tambah karya pertama
                         </a>
                     </div>
                 @endforelse

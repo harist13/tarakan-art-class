@@ -227,7 +227,7 @@
 <body>
 
     <!-- Theme toggle -->
-    <button type="button" class="theme-toggle" id="themeToggle" title="Ganti Tema Terang / Gelap">
+    <button type="button" class="theme-toggle" id="themeToggle" title="Ganti tema terang / gelap">
         <i class="bi bi-moon-stars-fill" id="themeIcon"></i>
     </button>
 
@@ -248,7 +248,7 @@
                          width="70" height="70" decoding="async">
                 </div>
                 <h1 class="brand-title">Tarakan Art Class</h1>
-                <p class="brand-subtitle">Masuk ke Dashboard Administrasi</p>
+                <p class="brand-subtitle">Masuk ke dashboard administrasi</p>
             </div>
 
             <!-- Error Message -->
@@ -264,8 +264,8 @@
                 @csrf
 
                 <div class="form-floating mb-3">
-                    <input type="text" class="form-control" id="login" name="login" placeholder="Email atau Username" value="{{ old('login') }}" required autofocus>
-                    <label for="login"><i class="bi bi-person me-1"></i> Email atau Username</label>
+                    <input type="text" class="form-control" id="login" name="login" placeholder="Email atau username" value="{{ old('login') }}" required autofocus>
+                    <label for="login"><i class="bi bi-person me-1"></i> Email atau username</label>
                 </div>
 
                 <div class="form-floating mb-3 password-wrapper">
@@ -279,7 +279,7 @@
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" id="remember" name="remember">
-                        <label class="form-check-label" for="remember">Ingat Saya</label>
+                        <label class="form-check-label" for="remember">Ingat saya</label>
                     </div>
                 </div>
 

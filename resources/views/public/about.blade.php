@@ -1,6 +1,6 @@
 @extends('layouts.public')
 
-@section('title', 'Tentang Kami')
+@section('title', 'Tentang kami')
 @section('description', 'Cerita di balik Tarakan Art Class, visi & misi kami, metode belajar yang membedakan, dan profil tutor yang mendampingi anak setiap kelas.')
 
 @section('content')
@@ -12,7 +12,7 @@
             <x-site.heading
                 level="h1"
                 align="left"
-                eyebrow="Tentang Kami"
+                eyebrow="Tentang kami"
                 title="Studio kecil, ruang tumbuh yang besar" />
             <p class="lh-lg tac-muted mt-4 mb-0">{{ $about['story'] }}</p>
 
@@ -98,7 +98,7 @@
 {{-- ─── Tutor ──────────────────────────────────────────────────── --}}
 <x-site.section tone="paper">
     <x-site.heading
-        eyebrow="Tim Tutor"
+        eyebrow="Tim tutor"
         title="Orang-orang yang mendampingi anak Anda"
         subtitle="Tutor kami terbiasa mengajar anak, bukan sekadar mahir menggambar." />
 

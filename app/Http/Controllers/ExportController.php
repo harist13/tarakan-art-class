@@ -33,7 +33,7 @@ class ExportController extends Controller
             ->orderByDesc('id')
             ->get();
 
-        $headers = ['Student ID', 'Nama', 'Tgl Lahir', 'Usia', 'Orang Tua', 'Telepon', 'Kelas', 'Tipe Kelas', 'Status', 'Tgl Gabung'];
+        $headers = ['Student ID', 'Nama', 'Tgl lahir', 'Usia', 'Orang tua', 'Telepon', 'Kelas', 'Tipe kelas', 'Status', 'Tgl gabung'];
 
         $rows = $students->map(fn ($s) => [
             $s->student_id,
@@ -48,7 +48,7 @@ class ExportController extends Controller
             optional($s->join_date)->format('d/m/Y'),
         ]);
 
-        return $this->respond($request, 'Data Murid', $headers, $rows, 'data-murid');
+        return $this->respond($request, 'Data murid', $headers, $rows, 'data-murid');
     }
 
     /** Export pembayaran (F6). Menghormati filter search & status. */
@@ -74,11 +74,11 @@ class ExportController extends Controller
             optional($p->payment_date)->format('d/m/Y'),
             number_format($p->payment_amount, 0, ',', '.'),
             $p->methodLabel(),
-            $p->payment_status === 'paid' ? 'Lunas' : 'Belum Lunas',
+            $p->payment_status === 'paid' ? 'Lunas' : 'Belum lunas',
             $p->notes ?: '-',
         ]);
 
-        return $this->respond($request, 'Laporan Pembayaran', $headers, $rows, 'laporan-pembayaran');
+        return $this->respond($request, 'Laporan pembayaran', $headers, $rows, 'laporan-pembayaran');
     }
 
     /** Export laporan keuangan (F7). Menghormati filter month & type. */
@@ -119,14 +119,14 @@ class ExportController extends Controller
         $income = (float) (clone $scope)->where('type', 'income')->sum('amount');
         $expense = (float) (clone $scope)->where('type', 'expense')->sum('amount');
         $meta = [
-            'Total Pemasukan' => 'Rp '.number_format($income, 0, ',', '.'),
-            'Total Pengeluaran' => 'Rp '.number_format($expense, 0, ',', '.'),
+            'Total pemasukan' => 'Rp '.number_format($income, 0, ',', '.'),
+            'Total pengeluaran' => 'Rp '.number_format($expense, 0, ',', '.'),
             'Saldo' => 'Rp '.number_format($income - $expense, 0, ',', '.'),
         ];
 
         $period = FinancialController::periodLabel($month);
 
-        return $this->respond($request, 'Laporan Keuangan '.$period, $headers, $rows, 'laporan-keuangan-'.($month ?: 'semua-periode'), $meta);
+        return $this->respond($request, 'Laporan keuangan '.$period, $headers, $rows, 'laporan-keuangan-'.($month ?: 'semua-periode'), $meta);
     }
 
     /** Export absensi (F5). Menghormati filter class_id & date. */
@@ -148,7 +148,7 @@ class ExportController extends Controller
 
         $headers = ['Tanggal', 'Murid', 'Kelas', 'Status', 'Catatan'];
 
-        $statusLabels = ['present' => 'Hadir', 'absent' => 'Tidak Hadir', 'sick' => 'Sakit', 'permit' => 'Izin'];
+        $statusLabels = ['present' => 'Hadir', 'absent' => 'Tidak hadir', 'sick' => 'Sakit', 'permit' => 'Izin'];
 
         $rows = $attendances->map(fn ($a) => [
             optional($a->attendance_date)->format('d/m/Y'),
@@ -158,7 +158,7 @@ class ExportController extends Controller
             $a->notes ?: '-',
         ]);
 
-        return $this->respond($request, 'Rekap Absensi', $headers, $rows, 'rekap-absensi');
+        return $this->respond($request, 'Rekap absensi', $headers, $rows, 'rekap-absensi');
     }
 
     /**

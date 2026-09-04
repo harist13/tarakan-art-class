@@ -1,6 +1,6 @@
 @extends('layouts.public')
 
-@section('title', 'Jadwal Kelas')
+@section('title', 'Jadwal kelas')
 @section('description', 'Jadwal kelas Tarakan Art Class tiga minggu ke depan, informasi kelas pengganti (replacement class), dan pengumuman Holiday Class.')
 
 @section('content')

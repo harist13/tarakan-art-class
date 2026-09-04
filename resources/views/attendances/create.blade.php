@@ -26,7 +26,7 @@
         <h1 class="h3 mb-1 text-gray-800 fw-bold">Absensi</h1>
         <p class="text-muted small mb-0">Daftarnya ditarik dari jadwal — tinggal centang siapa yang hadir.</p>
     </div>
-    <a href="{{ route('attendances.index') }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-list-ul me-1"></i>Rekap Kehadiran</a>
+    <a href="{{ route('attendances.index') }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-list-ul me-1"></i>Rekap kehadiran</a>
 </div>
 
 {{-- ── Hari yang diabsen ─────────────────────────────────────────────────
@@ -88,7 +88,7 @@
                                 <tr>
                                     <th style="width:52px;" class="text-center">Hadir</th>
                                     <th>Murid</th>
-                                    <th style="width:100px;" class="text-center">Sesi Bulan Ini</th>
+                                    <th style="width:100px;" class="text-center">Sesi bulan ini</th>
                                     <th style="width:170px;">Replacement?</th>
                                     <th style="width:96px;" class="text-end">Izin · Catatan</th>
                                 </tr>
@@ -161,7 +161,7 @@
                                                 {{ $sesiHadir }}/{{ $sessionQuota }}
                                             </span>
                                         </td>
-                                        {{-- Replacement? — pintasan ke Manajemen Jadwal, bukan data
+                                        {{-- Replacement? — pintasan ke Manajemen jadwal, bukan data
                                              absensi: jadwal pengganti hidup di ReplacementRequest.
                                              "Tidak" memang tidak berbuat apa-apa; "Ya" menahan
                                              penyimpanan sampai tanggalnya benar-benar diatur. --}}
@@ -179,14 +179,14 @@
                                                 <a href="{{ $tautanJadwal }}"
                                                    class="btn btn-sm btn-outline-primary flex-shrink-0 {{ $pilihanPengganti === 'ya' ? '' : 'd-none' }}"
                                                    data-replacement-edit
-                                                   title="{{ $requestPengganti ? 'Ubah tanggal & kelas pengganti '.$murid->name : 'Atur jadwal pengganti '.$murid->name }} di Manajemen Jadwal">
+                                                   title="{{ $requestPengganti ? 'Ubah tanggal & kelas pengganti '.$murid->name : 'Atur jadwal pengganti '.$murid->name }} di Manajemen jadwal">
                                                     <i class="bi bi-pencil"></i>
                                                 </a>
                                             </div>
                                             @php
                                                 // Satu badge saja, bukan daftar jadwal: yang perlu
                                                 // diketahui admin cuma "anak ini replacement" dan sesi
-                                                // terdekatnya. Rinciannya di tooltip & Manajemen Jadwal.
+                                                // terdekatnya. Rinciannya di tooltip & Manajemen jadwal.
                                                 $jamPengganti = fn ($req) => \Illuminate\Support\Str::of($req->replacement_time)->substr(0, 5);
                                                 $sesiPengganti = fn ($req) => $req->replacement_date->locale('id')->translatedFormat('j M Y').' · '.$jamPengganti($req)
                                                     .' ('.($req->classRoom->class_category ?? 'kelas lain').')';
@@ -273,7 +273,7 @@
                                 {{ $moved['replacement']->classRoom->class_category ?? 'kelas lain' }},
                                 {{ $moved['replacement']->replacement_date->locale('id')->translatedFormat('j M Y') }}
                                 pukul {{ \Illuminate\Support\Str::of($moved['replacement']->replacement_time)->substr(0, 5) }}@if($moved['lainnya'] > 0) (+{{ $moved['lainnya'] }} sesi lain)@endif
-                                <a href="{{ route('schedules.edit', $moved['replacement']) }}" title="Ubah jadwalnya di Manajemen Jadwal"><i class="bi bi-pencil"></i></a>
+                                <a href="{{ route('schedules.edit', $moved['replacement']) }}" title="Ubah jadwalnya di Manajemen jadwal"><i class="bi bi-pencil"></i></a>
                             </li>
                         @endforeach
                     </ul>
@@ -295,7 +295,7 @@
         <div class="card-body text-center text-muted py-5">
             <i class="bi bi-calendar-x fs-2 d-block mb-2"></i>
             <p class="mb-1">Tidak ada sesi kelas pada {{ $hariPanjang }}.</p>
-            <p class="small mb-0">Jadwal kelas diatur di <a href="{{ route('classes.index') }}">Manajemen Kelas</a>, kelas pengganti di <a href="{{ route('schedules.index') }}">Jadwal &amp; Replacement</a>.</p>
+            <p class="small mb-0">Jadwal kelas diatur di <a href="{{ route('classes.index') }}">Manajemen kelas</a>, kelas pengganti di <a href="{{ route('schedules.index') }}">Jadwal &amp; Replacement</a>.</p>
         </div>
     </div>
 @endforelse

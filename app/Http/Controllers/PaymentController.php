@@ -290,7 +290,7 @@ class PaymentController extends Controller
             return back()->with('error',
                 "Invoice {$payment->invoice_number} memakai {$payment->methodLabel()} — pelunasannya menunggu konfirmasi Midtrans, ".
                 'bukan konfirmasi manual. Pakai tombol cek status; bila uangnya ternyata diterima tunai, '.
-                'ubah dulu Metode / Channel-nya menjadi Cash lewat Edit.');
+                'ubah dulu Metode / channel-nya menjadi Cash lewat Edit.');
         }
 
         DB::transaction(function () use ($payment) {
@@ -438,7 +438,7 @@ class PaymentController extends Controller
         throw ValidationException::withMessages([
             'billing_period' => "Murid ini sudah punya invoice {$existing->invoice_number} ({$status}) untuk periode ".
                 Payment::labelForPeriod($data['billing_period']).'. Perbaiki invoice itu lewat Edit, '.
-                'atau kosongkan Periode Tagihan bila ini memang tagihan lepas di luar SPP bulanan.',
+                'atau kosongkan Periode tagihan bila ini memang tagihan lepas di luar SPP bulanan.',
         ]);
     }
 

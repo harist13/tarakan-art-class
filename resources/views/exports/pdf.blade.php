@@ -24,7 +24,7 @@
 </head>
 <body>
     <div class="header">
-        <div class="brand">Tarakan Art Class <small>— Sistem Administrasi</small></div>
+        <div class="brand">Tarakan Art Class <small>— Sistem administrasi</small></div>
         <div class="title">{{ $title }}</div>
         <div class="meta-info">
             Dibuat oleh {{ $generatedBy }} · {{ $generatedAt->translatedFormat('d F Y, H:i') }} · Total {{ count($rows) }} baris

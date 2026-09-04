@@ -14,25 +14,25 @@
         <li class="px-4 mt-4 mb-2 text-uppercase sidebar-heading">Manajemen</li>
         @if(Auth::user()->isSuperAdmin())
         <li class="{{ request()->is('users*') ? 'active' : '' }}">
-            <a href="{{ route('users.index') }}"><i class="bi bi-shield-lock-fill"></i> Users & Admin</a>
+            <a href="{{ route('users.index') }}"><i class="bi bi-shield-lock-fill"></i> Users & admin</a>
         </li>
         <li class="{{ request()->is('activity-logs*') ? 'active' : '' }}">
-            <a href="{{ route('activity-logs.index') }}"><i class="bi bi-clock-history"></i> Log Aktivitas</a>
+            <a href="{{ route('activity-logs.index') }}"><i class="bi bi-clock-history"></i> Log aktivitas</a>
         </li>
         @endif
         <li class="{{ request()->is('students*') ? 'active' : '' }}">
-            <a href="{{ route('students.index') }}"><i class="bi bi-people-fill"></i> Murid & Wali</a>
+            <a href="{{ route('students.index') }}"><i class="bi bi-people-fill"></i> Murid & wali</a>
         </li>
 
         <li class="px-4 mt-4 mb-2 text-uppercase sidebar-heading">Akademik</li>
         <li class="{{ request()->is('classes*') ? 'active' : '' }}">
-            <a href="{{ route('classes.index') }}"><i class="bi bi-easel2-fill"></i> Manajemen Kelas</a>
+            <a href="{{ route('classes.index') }}"><i class="bi bi-easel2-fill"></i> Manajemen kelas</a>
         </li>
         <li class="{{ request()->is('holiday-classes*') ? 'active' : '' }}">
             <a href="{{ route('holiday-classes.index') }}"><i class="bi bi-sun-fill"></i> Holiday Class</a>
         </li>
-        {{-- Kalender Jadwal tidak lagi jadi menu tersendiri: ia kini satu panel di
-             Manajemen Kelas, supaya jadwal, kelas, dan tutornya terbaca di satu
+        {{-- Kalender jadwal tidak lagi jadi menu tersendiri: ia kini satu panel di
+             Manajemen kelas, supaya jadwal, kelas, dan tutornya terbaca di satu
              tempat. Halamannya sendiri tetap ada untuk alur cari kelas pengganti,
              dijangkau dari Jadwal & Replacement. --}}
         <li class="{{ request()->is('schedules*') ? 'active' : '' }}">
@@ -42,13 +42,13 @@
             {{-- Langsung ke daftar centang hari ini: mengabsen adalah pekerjaan
                  harian, sedangkan rekapnya sesekali dibuka — tautannya ada di
                  pojok kanan halaman itu. --}}
-            <a href="{{ route('attendances.create') }}"><i class="bi bi-person-check-fill"></i> Absensi Kelas</a>
+            <a href="{{ route('attendances.create') }}"><i class="bi bi-person-check-fill"></i> Absensi kelas</a>
         </li>
         <li class="{{ request()->is('reports*') ? 'active' : '' }}">
-            <a href="{{ route('reports.index') }}"><i class="bi bi-journal-bookmark-fill"></i> Raport Siswa</a>
+            <a href="{{ route('reports.index') }}"><i class="bi bi-journal-bookmark-fill"></i> Raport siswa</a>
         </li>
         <li class="{{ request()->is('galeri-karya*') ? 'active' : '' }}">
-            <a href="{{ route('artworks.index') }}"><i class="bi bi-images"></i> Galeri Karya</a>
+            <a href="{{ route('artworks.index') }}"><i class="bi bi-images"></i> Galeri karya</a>
         </li>
 
         <li class="px-4 mt-4 mb-2 text-uppercase sidebar-heading">Keuangan & Ops</li>
@@ -56,10 +56,10 @@
             <a href="{{ route('payments.index') }}"><i class="bi bi-receipt-cutoff"></i> Pembayaran</a>
         </li>
         <li class="{{ request()->is('financials*') ? 'active' : '' }}">
-            <a href="{{ route('financials.index') }}"><i class="bi bi-cash-stack"></i> Laporan Keuangan</a>
+            <a href="{{ route('financials.index') }}"><i class="bi bi-cash-stack"></i> Laporan keuangan</a>
         </li>
         <li class="{{ request()->is('inventory*') ? 'active' : '' }}">
-            <a href="{{ route('inventory.index') }}"><i class="bi bi-box-seam-fill"></i> Inventaris Barang</a>
+            <a href="{{ route('inventory.index') }}"><i class="bi bi-box-seam-fill"></i> Inventaris barang</a>
         </li>
     </ul>
 </nav>

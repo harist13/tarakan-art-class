@@ -2,7 +2,7 @@
     <div class="col-md-6 mb-3">
         <label class="form-label">Murid</label>
         <select name="student_id" class="form-select" required>
-            <option value="">— Pilih Murid —</option>
+            <option value="">— Pilih murid —</option>
             @foreach($students as $student)
                 <option value="{{ $student->id }}" @selected(old('student_id', $report->student_id ?? ($prefillStudentId ?? '')) == $student->id)>{{ $student->name }} ({{ $student->student_id }})</option>
             @endforeach
@@ -12,27 +12,27 @@
             <i class="bi bi-info-circle me-1"></i>Semua murid aktif bisa dipilih, termasuk yang menunggak — raportnya tetap boleh disusun.
             Yang tertahan saat menunggak adalah orang tua membukanya lewat credential key.
             @if($students->isEmpty())
-                <span class="text-danger d-block">Belum ada murid aktif — tambahkan lewat <a href="{{ route('students.index') }}">Data Murid &amp; Wali</a>.</span>
+                <span class="text-danger d-block">Belum ada murid aktif — tambahkan lewat <a href="{{ route('students.index') }}">Data murid &amp; wali</a>.</span>
             @endif
         </small>
     </div>
     <div class="col-md-3 mb-3">
-        <label class="form-label">Periode Mulai</label>
+        <label class="form-label">Periode mulai</label>
         <input type="date" name="period_start" class="form-control @error('period_start') is-invalid @enderror" value="{{ old('period_start', isset($report) ? $report->period_start->format('Y-m-d') : ($defaultStart ?? '')) }}" required>
         @error('period_start')<div class="invalid-feedback">{{ $message }}</div>@enderror
     </div>
     <div class="col-md-3 mb-3">
-        <label class="form-label">Periode Selesai</label>
+        <label class="form-label">Periode selesai</label>
         <input type="date" name="period_end" class="form-control @error('period_end') is-invalid @enderror" value="{{ old('period_end', isset($report) ? $report->period_end->format('Y-m-d') : ($defaultEnd ?? '')) }}" required>
         @error('period_end')<div class="invalid-feedback">{{ $message }}</div>@enderror
         <small class="text-muted d-block mt-1">Harus di bulan yang sama dengan tanggal mulai.</small>
     </div>
     <div class="col-12 mb-3">
-        <label class="form-label">Catatan Aktivitas / Perkembangan</label>
+        <label class="form-label">Catatan aktivitas / perkembangan</label>
         <textarea name="activity_notes" class="form-control" rows="4" required>{{ old('activity_notes', $report->activity_notes ?? '') }}</textarea>
     </div>
     <div class="col-12 mb-3">
-        <label class="form-label">Catatan Tutor (opsional)</label>
+        <label class="form-label">Catatan tutor (opsional)</label>
         <textarea name="tutor_notes" class="form-control" rows="4">{{ old('tutor_notes', $report->tutor_notes ?? '') }}</textarea>
     </div>
 </div>

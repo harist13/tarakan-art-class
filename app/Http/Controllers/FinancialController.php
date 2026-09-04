@@ -129,7 +129,7 @@ class FinancialController extends Controller
     public static function periodLabel(string $month): string
     {
         if ($month === '') {
-            return 'Semua Periode';
+            return 'Semua periode';
         }
 
         return Carbon::createFromFormat('Y-m-d', $month.'-01')->translatedFormat('F Y');

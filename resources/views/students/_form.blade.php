@@ -5,7 +5,7 @@
 <div class="mb-4">
     <div class="row g-3">
         <div class="col-md-6">
-            <label class="form-label fw-semibold">Nama Lengkap Murid <span class="text-danger">*</span></label>
+            <label class="form-label fw-semibold">Nama lengkap murid <span class="text-danger">*</span></label>
             <div class="input-group">
                 <span class="input-group-text bg-light text-muted"><i class="bi bi-person"></i></span>
                 <input type="text" name="name" class="form-control @error('name') is-invalid @enderror"
@@ -16,10 +16,10 @@
         </div>
 
         <div class="col-md-6">
-            <label class="form-label fw-semibold">Tipe / Kategori Kelas <span class="text-danger">*</span></label>
+            <label class="form-label fw-semibold">Tipe / kategori kelas <span class="text-danger">*</span></label>
             @php
                 $selectedClass = $selectedClass ?? null;
-                // Datang dari layar Ketersediaan Slot: kategori slot itulah yang
+                // Datang dari layar Ketersediaan slot: kategori slot itulah yang
                 // dimaksud, jadi tak perlu dipilih ulang.
                 $selectedType = old('class_type', $student->class_type ?? ($selectedClass->class_category ?? ''));
                 $categories = $classes->pluck('class_category')->filter(fn ($c) => !empty(trim($c)))->unique()->values();
@@ -27,7 +27,7 @@
             <div class="input-group">
                 <span class="input-group-text bg-light text-muted"><i class="bi bi-palette"></i></span>
                 <select name="class_type" id="class_type" class="form-select @error('class_type') is-invalid @enderror" required>
-                    <option value="" @selected($selectedType === '' || $selectedType === null)>-- Pilih Kategori Kelas --</option>
+                    <option value="" @selected($selectedType === '' || $selectedType === null)>-- Pilih kategori kelas --</option>
                     @forelse($categories as $cat)
                         @php
                             $catClasses = $classes->filter(fn ($c) => mb_strtolower($c->class_category) === mb_strtolower($cat));
@@ -57,7 +57,7 @@
                                 $statusText = " — Tersedia ({$remaining} kursi)";
                             } else {
                                 // Alasannya diambil dari availability() — sumber yang sama
-                                // dengan badge di Manajemen Kelas, jadi keduanya tak pernah
+                                // dengan badge di Manajemen kelas, jadi keduanya tak pernah
                                 // berbeda pendapat soal kenapa sebuah slot tak bisa diisi.
                                 $alasan = $catClasses->map(fn ($c) => $c->availability()['text'])->unique();
                                 $statusText = ' — '.($alasan->count() === 1 ? $alasan->first() : 'Tidak ada slot tersedia');
@@ -77,7 +77,7 @@
                             {{ $cat }}{{ $statusText }}
                         </option>
                     @empty
-                        <option value="" disabled>Belum ada kategori kelas di sistem. Tambahkan di menu Manajemen Kelas.</option>
+                        <option value="" disabled>Belum ada kategori kelas di sistem. Tambahkan di menu Manajemen kelas.</option>
                     @endforelse
                 </select>
                 @error('class_type') <div class="invalid-feedback">{{ $message }}</div> @enderror
@@ -90,9 +90,9 @@
         {{-- Jadwal yang benar-benar diisi anak ini. Sebelumnya sistem yang
              menebak — slot pertama di kategori itu yang kebetulan masih muat —
              sehingga admin tak pernah tahu anaknya masuk hari apa. Sekarang slot
-             yang dilihat kosong di layar Ketersediaan Slot itu juga yang terisi. --}}
+             yang dilihat kosong di layar Ketersediaan slot itu juga yang terisi. --}}
         <div class="col-md-6">
-            <label class="form-label fw-semibold">Jadwal Kelas</label>
+            <label class="form-label fw-semibold">Jadwal kelas</label>
             @php $selectedClassId = (int) old('class_id', $selectedClass->id ?? 0); @endphp
 
             {{-- Yang dilihat admin: kotak baca-saja berisi jadwal yang akan dipakai.
@@ -155,7 +155,7 @@
         </div>
 
         <div class="col-md-6">
-            <label class="form-label fw-semibold">Tanggal Lahir <span class="text-danger">*</span></label>
+            <label class="form-label fw-semibold">Tanggal lahir <span class="text-danger">*</span></label>
             <div class="input-group">
                 <span class="input-group-text bg-light text-muted"><i class="bi bi-calendar-event"></i></span>
                 <input type="date" name="date_of_birth" id="date_of_birth"
@@ -167,7 +167,7 @@
         </div>
 
         <div class="col-md-6">
-            <label class="form-label fw-semibold">Usia Murid</label>
+            <label class="form-label fw-semibold">Usia murid</label>
             <div class="input-group">
                 <input type="number" name="age" id="age" class="form-control @error('age') is-invalid @enderror"
                        min="0" max="120" step="1"
@@ -182,11 +182,11 @@
         </div>
 
         <div class="col-md-6">
-            <label class="form-label fw-semibold">Status Keaktifan <span class="text-danger">*</span></label>
+            <label class="form-label fw-semibold">Status keaktifan <span class="text-danger">*</span></label>
             <div class="input-group">
                 <span class="input-group-text bg-light text-muted"><i class="bi bi-toggle-on"></i></span>
                 <select name="status" class="form-select @error('status') is-invalid @enderror" required>
-                    <option value="active" @selected(old('status', $student->status ?? 'active') === 'active')>Aktif (Mengikuti Kelas)</option>
+                    <option value="active" @selected(old('status', $student->status ?? 'active') === 'active')>Aktif (mengikuti kelas)</option>
                     <option value="inactive" @selected(old('status', $student->status ?? '') === 'inactive')>Nonaktif (Cuti / Berhenti)</option>
                 </select>
                 @error('status') <div class="invalid-feedback">{{ $message }}</div> @enderror
@@ -194,7 +194,7 @@
         </div>
 
         <div class="col-md-6">
-            <label class="form-label fw-semibold">Tanggal Bergabung <span class="text-danger">*</span></label>
+            <label class="form-label fw-semibold">Tanggal bergabung <span class="text-danger">*</span></label>
             <div class="input-group">
                 <span class="input-group-text bg-light text-muted"><i class="bi bi-calendar-check"></i></span>
                 <input type="date" name="join_date" id="join_date"
@@ -208,7 +208,7 @@
              pertama. Tersimpan pada pendaftarannya ke kelas, bukan pada muridnya:
              satu kelas dimasuki anak-anak yang datang di pekan berbeda-beda. --}}
         <div class="col-md-6">
-            <label class="form-label fw-semibold">Mulai Minggu Ke-</label>
+            <label class="form-label fw-semibold">Mulai minggu ke-</label>
             @php
                 $pekanTerpilih = (int) old('start_week', isset($student) ? $student->startWeek() : 1) ?: 1;
                 $pekanSebulan = \App\Models\ClassRoom::WEEKS_PER_MONTH;
@@ -368,7 +368,7 @@
 
     <div class="row g-3">
         <div class="col-md-6">
-            <label class="form-label fw-semibold">Nama Wali / Orang Tua <span class="text-danger">*</span></label>
+            <label class="form-label fw-semibold">Nama wali / orang tua <span class="text-danger">*</span></label>
             <div class="input-group">
                 <span class="input-group-text bg-light text-muted"><i class="bi bi-person-heart"></i></span>
                 <input type="text" name="parent_name"
@@ -407,7 +407,7 @@
         </div>
 
         <div class="col-md-6">
-            <label class="form-label fw-semibold">Alamat Tempat Tinggal (opsional)</label>
+            <label class="form-label fw-semibold">Alamat tempat tinggal (opsional)</label>
             <div class="input-group">
                 <span class="input-group-text bg-light text-muted"><i class="bi bi-geo-alt"></i></span>
                 <textarea name="address"
@@ -568,7 +568,7 @@
 
             // Kategori yang baru dipilih langsung membawa jadwalnya. Yang sudah
             // terisi tidak diganggu: pilihan admin, maupun slot yang dibawa dari
-            // layar Ketersediaan Slot, harus bertahan.
+            // layar Ketersediaan slot, harus bertahan.
             if (isiOtomatis && pertama && slotSelect.value === '') {
                 slotSelect.value = pertama.value;
                 diisiKategori = true;
@@ -578,7 +578,7 @@
             const dipakai = adaNilai ? slotSelect.selectedOptions[0] : pertama;
 
             // Pertemuan pertama slot yang akan dipakai — dasar harga bulan
-            // pertama. Dikabarkan ke pengisi "Mulai Minggu Ke-" lewat event
+            // pertama. Dikabarkan ke pengisi "Mulai minggu ke-" lewat event
             // supaya kedua bagian tetap berdiri sendiri.
             const sesiTanggal = dipakai ? (dipakai.dataset.sessionDate || '') : '';
             const sesiLabel = dipakai ? (dipakai.dataset.sessionLabel || '') : '';
@@ -609,7 +609,7 @@
                 slotHint.className = 'form-text mt-1 text-muted';
             } else if (sekategori === 0) {
                 setDisplay('Belum ada jadwal untuk kategori ini');
-                slotHint.innerHTML = '<i class="bi bi-info-circle-fill me-1"></i>Tambahkan kelasnya dulu di menu Manajemen Kelas.';
+                slotHint.innerHTML = '<i class="bi bi-info-circle-fill me-1"></i>Tambahkan kelasnya dulu di menu Manajemen kelas.';
                 slotHint.className = 'form-text mt-1 text-warning';
             } else if (bisaDipilih === 0) {
                 setDisplay('Semua jadwal penuh atau sudah lewat');
@@ -630,7 +630,7 @@
         }
 
         // Saat halaman dibuka, kategori bisa saja sudah terisi — form edit, kiriman
-        // yang gagal validasi, atau datang dari layar Ketersediaan Slot. Jadwalnya
+        // yang gagal validasi, atau datang dari layar Ketersediaan slot. Jadwalnya
         // ikut diisikan juga di sini supaya keadaan awalnya sama dengan sesudah
         // kategori diganti sendiri oleh admin.
         syncSlots(true);

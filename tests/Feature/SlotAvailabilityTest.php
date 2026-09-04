@@ -169,16 +169,16 @@ class SlotAvailabilityTest extends TestCase
 
         $this->get(route('classes.create'))
             ->assertOk()
-            ->assertSee('Tanggal Kelas')
-            ->assertSee('Tipe Kelas')
+            ->assertSee('Tanggal kelas')
+            ->assertSee('Tipe kelas')
             ->assertSee('Trial Class')
-            ->assertSee('Uang Pendaftaran')
+            ->assertSee('Uang pendaftaran')
             ->assertSee('name="schedule_date"', false)
             ->assertSee('name="class_type"', false)
             ->assertSee('name="registration_fee"', false)
             // Pekan mulai milik murid, bukan kelas. Yang ada di form kelas hanyalah
             // pratinjau harganya — dihitung dari Biaya Kelas, tidak diketik.
-            ->assertSee('Harga Bulan Pertama menurut Pekan Murid Masuk')
+            ->assertSee('Harga bulan pertama menurut pekan murid masuk')
             ->assertDontSee('name="start_week"', false)
             ->assertDontSee('name="start_week_fees[1]"', false)
             // Pengulangan tidak lagi diisi admin — diturunkan dari tipe kelas,
@@ -309,7 +309,7 @@ class SlotAvailabilityTest extends TestCase
 
         $this->get(route('classes.index', ['tab' => 'kalender']))
             ->assertOk()
-            ->assertSee('Kalender Jadwal')
+            ->assertSee('Kalender jadwal')
             ->assertSee('id="calendar"', false)
             ->assertSee($class->class_category);
     }
@@ -707,9 +707,9 @@ class SlotAvailabilityTest extends TestCase
 
         $this->get(route('schedules.index'))
             ->assertOk()
-            ->assertSee('Slot Tersedia')
+            ->assertSee('Slot tersedia')
             ->assertSee('Replacement Pending')
-            ->assertSee('Ketersediaan Slot Kelas');
+            ->assertSee('Ketersediaan slot kelas');
     }
 
     public function test_panel_slot_mengelompokkan_kelas_per_kategori(): void

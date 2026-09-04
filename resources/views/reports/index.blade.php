@@ -3,20 +3,20 @@
 @section('content')
 <div class="d-sm-flex align-items-center justify-content-between mb-4">
     <div>
-        <h1 class="h3 mb-0 text-gray-800 fw-bold">Raport Siswa</h1>
+        <h1 class="h3 mb-0 text-gray-800 fw-bold">Raport siswa</h1>
         @if(isset($month))
             @php
                 $dt = \Carbon\Carbon::createFromFormat('Y-m', $month);
             @endphp
             <nav aria-label="breadcrumb" class="mt-1">
                 <ol class="breadcrumb mb-0 small">
-                    <li class="breadcrumb-item"><a href="{{ route('reports.index') }}">Semua Bulan</a></li>
+                    <li class="breadcrumb-item"><a href="{{ route('reports.index') }}">Semua bulan</a></li>
                     <li class="breadcrumb-item active">{{ $dt->locale('id')->translatedFormat('F Y') }}</li>
                 </ol>
             </nav>
         @endif
     </div>
-    <a href="{{ route('reports.create', isset($month) ? ['month' => $month] : []) }}" class="btn btn-sm btn-primary shadow-sm"><i class="bi bi-plus-lg"></i> Buat Raport</a>
+    <a href="{{ route('reports.create', isset($month) ? ['month' => $month] : []) }}" class="btn btn-sm btn-primary shadow-sm"><i class="bi bi-plus-lg"></i> Buat raport</a>
 </div>
 
 <div class="card">
@@ -42,7 +42,7 @@
             <div class="table-responsive">
                 <table class="table table-hover align-middle">
                     <thead>
-                        <tr><th>Credential Key</th><th>Murid</th><th>Periode</th><th>Dibuat oleh</th><th class="text-end">Aksi</th></tr>
+                        <tr><th>Credential key</th><th>Murid</th><th>Periode</th><th>Dibuat oleh</th><th class="text-end">Aksi</th></tr>
                     </thead>
                     <tbody>
                         @forelse($reports as $report)
@@ -53,7 +53,7 @@
                                 <td class="small">{{ $report->creator->full_name ?? '-' }}</td>
                                 <td class="text-end text-nowrap">
                                     {{-- Folder karya murid ini di bulan yang sama. Unggahnya
-                                         dilakukan di modul Galeri Karya, jadi di sini cukup pintunya. --}}
+                                         dilakukan di modul Galeri karya, jadi di sini cukup pintunya. --}}
                                     @if($report->student)
                                         @php $karya = $artworkCounts[$report->student_id] ?? 0; @endphp
                                         <a href="{{ route('artworks.folder', ['student' => $report->student, 'month' => $month]) }}"

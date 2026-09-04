@@ -1,6 +1,6 @@
 {{-- Panel kalender jadwal: kelas reguler, Holiday Class, & replacement.
 
-     Dipakai dua halaman — Kalender Jadwal dan tab di Manajemen Kelas. Isinya
+     Dipakai dua halaman — Kalender jadwal dan tab di Manajemen kelas. Isinya
      dipisah ke sini, bukan disalin, supaya keduanya tidak pernah menampilkan
      jadwal yang berbeda.
 
@@ -95,7 +95,7 @@
 <div class="card">
     <div class="card-header">
         <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
-            <span class="fw-bold">Jadwal Kelas &amp; Replacement Class</span>
+            <span class="fw-bold">Jadwal kelas &amp; Replacement Class</span>
             <div class="cal-legend">
                 <span class="legend-pill" style="background:rgba(14,165,233,.12); border-color:rgba(14,165,233,.35); color:#0369A1;">
                     <span class="legend-dot" style="background:#0EA5E9;"></span>Kelas (Available)
@@ -156,7 +156,7 @@
                     <button type="button" class="btn btn-sm btn-link p-0 text-decoration-none d-none mb-1" id="drillBack">
                         <i class="bi bi-arrow-left me-1"></i><span id="drillBackLabel">Kembali</span>
                     </button>
-                    <h5 class="modal-title mb-0" id="eventModalTitle">Detail Jadwal</h5>
+                    <h5 class="modal-title mb-0" id="eventModalTitle">Detail jadwal</h5>
                     <small class="text-muted" id="eventModalSubtitle"></small>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -417,7 +417,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         link.href = roster.editUrl;
-        link.innerHTML = '<i class="bi bi-pencil me-1"></i> Ubah Jadwal Kelas';
+        link.innerHTML = '<i class="bi bi-pencil me-1"></i> Ubah jadwal kelas';
         link.classList.remove('d-none');
 
         const kembali = konteks.kembaliKeSemua
@@ -439,15 +439,15 @@ document.addEventListener('DOMContentLoaded', function () {
             ? info.event.start.toLocaleDateString('id-ID', { dateStyle: 'full' })
             : info.event.start.toLocaleString('id-ID', { dateStyle: 'full', timeStyle: 'short' });
         rows += `<p class="mb-1"><strong>Waktu:</strong> ${waktu}</p>`;
-        if (p.code)         rows += `<p class="mb-1"><strong>Kode Kelas:</strong> ${p.code}</p>`;
-        if (p.schedule)     rows += `<p class="mb-1"><strong>Jadwal Rutin:</strong> ${p.schedule}</p>`;
+        if (p.code)         rows += `<p class="mb-1"><strong>Kode kelas:</strong> ${p.code}</p>`;
+        if (p.schedule)     rows += `<p class="mb-1"><strong>Jadwal rutin:</strong> ${p.schedule}</p>`;
         if (p.time)         rows += `<p class="mb-1"><strong>Jam:</strong> ${p.time}</p>`;
         if (p.category)     rows += `<p class="mb-1"><strong>Kategori:</strong> ${p.category}</p>`;
         if (p.tutor)        rows += `<p class="mb-1"><strong>Tutor:</strong> ${p.tutor}</p>`;
         if (p.occupancy)    rows += `<p class="mb-1"><strong>Terisi:</strong> ${p.occupancy}</p>`;
         if (p.availability) rows += `<p class="mb-1"><strong>Ketersediaan:</strong> ${p.availability}</p>`;
-        if (p.originClass)  rows += `<p class="mb-1"><strong>Kelas Asal (sebelumnya):</strong> ${p.originClass}</p>`;
-        if (p.newClass)     rows += `<p class="mb-1"><strong>Kelas Baru (sekarang):</strong> ${p.newClass}</p>`;
+        if (p.originClass)  rows += `<p class="mb-1"><strong>Kelas asal (sebelumnya):</strong> ${p.originClass}</p>`;
+        if (p.newClass)     rows += `<p class="mb-1"><strong>Kelas baru (sekarang):</strong> ${p.newClass}</p>`;
         if (p.status)       rows += `<p class="mb-1"><strong>Status:</strong> ${p.status}</p>`;
         if (p.reason)       rows += `<p class="mb-1"><strong>Alasan:</strong> ${p.reason}</p>`;
         if (p.note && p.note !== '-') rows += `<p class="mb-1"><strong>Catatan:</strong> ${p.note}</p>`;
@@ -524,7 +524,7 @@ document.addEventListener('DOMContentLoaded', function () {
     calendar.render();
 
     // Kalender ini juga dirender di dalam panel yang bisa tersembunyi (tab di
-    // Manajemen Kelas). FullCalendar mengukur tinggi & lebarnya saat render, dan
+    // Manajemen kelas). FullCalendar mengukur tinggi & lebarnya saat render, dan
     // di dalam elemen display:none hasilnya nol — halaman yang membukanya perlu
     // menyuruhnya mengukur ulang lewat instans ini.
     window.jadwalCalendar = calendar;

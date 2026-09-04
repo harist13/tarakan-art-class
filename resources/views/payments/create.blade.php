@@ -47,12 +47,12 @@
 @endphp
 
 <div class="d-sm-flex align-items-center justify-content-between mb-3">
-    <h1 class="h3 mb-0 text-gray-800 fw-bold">Buat Invoice</h1>
+    <h1 class="h3 mb-0 text-gray-800 fw-bold">Buat invoice</h1>
     <a href="{{ route('payments.index') }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i> Kembali</a>
 </div>
 
 {{-- Satu kalimat pembuka. Halaman ini menggantikan dua menu lama, jadi admin
-     yang terbiasa mencari "Tagihan Bulanan" perlu tahu ia sudah ada di sini. --}}
+     yang terbiasa mencari "Tagihan bulanan" perlu tahu ia sudah ada di sini. --}}
 <p class="text-muted mb-4">
     Menerbitkan invoice untuk <strong>satu murid</strong> maupun <strong>seluruh murid sekaligus</strong> —
     bedanya hanya berapa banyak yang Anda centang di langkah 2.
@@ -151,19 +151,19 @@
                      mencentang murid & menyetel nominal — ada di bawah. --}}
                 <div class="row">
                     <div class="col-md-3 mb-3">
-                        <label class="form-label">Tanggal Invoice</label>
+                        <label class="form-label">Tanggal invoice</label>
                         <input type="date" name="payment_date" class="form-control"
                                value="{{ old('payment_date', now()->format('Y-m-d')) }}" required>
                         <small class="text-muted">Kapan invoice diterbitkan.</small>
                     </div>
                     <div class="col-md-3 mb-3">
-                        <label class="form-label">Jatuh Tempo</label>
+                        <label class="form-label">Jatuh tempo</label>
                         <input type="date" name="due_date" class="form-control"
                                value="{{ old('due_date', \App\Models\Payment::defaultDueDate()) }}" required>
                         <small class="text-muted">Lewat tanggal ini, murid ditandai menunggak.</small>
                     </div>
                     <div class="col-md-3 mb-3">
-                        <label class="form-label">Metode / Channel</label>
+                        <label class="form-label">Metode / channel</label>
                         {{-- Bawaannya QRIS: invoice biasanya dikirim lewat WhatsApp
                              dan dibayar sendiri oleh orang tua, bukan tunai di meja. --}}
                         @include('payments._method-select', [
@@ -200,7 +200,7 @@
                 <div class="alert alert-warning small mb-0 d-none" id="hintPaid">
                     <i class="bi bi-exclamation-triangle-fill me-1"></i>
                     <strong>Uang dinyatakan sudah diterima.</strong> Invoice langsung tercatat sebagai pemasukan di
-                    Laporan Keuangan &amp; Dashboard begitu disimpan. Pilih ini hanya untuk pembayaran yang benar-benar
+                    Laporan keuangan &amp; Dashboard begitu disimpan. Pilih ini hanya untuk pembayaran yang benar-benar
                     sudah di tangan — bukan untuk menagih.
                 </div>
 
@@ -336,7 +336,7 @@
                     <div class="text-danger small d-none" id="pickEmptyWarn"></div>
                 </div>
                 <button type="submit" class="btn btn-primary btn-lg" id="issueButton">
-                    <i class="bi bi-receipt me-1"></i> <span id="issueLabel">Terbitkan Invoice</span>
+                    <i class="bi bi-receipt me-1"></i> <span id="issueLabel">Terbitkan invoice</span>
                 </button>
             </div>
         @endif
@@ -566,7 +566,7 @@
             const total = rupiah(picked.reduce((sum, p) => sum + amountOf(p), 0));
 
             // Status Paid berarti uang dinyatakan SUDAH diterima dan langsung
-            // masuk Laporan Keuangan. Angkanya disebut supaya "Pilih semua"
+            // masuk Laporan keuangan. Angkanya disebut supaya "Pilih semua"
             // yang tertinggal di Paid tidak lolos tanpa disadari.
             const pesan = status && status.value === 'paid'
                 ? `Mencatat ${picked.length} pemasukan senilai ${total} sebagai SUDAH DITERIMA.\n\nLanjutkan?`

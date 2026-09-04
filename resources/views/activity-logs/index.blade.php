@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Log Aktivitas')
+@section('title', 'Log aktivitas')
 
 @section('content')
 @php
@@ -27,7 +27,7 @@
 
 <div class="d-sm-flex align-items-center justify-content-between mb-4">
     <div>
-        <h1 class="h3 mb-0 text-gray-800 fw-bold">Log Aktivitas</h1>
+        <h1 class="h3 mb-0 text-gray-800 fw-bold">Log aktivitas</h1>
         <p class="text-muted small mb-0">Jejak aktivitas seluruh pengguna sistem (F15).</p>
     </div>
     <span class="badge rounded-pill px-3 py-1 text-white fw-semibold align-self-center" style="background-color: #0891B2;"><i class="bi bi-clock-history me-1"></i>{{ $logs->total() }} aktivitas</span>
@@ -35,16 +35,16 @@
 
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-3">
-        <span class="fw-bold text-nowrap">Riwayat Aktivitas</span>
+        <span class="fw-bold text-nowrap">Riwayat aktivitas</span>
         <form method="GET" data-live class="d-flex flex-wrap align-items-center gap-2">
             <select name="user" class="form-select form-select-sm" style="width:170px;">
-                <option value="">Semua User</option>
+                <option value="">Semua user</option>
                 @foreach($users as $u)
                     <option value="{{ $u->id }}" @selected((string) $userId === (string) $u->id)>{{ $u->full_name }}</option>
                 @endforeach
             </select>
             <select name="action" class="form-select form-select-sm" style="width:170px;">
-                <option value="">Semua Aksi</option>
+                <option value="">Semua aksi</option>
                 @foreach($actionMeta as $key => $meta)
                     <option value="{{ $key }}" @selected($action === $key)>{{ $meta['label'] }}</option>
                 @endforeach

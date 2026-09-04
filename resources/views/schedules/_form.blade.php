@@ -20,7 +20,7 @@
     <div class="col-md-6">
         <label class="form-label" for="student_id">Murid</label>
         <select name="student_id" id="student_id" class="form-select" required>
-            <option value="">— Pilih Murid —</option>
+            <option value="">— Pilih murid —</option>
             @foreach($students as $student)
                 @php $enrolled = $student->relationLoaded('classes') ? $student->classes->pluck('id') : collect(); @endphp
                 <option value="{{ $student->id }}" data-name="{{ $student->name }}" data-category="{{ $student->class_type }}" data-origin="{{ $enrolled->first() }}" data-enrolled="{{ $enrolled->join(',') }}" @selected(old('student_id', $request->student_id ?? request('student_id', '')) == $student->id)>{{ $student->name }} ({{ $student->student_id }})</option>
@@ -45,7 +45,7 @@
     <div class="col-md-6 mb-3 mb-md-0">
         <label class="form-label" for="origin_class_id">Kelas asal</label>
         <select name="origin_class_id" id="origin_class_id" class="form-select @error('origin_class_id') is-invalid @enderror">
-            <option value="">— Pilih Kelas Asal —</option>
+            <option value="">— Pilih kelas asal —</option>
             @foreach($classes as $class)
                 {{-- data-schedule: sesi bertanggal untuk kotak "Sesi terdekat".
                      data-next + data-time: tanggal & jam sesi yang ditinggalkan,
@@ -122,8 +122,8 @@
             <p class="small mb-2">Semua slot sedang penuh, ditutup, sudah lewat jadwalnya, atau tutornya belum tersedia.</p>
             <div class="small mb-0">Yang bisa dilakukan:
                 <ul class="mb-0 ps-3">
-                    <li>Buka kembali slot yang ditutup lewat <a href="{{ route('schedules.index') }}" class="alert-link">Pengaturan Jadwal &amp; Slot</a>.</li>
-                    <li>Tambah kelas baru dengan jadwal mendatang di <a href="{{ route('classes.index') }}" class="alert-link">Manajemen Kelas</a>.</li>
+                    <li>Buka kembali slot yang ditutup lewat <a href="{{ route('schedules.index') }}" class="alert-link">Pengaturan jadwal &amp; slot</a>.</li>
+                    <li>Tambah kelas baru dengan jadwal mendatang di <a href="{{ route('classes.index') }}" class="alert-link">Manajemen kelas</a>.</li>
                     <li>Pastikan tutor kelas tersebut berstatus aktif.</li>
                 </ul>
             </div>
@@ -132,7 +132,7 @@
     <div class="col-md-6 mb-3">
         <label class="form-label" for="class_id">Kelas pengganti</label>
         <select name="class_id" id="class_id" class="form-select" required>
-            <option value="">— Pilih Kelas —</option>
+            <option value="">— Pilih kelas —</option>
             @foreach($classes as $class)
                 @php $selected = old('class_id', $request->class_id ?? request('class_id', '')) == $class->id; @endphp
                 {{-- Hanya tampilkan slot yang tersedia; kelas yang sedang dipilih (saat edit) tetap muncul. --}}
@@ -320,7 +320,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const allowed = sameType.concat(otherType);
         const total = allowed.length;
 
-        renderOptions(classSel, allowed, '— Pilih Kelas —');
+        renderOptions(classSel, allowed, '— Pilih kelas —');
 
         if (hint) {
             if (total === 0) {
@@ -369,7 +369,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const mine = enrolledIds();
         const isMine = function (c) { return mine.indexOf(c.value) !== -1; };
         const allowed = allOrigins.filter(isMine).concat(allOrigins.filter(function (c) { return !isMine(c); }));
-        renderOptions(originSel, allowed, '— Pilih Kelas Asal —');
+        renderOptions(originSel, allowed, '— Pilih kelas asal —');
 
         // Murid tanpa enrollment aktif: beri tahu admin, kelas asal harus dipilih manual.
         const noClass = !!studentSel.value && mine.length === 0;

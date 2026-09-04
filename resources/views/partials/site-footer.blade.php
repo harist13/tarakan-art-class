@@ -40,18 +40,18 @@
             <div class="col-6 col-lg-3">
                 <h2 class="tac-display fs-6 fw-bold tac-text-paper">Jelajahi</h2>
                 <ul class="list-unstyled mt-3 mb-0 d-grid gap-2 small">
-                    <li><a class="text-decoration-none tac-muted-invert" href="{{ route('public.about') }}">Tentang Kami</a></li>
+                    <li><a class="text-decoration-none tac-muted-invert" href="{{ route('public.about') }}">Tentang kami</a></li>
                     <li><a class="text-decoration-none tac-muted-invert" href="{{ route('public.programs') }}">Program &amp; Kelas</a></li>
-                    <li><a class="text-decoration-none tac-muted-invert" href="{{ route('public.gallery') }}">Galeri Karya</a></li>
-                    <li><a class="text-decoration-none tac-muted-invert" href="{{ route('public.schedule') }}">Jadwal Kelas</a></li>
+                    <li><a class="text-decoration-none tac-muted-invert" href="{{ route('public.gallery') }}">Galeri karya</a></li>
+                    <li><a class="text-decoration-none tac-muted-invert" href="{{ route('public.schedule') }}">Jadwal kelas</a></li>
                     <li><a class="text-decoration-none tac-muted-invert" href="{{ route('public.contact') }}">Kontak &amp; Pendaftaran</a></li>
-                    <li><a class="text-decoration-none tac-muted-invert" href="{{ route('reports.guest') }}">Cek Raport Anak</a></li>
+                    <li><a class="text-decoration-none tac-muted-invert" href="{{ route('reports.guest') }}">Cek raport anak</a></li>
                 </ul>
             </div>
 
             {{-- Kontak --}}
             <div class="col-6 col-lg-4">
-                <h2 class="tac-display fs-6 fw-bold tac-text-paper">Hubungi Kami</h2>
+                <h2 class="tac-display fs-6 fw-bold tac-text-paper">Hubungi kami</h2>
                 <ul class="list-unstyled mt-3 mb-0 d-grid gap-2 small tac-muted-invert">
                     <li>{{ $contact['address'] }}</li>
                     <li>
@@ -75,7 +75,7 @@
                 &copy; {{ date('Y') }} Tarakan Art Class. Seluruh hak cipta dilindungi.
             </p>
             <p class="mb-0 d-flex align-items-center gap-2 tac-muted-invert" style="font-size: 0.8rem;">
-                <a class="text-decoration-none tac-muted-invert" href="{{ route('login') }}">Login Admin</a>
+                <a class="text-decoration-none tac-muted-invert" href="{{ route('login') }}">Login admin</a>
             </p>
         </div>
     </div>

@@ -190,7 +190,7 @@
         <p class="text-muted small mb-0">Proses permintaan kelas pengganti, lalu atur ketersediaan slot yang bisa dipakai sebagai kelas pengganti.</p>
     </div>
     <div class="d-flex gap-2 mt-2 mt-sm-0">
-        <a href="{{ route('schedules.calendar') }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-calendar3 me-1"></i>Lihat Kalender</a>
+        <a href="{{ route('schedules.calendar') }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-calendar3 me-1"></i>Lihat kalender</a>
         <a href="{{ route('schedules.create') }}" class="btn btn-sm btn-primary shadow-sm"><i class="bi bi-plus-lg me-1"></i>Ajukan Replacement</a>
     </div>
 </div>
@@ -236,7 +236,7 @@
             aria-label="{{ $availableSlots }} dari {{ $totalSlots }} slot kelas bisa dipakai sebagai kelas pengganti. Buka pengaturan slot.">
             <span class="stat-head">
                 <span class="stat-icon"><i class="bi {{ $availableSlots > 0 ? 'bi-check-circle' : 'bi-slash-circle' }}" aria-hidden="true"></i></span>
-                <span class="stat-label">Slot Tersedia</span>
+                <span class="stat-label">Slot tersedia</span>
             </span>
             <span class="stat-value">{{ $availableSlots }}<span class="stat-total">/ {{ $totalSlots }}</span></span>
             <span class="stat-meter" aria-hidden="true">
@@ -269,7 +269,7 @@
     </label>
     <input type="radio" class="btn-check" name="panelToggle" id="toggleSlots" autocomplete="off" @checked($tab === 'slots')>
     <label class="btn btn-outline-primary" for="toggleSlots">
-        <i class="bi bi-toggles me-1"></i>Ketersediaan Slot
+        <i class="bi bi-toggles me-1"></i>Ketersediaan slot
         <span class="badge rounded-pill ms-1 fw-bold" style="background-color: #15803D; color: #FFFFFF !important;">{{ $availableSlots }}</span>
     </label>
 </div>
@@ -285,7 +285,7 @@
                 <input type="text" name="search" value="{{ $search }}" class="form-control border-start-0 ps-0 py-2" placeholder="Cari murid / kelas...">
             </div>
             <select name="status" class="form-select form-select-sm" style="width:150px;">
-                <option value="">Semua Status</option>
+                <option value="">Semua status</option>
                 <option value="pending" @selected($status === 'pending')>Pending</option>
                 <option value="approved" @selected($status === 'approved')>Approved</option>
                 <option value="rejected" @selected($status === 'rejected')>Rejected</option>
@@ -306,7 +306,7 @@
                 <thead class="text-muted small text-uppercase">
                     {{-- Istilahnya disamakan dengan form pengajuan: "kelas asal"
                          (sesi yang dilewatkan) → "kelas pengganti". --}}
-                    <tr><th>Murid</th><th>Kelas Asal</th><th>Kelas Pengganti</th><th>Sesi Pengganti</th><th>Alasan</th><th>Status</th><th class="text-end">Aksi</th></tr>
+                    <tr><th>Murid</th><th>Kelas asal</th><th>Kelas pengganti</th><th>Sesi pengganti</th><th>Alasan</th><th>Status</th><th class="text-end">Aksi</th></tr>
                 </thead>
                 <tbody>
                     @forelse($requests as $req)
@@ -378,11 +378,11 @@
 
 </div>{{-- /panelRequests --}}
 
-{{-- ── Panel 2: Ketersediaan Slot Kelas ─────────────────────────── --}}
+{{-- ── Panel 2: Ketersediaan slot kelas ─────────────────────────── --}}
 <div id="panelSlots" @if($tab !== 'slots') style="display:none;" @endif>
 <div class="card mb-4">
     <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-3">
-        <span class="fw-bold text-nowrap"><i class="bi bi-toggles me-2 text-primary"></i>Ketersediaan Slot Kelas</span>
+        <span class="fw-bold text-nowrap"><i class="bi bi-toggles me-2 text-primary"></i>Ketersediaan slot kelas</span>
         <form method="GET" data-live class="d-flex flex-wrap align-items-center gap-2">
             {{-- Menjaga panel ini tetap terbuka setelah filter disubmit. --}}
             <input type="hidden" name="tab" value="slots">
@@ -391,7 +391,7 @@
                 <input type="text" name="slot_search" value="{{ $slotSearch }}" class="form-control border-start-0 ps-0 py-2" placeholder="Cari kelas / kode...">
             </div>
             <select name="slot_status" class="form-select form-select-sm" style="width:160px;">
-                <option value="">Semua Status</option>
+                <option value="">Semua status</option>
                 <option value="tersedia" @selected($slotStatus === 'tersedia')>Tersedia</option>
                 <option value="penuh" @selected($slotStatus === 'penuh')>Penuh</option>
                 <option value="tanpa-tutor" @selected($slotStatus === 'tanpa-tutor')>Tutor kosong</option>
@@ -508,7 +508,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <div>
-                    <h5 class="modal-title mb-0 text-capitalize" id="slotDetailTitle">Detail Kelas</h5>
+                    <h5 class="modal-title mb-0 text-capitalize" id="slotDetailTitle">Detail kelas</h5>
                     <small class="text-muted" id="slotDetailSubtitle"></small>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -518,8 +518,8 @@
                 {{-- Pintu ke pendaftaran anak: slot yang sedang dilihat ikut
                      terbawa, jadi anaknya masuk ke jadwal ini — bukan ke kelas
                      lain sekategori yang kebetulan dipilihkan sistem. --}}
-                <a href="#" id="slotDetailEnroll" class="btn btn-primary"><i class="bi bi-person-plus me-1"></i>Tambah Anak ke Slot Ini</a>
-                <a href="#" id="slotDetailEdit" class="btn btn-outline-primary"><i class="bi bi-pencil me-1"></i>Ubah Jadwal Kelas</a>
+                <a href="#" id="slotDetailEnroll" class="btn btn-primary"><i class="bi bi-person-plus me-1"></i>Tambah anak ke slot ini</a>
+                <a href="#" id="slotDetailEdit" class="btn btn-outline-primary"><i class="bi bi-pencil me-1"></i>Ubah jadwal kelas</a>
                 <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Tutup</button>
             </div>
         </div>
@@ -533,7 +533,7 @@
             @csrf @method('PATCH')
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title"><i class="bi bi-lock me-2 text-secondary"></i>Tutup Slot</h5>
+                    <h5 class="modal-title"><i class="bi bi-lock me-2 text-secondary"></i>Tutup slot</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
@@ -543,7 +543,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-secondary"><i class="bi bi-lock me-1"></i>Tutup Slot</button>
+                    <button type="submit" class="btn btn-secondary"><i class="bi bi-lock me-1"></i>Tutup slot</button>
                 </div>
             </div>
         </form>
@@ -554,7 +554,7 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    // ── Switch panel: Request Replacement / Ketersediaan Slot ──
+    // ── Switch panel: Request Replacement / Ketersediaan slot ──
     (function () {
         const PANELS = [
             { tab: 'requests', panel: 'panelRequests', toggle: 'toggleRequests' },

@@ -15,7 +15,7 @@
              centang semua untuk sebulan penuh. Dulu ini dua tombol, dan karena
              keduanya menghasilkan baris invoice yang sama persis, yang tersisa
              hanyalah tebak-tebakan harus klik yang mana. --}}
-        <a href="{{ route('payments.create') }}" class="btn btn-sm btn-primary shadow-sm text-nowrap"><i class="bi bi-receipt"></i> Buat Invoice</a>
+        <a href="{{ route('payments.create') }}" class="btn btn-sm btn-primary shadow-sm text-nowrap"><i class="bi bi-receipt"></i> Buat invoice</a>
     </div>
 </div>
 
@@ -49,7 +49,7 @@
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
         <span class="text-nowrap">
-            Daftar Transaksi Pembayaran
+            Daftar transaksi pembayaran
             {{-- Halaman bisa menyegar sendiri, dan reload yang tiba-tiba tanpa
                  keterangan membingungkan. Penanda ini menjelaskan sebabnya
                  sebelum hal itu terjadi. Hanya tampil bila memang ada yang
@@ -73,7 +73,7 @@
         <form method="GET" data-live class="d-flex flex-nowrap align-items-center gap-2">
             <div style="flex:0 1 160px;">
                 <select name="status" class="form-select form-select-sm w-100">
-                    <option value="">Semua Status</option>
+                    <option value="">Semua status</option>
                     <option value="paid" @selected($status === 'paid')>Paid</option>
                     <option value="unpaid" @selected($status === 'unpaid')>Unpaid</option>
                     <option value="overdue" @selected($status === 'overdue')>Lewat jatuh tempo</option>
@@ -100,7 +100,7 @@
                         <th>Invoice</th>
                         <th>Murid</th>
                         <th class="text-end">Jumlah</th>
-                        <th>Jatuh Tempo</th>
+                        <th>Jatuh tempo</th>
                         <th>Status</th>
                         <th class="text-end">Aksi</th>
                     </tr>

@@ -1,6 +1,6 @@
 <div class="row">
     <div class="col-md-6 mb-3">
-        <label class="form-label">Nama Lengkap</label>
+        <label class="form-label">Nama lengkap</label>
         <input type="text" name="full_name" class="form-control" value="{{ old('full_name', $user->full_name ?? '') }}" required>
     </div>
     <div class="col-md-6 mb-3">
@@ -23,7 +23,7 @@
         <input type="password" name="password" class="form-control" {{ isset($user) ? '' : 'required' }}>
     </div>
     <div class="col-md-6 mb-3">
-        <label class="form-label">Konfirmasi Password</label>
+        <label class="form-label">Konfirmasi password</label>
         <input type="password" name="password_confirmation" class="form-control" {{ isset($user) ? '' : 'required' }}>
     </div>
     <div class="col-md-6 mb-3">

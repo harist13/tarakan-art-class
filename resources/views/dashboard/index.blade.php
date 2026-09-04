@@ -5,7 +5,7 @@
 <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between mb-4 gap-3">
     <div>
         <h2 class="h3 fw-bold text-gray-800 mb-1">
-            Selamat Datang, {{ auth()->user()->full_name ?? auth()->user()->username ?? 'Admin' }}! 👋
+            Selamat datang, {{ auth()->user()->full_name ?? auth()->user()->username ?? 'Admin' }}! 👋
         </h2>
         <p class="text-muted small mb-0">Pantau performa kelas, pertumbuhan murid, dan transaksi keuangan secara realtime.</p>
     </div>
@@ -19,19 +19,19 @@
 
 <!-- Scorecards -->
 @php
-    // Tanpa kartu Total Pendapatan (admin biasa), tiga kartu sisanya dilebarkan
+    // Tanpa kartu Total pendapatan (admin biasa), tiga kartu sisanya dilebarkan
     // supaya barisnya tetap penuh dan tidak menyisakan kolom kosong.
     $scoreCol = $canViewFinance ? 'col-xl-3' : 'col-xl-4';
 @endphp
 <div class="row mb-4">
-    <!-- Total Murid -->
+    <!-- Total murid -->
     <div class="{{ $scoreCol }} col-md-6 mb-3 mb-xl-0">
         <div class="card h-100 border-0 shadow-sm rounded-4 position-relative overflow-hidden"
              style="background: var(--surface); border: 1px solid var(--border) !important;">
             <div class="position-absolute top-0 start-0 end-0" style="height: 3.5px; background: #0EA5E9;"></div>
             <div class="card-body p-3 px-3 py-3">
                 <div class="d-flex align-items-center justify-content-between mb-2">
-                    <span class="text-muted fw-semibold" style="font-size: 0.84rem;">Total Murid</span>
+                    <span class="text-muted fw-semibold" style="font-size: 0.84rem;">Total murid</span>
                     <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
                          style="width: 34px; height: 34px; background: #E0F2FE; color: #0284C7;">
                         <i class="bi bi-people fs-6"></i>
@@ -50,7 +50,7 @@
         </div>
     </div>
 
-    {{-- Total Pendapatan — hanya Super Admin --}}
+    {{-- Total pendapatan — hanya Super Admin --}}
     @if($canViewFinance)
     <div class="{{ $scoreCol }} col-md-6 mb-3 mb-xl-0">
         <div class="card h-100 border-0 shadow-sm rounded-4 position-relative overflow-hidden"
@@ -58,7 +58,7 @@
             <div class="position-absolute top-0 start-0 end-0" style="height: 3.5px; background: #10B981;"></div>
             <div class="card-body p-3 px-3 py-3">
                 <div class="d-flex align-items-center justify-content-between mb-2">
-                    <span class="text-muted fw-semibold" style="font-size: 0.84rem;">Total Pendapatan</span>
+                    <span class="text-muted fw-semibold" style="font-size: 0.84rem;">Total pendapatan</span>
                     <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
                          style="width: 34px; height: 34px; background: #DCFCE7; color: #16A34A;">
                         <i class="bi bi-cash-stack fs-6"></i>
@@ -84,14 +84,14 @@
     </div>
     @endif
 
-    <!-- Total Kelas -->
+    <!-- Total kelas -->
     <div class="{{ $scoreCol }} col-md-6 mb-3 mb-xl-0">
         <div class="card h-100 border-0 shadow-sm rounded-4 position-relative overflow-hidden"
              style="background: var(--surface); border: 1px solid var(--border) !important;">
             <div class="position-absolute top-0 start-0 end-0" style="height: 3.5px; background: #6366F1;"></div>
             <div class="card-body p-3 px-3 py-3">
                 <div class="d-flex align-items-center justify-content-between mb-2">
-                    <span class="text-muted fw-semibold" style="font-size: 0.84rem;">Total Kelas</span>
+                    <span class="text-muted fw-semibold" style="font-size: 0.84rem;">Total kelas</span>
                     <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
                          style="width: 34px; height: 34px; background: #EDE9FE; color: #6366F1;">
                         <i class="bi bi-display fs-6"></i>
@@ -103,21 +103,21 @@
                         {{ $activeClasses }} Aktif
                     </span>
                     <span class="badge rounded-pill px-2 py-1 text-nowrap" style="font-size: 0.76rem; background: #F1F5F9; color: #374151; border: 1px solid #E2E8F0;">
-                        {{ $todayAttendance }} Hadir Hari Ini
+                        {{ $todayAttendance }} Hadir hari ini
                     </span>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Perlu Perhatian -->
+    <!-- Perlu perhatian -->
     <div class="{{ $scoreCol }} col-md-6 mb-3 mb-xl-0">
         <div class="card h-100 border-0 shadow-sm rounded-4 position-relative overflow-hidden"
              style="background: var(--surface); border: 1px solid var(--border) !important;">
             <div class="position-absolute top-0 start-0 end-0" style="height: 3.5px; background: rgba(245, 136, 12, 1);"></div>
             <div class="card-body p-3 px-3 py-3">
                 <div class="d-flex align-items-center justify-content-between mb-2">
-                    <span class="text-muted fw-semibold" style="font-size: 0.84rem;">Perlu Perhatian</span>
+                    <span class="text-muted fw-semibold" style="font-size: 0.84rem;">Perlu perhatian</span>
                     <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
                          style="width: 34px; height: 34px; background: #FEF3C7; color: rgba(245, 136, 12, 1);">
                         <i class="bi bi-exclamation-triangle fs-6"></i>
@@ -126,7 +126,7 @@
                 <h3 class="fw-bold mb-3 text-gray-900" style="font-size: 1.75rem; line-height: 1.1;">{{ $studentsInArrears }}</h3>
                 <div class="d-flex align-items-center gap-2 flex-wrap">
                     <span class="badge rounded-pill px-2 py-1 fw-semibold text-nowrap" style="font-size: 0.76rem; background: #FEF3C7; color: rgba(245, 136, 12, 1);">
-                        {{ $unpaidCount }} Tagihan Pending
+                        {{ $unpaidCount }} Tagihan pending
                     </span>
                     <span class="badge rounded-pill px-2 py-1 text-nowrap" style="font-size: 0.76rem; background: #F1F5F9; color: #374151; border: 1px solid #E2E8F0;">
                         {{ $pendingReplacements }} Replacement
@@ -144,7 +144,7 @@
         <div class="card border-0 shadow-sm rounded-4 h-100" style="background: var(--surface); border: 1px solid var(--border) !important;">
             <div class="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center py-3 px-4">
                 <div>
-                    <h5 class="fw-bold mb-0 text-gray-800" style="font-size: 1.05rem;">Pertumbuhan Murid (1 Tahun Terakhir)</h5>
+                    <h5 class="fw-bold mb-0 text-gray-800" style="font-size: 1.05rem;">Pertumbuhan murid (1 tahun terakhir)</h5>
                     <div class="text-muted small" style="font-size: 0.78rem;">Kumulatif murid aktif per bulan</div>
                 </div>
             </div>
@@ -161,7 +161,7 @@
         <div class="card border-0 shadow-sm rounded-4 h-100" style="background: var(--surface); border: 1px solid var(--border) !important;">
             <div class="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center py-3 px-4">
                 <div>
-                    <h5 class="fw-bold mb-0 text-gray-800" style="font-size: 1.05rem;">Murid per Kategori Kelas</h5>
+                    <h5 class="fw-bold mb-0 text-gray-800" style="font-size: 1.05rem;">Murid per kategori kelas</h5>
                     <div class="text-muted small" style="font-size: 0.78rem;">Distribusi murid dan jumlah tutor</div>
                 </div>
                 <span class="badge bg-light text-dark border rounded-pill px-2 py-1" style="font-size: 0.75rem;">
@@ -209,11 +209,11 @@
 <div class="card border-0 shadow-sm rounded-4 mb-4" style="background: var(--surface); border: 1px solid var(--border) !important;">
     <div class="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center py-3 px-4">
         <div>
-            <h5 class="fw-bold mb-0 text-gray-800" style="font-size: 1.05rem;">Pembayaran Terbaru</h5>
+            <h5 class="fw-bold mb-0 text-gray-800" style="font-size: 1.05rem;">Pembayaran terbaru</h5>
             <div class="text-muted small" style="font-size: 0.78rem;">Riwayat 5 transaksi dan invoice terbaru</div>
         </div>
         <a href="{{ route('payments.index') }}" class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1 fw-semibold d-inline-flex align-items-center" style="font-size: 0.82rem;">
-            Lihat Semua <i class="bi bi-arrow-right ms-1"></i>
+            Lihat semua <i class="bi bi-arrow-right ms-1"></i>
         </a>
     </div>
     <div class="card-body p-0">
@@ -268,14 +268,14 @@
                                     </span>
                                 @else
                                     <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-3 py-1 fw-semibold" style="font-size: 0.75rem;">
-                                        <i class="bi bi-clock-fill me-1"></i>Belum Lunas
+                                        <i class="bi bi-clock-fill me-1"></i>Belum lunas
                                     </span>
                                 @endif
                             </td>
                             <td class="text-end pe-4 py-3">
                                 <a href="{{ route('payments.index') }}" class="btn btn-sm btn-light border rounded-circle shadow-xs"
                                    style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;"
-                                   title="Lihat Detail">
+                                   title="Lihat detail">
                                     <i class="bi bi-eye text-primary"></i>
                                 </a>
                             </td>
@@ -372,7 +372,7 @@
             data: {
                 labels: @json($growthLabels),
                 datasets: [{
-                    label: 'Total Murid Aktif',
+                    label: 'Total murid aktif',
                     data: @json($growthData),
                     borderColor: '#0EA5E9',
                     borderWidth: 2.5,

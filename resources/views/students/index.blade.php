@@ -21,18 +21,18 @@
 
 @section('content')
 <div class="d-sm-flex align-items-center justify-content-between mb-4">
-    <h1 class="h3 mb-0 text-gray-800 fw-bold">Data Murid & Wali</h1>
+    <h1 class="h3 mb-0 text-gray-800 fw-bold">Data murid & wali</h1>
     <div class="d-flex gap-2">
         @include('partials.export-buttons', ['route' => 'export.students'])
         <a href="{{ route('students.create') }}" class="btn btn-sm btn-primary shadow-sm">
-            <i class="bi bi-plus-lg"></i> Tambah Murid
+            <i class="bi bi-plus-lg"></i> Tambah murid
         </a>
     </div>
 </div>
 
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-        <span>Daftar Murid</span>
+        <span>Daftar murid</span>
         <form method="GET" data-live class="d-flex flex-wrap align-items-center gap-2">
             {{-- Tombol saringnya berupa <a>, bukan checkbox: data-live hanya
                  mengawasi teks, select, & tanggal, dan menambah checkbox ke
@@ -47,13 +47,13 @@
                 <input type="text" name="search" value="{{ $search }}" class="form-control border-start-0 ps-0 py-2" placeholder="Cari nama / ID...">
             </div>
             <select name="class_id" class="form-select form-select-sm" style="width:160px;">
-                <option value="">Semua Kelas</option>
+                <option value="">Semua kelas</option>
                 @foreach($classes as $class)
                     <option value="{{ $class->id }}" @selected($classId == $class->id)>{{ $class->class_category }}</option>
                 @endforeach
             </select>
             <select name="status" class="form-select form-select-sm" style="width:150px;">
-                <option value="">Semua Status</option>
+                <option value="">Semua status</option>
                 <option value="active" @selected($status === 'active')>Aktif</option>
                 <option value="inactive" @selected($status === 'inactive')>Nonaktif</option>
             </select>

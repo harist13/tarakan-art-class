@@ -1,6 +1,6 @@
 @extends('layouts.public')
 
-@section('title', 'Program & Kelas')
+@section('title', 'Program & kelas')
 @section('description', 'Preschool Art, Coloring Class, Drawing Class, dan Holiday Class di Tarakan. Lihat rentang usia, durasi, kapasitas, dan biaya tiap kelas.')
 
 @section('content')
@@ -8,7 +8,7 @@
 <x-site.section tone="paper-2" :paint="true">
     <x-site.heading
         level="h1"
-        eyebrow="Program & Kelas"
+        eyebrow="Program & kelas"
         title="Pilih kelas yang pas untuk anak"
         subtitle="Setiap kelas dikelompokkan menurut usia dan kemampuan, jadi anak belajar bersama teman yang setara. Belum yakin yang mana? Sapa kami dan kami bantu memilihkan." />
 

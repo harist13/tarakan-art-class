@@ -19,7 +19,7 @@
 
         <div class="d-flex flex-column flex-sm-row justify-content-center gap-3 mt-4">
             <x-site.btn :href="route('public.contact')" variant="accent" size="lg">
-                Daftar Sekarang
+                Daftar sekarang
             </x-site.btn>
             <x-site.btn :href="$waUrl" variant="light" size="lg" target="_blank" rel="noopener">
                 Tanya via WhatsApp

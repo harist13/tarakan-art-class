@@ -437,7 +437,7 @@ class Student extends Model
         if ($this->isUnbilledThisPeriod()) {
             return [
                 'label' => 'Belum ditagih '.Payment::labelForPeriod(Payment::periodFor()),
-                'title' => 'Belum ada invoice untuk periode ini. Terbitkan lewat tombol Tagihan Bulanan di menu '.
+                'title' => 'Belum ada invoice untuk periode ini. Terbitkan lewat tombol Tagihan bulanan di menu '.
                     'Pembayaran. Tanpa invoice tidak ada yang bisa ditagih, dan murid ini tidak akan pernah '.
                     'terhitung menunggak meski belum membayar.',
                 'class' => 'rounded-pill px-3 py-1 text-white fw-semibold',

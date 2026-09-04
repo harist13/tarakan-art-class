@@ -206,7 +206,7 @@ class StudentManagementTest extends TestCase
         $this->actingAs($this->makeUser('admin'))
             ->get(route('students.create', ['class_id' => $coloring->id]))
             ->assertOk()
-            ->assertSee('Jadwal Kelas')
+            ->assertSee('Jadwal kelas')
             ->assertSee('name="class_id"', false)
             // Kategori slot itu ikut terpilih, jadi tak perlu dipilih ulang.
             ->assertSee('value="coloring"', false);
@@ -222,7 +222,7 @@ class StudentManagementTest extends TestCase
         $this->actingAs($this->makeUser('admin'))
             ->get(route('students.index'))
             ->assertOk()
-            ->assertSee('Data Murid & Wali', false)
+            ->assertSee('Data murid & wali', false)
             ->assertSee('Ani Listing');
     }
 
@@ -276,7 +276,7 @@ class StudentManagementTest extends TestCase
         $this->actingAs($this->makeUser('admin'))
             ->get(route('students.create'))
             ->assertOk()
-            ->assertSee('Tambah Murid Baru');
+            ->assertSee('Tambah murid baru');
     }
 
     public function test_store_creates_student_and_enrolls_class(): void
@@ -438,7 +438,7 @@ class StudentManagementTest extends TestCase
         $this->actingAs($this->makeUser('admin'))
             ->get(route('students.create'))
             ->assertOk()
-            ->assertSee('Mulai Minggu Ke-')
+            ->assertSee('Mulai minggu ke-')
             ->assertSee('name="start_week"', false)
             ->assertSee('Minggu ke-1')
             ->assertSee('Minggu ke-'.\App\Models\ClassRoom::WEEKS_PER_MONTH)

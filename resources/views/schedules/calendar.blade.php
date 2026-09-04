@@ -2,10 +2,10 @@
 
 @section('content')
 <div class="d-sm-flex align-items-center justify-content-between mb-4">
-    <h1 class="h3 mb-0 text-gray-800 fw-bold">Kalender Jadwal</h1>
+    <h1 class="h3 mb-0 text-gray-800 fw-bold">Kalender jadwal</h1>
     <div class="d-flex gap-2">
-        <a href="{{ route('classes.index', ['tab' => 'kalender']) }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-easel2"></i> Manajemen Kelas</a>
-        <a href="{{ route('schedules.index') }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-list-ul"></i> Tampilan Daftar</a>
+        <a href="{{ route('classes.index', ['tab' => 'kalender']) }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-easel2"></i> Manajemen kelas</a>
+        <a href="{{ route('schedules.index') }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-list-ul"></i> Tampilan daftar</a>
         <button type="button" class="btn btn-sm btn-primary shadow-sm" id="btnUbahJadwal"><i class="bi bi-pencil-square"></i> Ubah</button>
     </div>
 </div>

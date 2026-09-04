@@ -402,7 +402,7 @@ class PaymentArrearsAccessTest extends TestCase
         $this->actingAs($this->admin())
             ->get(route('payments.index'))
             ->assertOk()
-            ->assertSee('Jatuh Tempo')
+            ->assertSee('Jatuh tempo')
             ->assertSee('Lewat 10 hari');
 
         $this->actingAs($this->admin())

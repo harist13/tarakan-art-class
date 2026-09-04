@@ -16,7 +16,7 @@
     <ul class="navbar-nav ms-auto align-items-center">
         <!-- Theme toggle -->
         <li class="nav-item me-2">
-            <button id="themeToggle" type="button" class="topbar-icon-btn" title="Ganti Tema Terang / Gelap">
+            <button id="themeToggle" type="button" class="topbar-icon-btn" title="Ganti tema terang / gelap">
                 <i class="bi bi-moon-stars-fill"></i>
             </button>
         </li>
@@ -34,8 +34,8 @@
                     </span>
                 </li>
                 <li><hr class="dropdown-divider"></li>
-                <li><a class="dropdown-item py-2" href="#"><i class="bi bi-person fa-sm fa-fw me-2 text-gray-400"></i> Profil Saya</a></li>
-                <li><a class="dropdown-item py-2" href="#"><i class="bi bi-gear fa-sm fa-fw me-2 text-gray-400"></i> Pengaturan Sistem</a></li>
+                <li><a class="dropdown-item py-2" href="#"><i class="bi bi-person fa-sm fa-fw me-2 text-gray-400"></i> Profil saya</a></li>
+                <li><a class="dropdown-item py-2" href="#"><i class="bi bi-gear fa-sm fa-fw me-2 text-gray-400"></i> Pengaturan sistem</a></li>
                 <li><hr class="dropdown-divider"></li>
                 <li>
                     <form action="{{ route('logout') }}" method="POST">

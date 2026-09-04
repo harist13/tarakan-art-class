@@ -7,7 +7,7 @@
 
 <div class="row">
     <div class="col-md-6 mb-3">
-        <label class="form-label">Nama Sesi</label>
+        <label class="form-label">Nama sesi</label>
         <input type="text" name="class_name" class="form-control @error('class_name') is-invalid @enderror"
                value="{{ old('class_name', $class->class_name ?? '') }}"
                list="holidayClassNames" placeholder="mis. Melukis Tote Bag" required>
@@ -34,7 +34,7 @@
     </div>
 
     <div class="col-md-6 mb-3">
-        <label class="form-label">Biaya per Peserta (Rp)</label>
+        <label class="form-label">Biaya per peserta (Rp)</label>
         <input type="number" step="1000" min="0" name="price" class="form-control @error('price') is-invalid @enderror"
                value="{{ old('price', isset($class) ? (int) $class->price : 150000) }}" required>
         @error('price') <div class="invalid-feedback">{{ $message }}</div> @enderror
@@ -43,6 +43,6 @@
 
 <div class="alert alert-light border small mb-4">
     <i class="bi bi-info-circle me-1"></i>
-    Sesi ini tidak otomatis tercatat di Laporan Keuangan — biaya di atas baru berupa harga
+    Sesi ini tidak otomatis tercatat di Laporan keuangan — biaya di atas baru berupa harga
     yang diumumkan. Pemasukan dicatat lewat menu <strong>Pembayaran</strong> saat peserta membayar.
 </div>

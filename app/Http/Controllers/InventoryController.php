@@ -58,7 +58,7 @@ class InventoryController extends Controller
 
         $message = 'Barang berhasil ditambahkan.';
         if ($expense = $item->transactions()->sum('amount')) {
-            $message .= ' Pengeluaran Rp '.number_format($expense, 0, ',', '.').' tercatat di Laporan Keuangan.';
+            $message .= ' Pengeluaran Rp '.number_format($expense, 0, ',', '.').' tercatat di Laporan keuangan.';
         }
 
         return redirect()->route('inventory.index')->with('success', $message);
@@ -133,10 +133,10 @@ class InventoryController extends Controller
 
         $message = 'Pergerakan stok berhasil dicatat.';
         if ($expense = StockMovementObserver::purchaseAmount($movement)) {
-            $message .= ' Pengeluaran Rp '.number_format($expense, 0, ',', '.').' tercatat di Laporan Keuangan.';
+            $message .= ' Pengeluaran Rp '.number_format($expense, 0, ',', '.').' tercatat di Laporan keuangan.';
         }
         if ($income = StockMovementObserver::saleAmount($movement)) {
-            $message .= ' Pemasukan Rp '.number_format($income, 0, ',', '.').' tercatat di Laporan Keuangan.';
+            $message .= ' Pemasukan Rp '.number_format($income, 0, ',', '.').' tercatat di Laporan keuangan.';
         }
 
         return redirect()->route('inventory.index')->with('success', $message);

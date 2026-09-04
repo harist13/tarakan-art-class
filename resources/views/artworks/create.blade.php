@@ -2,7 +2,7 @@
 
 @section('content')
 <div class="d-sm-flex align-items-center justify-content-between mb-4">
-    <h1 class="h3 mb-0 text-gray-800 fw-bold">Tambah Foto Karya</h1>
+    <h1 class="h3 mb-0 text-gray-800 fw-bold">Tambah foto karya</h1>
     <a href="{{ $month ? route('artworks.index', ['month' => $month]) : route('artworks.index') }}" class="btn btn-sm btn-outline-secondary">
         <i class="bi bi-arrow-left"></i> Kembali
     </a>
@@ -21,7 +21,7 @@
                 <div class="col-md-5 mb-3">
                     <label class="form-label">Murid</label>
                     <select name="student_id" class="form-select @error('student_id') is-invalid @enderror" required>
-                        <option value="">— Pilih Murid —</option>
+                        <option value="">— Pilih murid —</option>
                         @foreach($students as $student)
                             <option value="{{ $student->id }}" @selected(old('student_id', $studentId) == $student->id)>
                                 {{ $student->name }} ({{ $student->student_id }})
@@ -30,11 +30,11 @@
                     </select>
                     @error('student_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     @if($students->isEmpty())
-                        <small class="text-danger d-block mt-1">Belum ada murid aktif — tambahkan lewat <a href="{{ route('students.index') }}">Data Murid &amp; Wali</a>.</small>
+                        <small class="text-danger d-block mt-1">Belum ada murid aktif — tambahkan lewat <a href="{{ route('students.index') }}">Data murid &amp; wali</a>.</small>
                     @endif
                 </div>
                 <div class="col-md-3 mb-3">
-                    <label class="form-label">Tanggal Karya</label>
+                    <label class="form-label">Tanggal karya</label>
                     <input type="date" name="taken_on" class="form-control @error('taken_on') is-invalid @enderror"
                            value="{{ old('taken_on', $defaultDate) }}" max="{{ now()->toDateString() }}" required>
                     @error('taken_on')<div class="invalid-feedback">{{ $message }}</div>@enderror
@@ -49,7 +49,7 @@
                 </div>
 
                 <div class="col-12 mb-3">
-                    <label class="form-label">Foto Karya</label>
+                    <label class="form-label">Foto karya</label>
                     <input type="file" name="photos[]" id="photoInput"
                            class="form-control @error('photos') is-invalid @enderror @error('photos.*') is-invalid @enderror"
                            accept="image/jpeg,image/png,image/webp" multiple required>

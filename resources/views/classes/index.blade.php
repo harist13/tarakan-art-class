@@ -35,11 +35,11 @@
 
 @section('content')
 <div class="d-sm-flex align-items-center justify-content-between mb-4">
-    <h1 class="h3 mb-0 text-gray-800 fw-bold" id="pageTitle">Manajemen Kelas & Tutor</h1>
+    <h1 class="h3 mb-0 text-gray-800 fw-bold" id="pageTitle">Manajemen kelas & tutor</h1>
     <div class="d-flex gap-2">
-        <button id="btnAddTutor" class="btn btn-sm btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#tutorModal" style="display:none;"><i class="bi bi-person-plus"></i> Tambah Tutor</button>
+        <button id="btnAddTutor" class="btn btn-sm btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#tutorModal" style="display:none;"><i class="bi bi-person-plus"></i> Tambah tutor</button>
         <button type="button" id="btnReplacement" class="btn btn-sm btn-primary shadow-sm" style="display:none;"><i class="bi bi-pencil-square"></i> Ubah</button>
-        <a id="btnAddClass" href="{{ route('classes.create') }}" class="btn btn-sm btn-primary shadow-sm"><i class="bi bi-plus-lg"></i> Tambah Kelas</a>
+        <a id="btnAddClass" href="{{ route('classes.create') }}" class="btn btn-sm btn-primary shadow-sm"><i class="bi bi-plus-lg"></i> Tambah kelas</a>
     </div>
 </div>
 
@@ -50,38 +50,38 @@
      itu memang diminta -- lihat ClassRoomController::index. --}}
 <div class="btn-group mb-4 shadow-sm flex-wrap" role="group" aria-label="Pilih panel">
     <input type="radio" class="btn-check" name="panelToggle" id="toggleKelas" autocomplete="off" @checked($tab === 'kelas')>
-    <label class="btn btn-outline-primary" for="toggleKelas"><i class="bi bi-easel2 me-1"></i> Manajemen Kelas</label>
+    <label class="btn btn-outline-primary" for="toggleKelas"><i class="bi bi-easel2 me-1"></i> Manajemen kelas</label>
     <input type="radio" class="btn-check" name="panelToggle" id="toggleTutor" autocomplete="off" @checked($tab === 'tutor')>
-    <label class="btn btn-outline-primary" for="toggleTutor"><i class="bi bi-person-video3 me-1"></i> Manajemen Tutor</label>
+    <label class="btn btn-outline-primary" for="toggleTutor"><i class="bi bi-person-video3 me-1"></i> Manajemen tutor</label>
     <a href="{{ route('classes.index', ['tab' => 'kalender']) }}" id="toggleKalender"
         class="btn btn-outline-primary @if($tab === 'kalender') active @endif">
-        <i class="bi bi-calendar3-week me-1"></i> Kalender Jadwal
+        <i class="bi bi-calendar3-week me-1"></i> Kalender jadwal
     </a>
 </div>
 
 <div class="card" id="panelKelas" @if($tab === 'tutor') style="display:none;" @endif>
     <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-3">
-        <span class="fw-bold text-nowrap">Daftar Kelas</span>
+        <span class="fw-bold text-nowrap">Daftar kelas</span>
         <form method="GET" data-live class="d-flex flex-wrap align-items-center gap-2">
             <div class="input-group input-group-sm" style="width:180px;">
                 <span class="input-group-text bg-transparent border-end-0"><i class="bi bi-search text-muted"></i></span>
                 <input type="text" name="search" value="{{ $search }}" class="form-control border-start-0 ps-0 py-2" placeholder="Cari kelas...">
             </div>
             <select name="category" class="form-select form-select-sm" style="width:150px;">
-                <option value="">Semua Kategori</option>
+                <option value="">Semua kategori</option>
                 @foreach($categories as $cat)
                     <option value="{{ $cat }}" @selected($category === $cat)>{{ ucfirst($cat) }}</option>
                 @endforeach
             </select>
             <select name="status" class="form-select form-select-sm" style="width:150px;">
-                <option value="">Semua Status</option>
+                <option value="">Semua status</option>
                 <option value="tersedia" @selected($status === 'tersedia')>Tersedia</option>
                 <option value="penuh" @selected($status === 'penuh')>Penuh</option>
-                <option value="tanpa-tutor" @selected($status === 'tanpa-tutor')>Tutor Kosong</option>
+                <option value="tanpa-tutor" @selected($status === 'tanpa-tutor')>Tutor kosong</option>
                 <option value="ditutup" @selected($status === 'ditutup')>Ditutup</option>
             </select>
             <select name="day" class="form-select form-select-sm" style="width:150px;">
-                <option value="">Semua Hari</option>
+                <option value="">Semua hari</option>
                 @foreach(\App\Models\ClassRoom::DAY_NAMES as $dow => $label)
                     <option value="{{ $dow }}" @selected($day === (string) $dow)>{{ $label }}</option>
                 @endforeach
@@ -207,7 +207,7 @@
                             @if($search !== '' || $category !== '' || $status !== '' || $day !== '')
                                 Tidak ada kelas yang cocok dengan filter.
                             @else
-                                Belum ada kelas. Klik "Tambah Kelas" untuk menambahkan.
+                                Belum ada kelas. Klik "Tambah kelas" untuk menambahkan.
                             @endif
                         </td></tr>
                     @endforelse
@@ -218,10 +218,10 @@
     </div>
 </div>
 
-{{-- Panel Manajemen Tutor --}}
+{{-- Panel Manajemen tutor --}}
 <div class="card" id="panelTutor" @if($tab !== 'tutor') style="display:none;" @endif>
     <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-3">
-        <span class="fw-bold text-nowrap">Daftar Tutor <span class="badge bg-primary ms-1">{{ $tutors->count() }}</span></span>
+        <span class="fw-bold text-nowrap">Daftar tutor <span class="badge bg-primary ms-1">{{ $tutors->count() }}</span></span>
         <form method="GET" data-live class="d-flex flex-wrap align-items-center gap-2">
             <input type="hidden" name="tab" value="tutor">
             <div class="input-group input-group-sm" style="width:190px;">
@@ -229,12 +229,12 @@
                 <input type="text" name="tutor_search" value="{{ $tutorSearch }}" class="form-control border-start-0 ps-0 py-2" placeholder="Cari nama / HP tutor...">
             </div>
             <select name="tutor_status" class="form-select form-select-sm" style="width:190px;">
-                <option value="">Semua Status</option>
+                <option value="">Semua status</option>
                 <option value="full-time" @selected($tutorStatus === 'full-time')>Full-Time</option>
                 <option value="part-time" @selected($tutorStatus === 'part-time')>Part-Time</option>
             </select>
             <select name="tutor_class" class="form-select form-select-sm" style="width:190px;">
-                <option value="">Semua Kelas Diampu</option>
+                <option value="">Semua kelas diampu</option>
                 @foreach($allClasses as $cls)
                     <option value="{{ $cls->id }}" @selected($tutorClassId == $cls->id)>{{ $cls->class_category }} ({{ $cls->class_code }})</option>
                 @endforeach
@@ -248,7 +248,7 @@
         <div class="table-responsive">
             <table class="table table-hover align-middle">
                 <thead>
-                    <tr><th>Nama Tutor</th><th>No HP</th><th>Status</th><th>Murid Diampu</th><th>Kelas Diampu</th><th class="text-end">Aksi</th></tr>
+                    <tr><th>Nama tutor</th><th>No HP</th><th>Status</th><th>Murid diampu</th><th>Kelas diampu</th><th class="text-end">Aksi</th></tr>
                 </thead>
                 <tbody>
                     @forelse($tutors as $tutor)
@@ -366,7 +366,7 @@
                             @if($tutorSearch !== '' || $tutorStatus !== '' || $tutorClassId)
                                 Tidak ada tutor yang cocok dengan filter.
                             @else
-                                Belum ada tutor. Klik "Tambah Tutor" untuk menambahkan.
+                                Belum ada tutor. Klik "Tambah tutor" untuk menambahkan.
                             @endif
                         </td></tr>
                     @endforelse
@@ -376,7 +376,7 @@
     </div>
 </div>
 
-{{-- Panel Kalender Jadwal -- kelas reguler, Holiday Class, & replacement.
+{{-- Panel Kalender jadwal -- kelas reguler, Holiday Class, & replacement.
      Isinya hanya dirender saat panel ini yang diminta; di tab lain kotaknya
      kosong dan tersembunyi. --}}
 <div id="panelKalender" @if($tab !== 'kalender') style="display:none;" @endif>
@@ -395,9 +395,9 @@
         <div class="modal-content">
             <form id="tutorEditForm" action="#" method="POST">
                 @csrf @method('PUT')
-                <div class="modal-header"><h5 class="modal-title">Edit Tutor</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-header"><h5 class="modal-title">Edit tutor</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
                 <div class="modal-body">
-                    <div class="mb-3"><label class="form-label">Nama Tutor</label><input type="text" name="name" id="editTutorName" class="form-control" required></div>
+                    <div class="mb-3"><label class="form-label">Nama tutor</label><input type="text" name="name" id="editTutorName" class="form-control" required></div>
                     <div class="mb-3"><label class="form-label">No HP</label><input type="text" name="phone_number" id="editTutorPhone" class="form-control"></div>
                     <div class="mb-3"><label class="form-label">Status</label>
                         <select name="status" id="editTutorStatus" class="form-select" data-no-search>
@@ -406,7 +406,7 @@
                         </select>
                     </div>
                 </div>
-                <div class="modal-footer"><button type="submit" class="btn btn-primary">Simpan Perubahan</button></div>
+                <div class="modal-footer"><button type="submit" class="btn btn-primary">Simpan perubahan</button></div>
             </form>
         </div>
     </div>
@@ -417,12 +417,12 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header border-0 pb-0">
-                <h5 class="modal-title"><i class="bi bi-exclamation-triangle-fill text-warning me-2"></i>Tidak Dapat Menghapus Tutor</h5>
+                <h5 class="modal-title"><i class="bi bi-exclamation-triangle-fill text-warning me-2"></i>Tidak dapat menghapus tutor</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <p class="mb-2">Tutor <strong id="blockedTutorName">-</strong> tidak dapat dihapus karena masih mengampu <strong><span id="blockedTutorCount">0</span> kelas</strong>.</p>
-                <p class="text-muted small mb-0">Pindahkan kelas tersebut ke tutor lain atau hapus kelasnya terlebih dahulu melalui panel Manajemen Kelas, kemudian coba lagi.</p>
+                <p class="text-muted small mb-0">Pindahkan kelas tersebut ke tutor lain atau hapus kelasnya terlebih dahulu melalui panel Manajemen kelas, kemudian coba lagi.</p>
             </div>
             <div class="modal-footer border-0 pt-0">
                 <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Mengerti</button>
@@ -437,16 +437,16 @@
         <div class="modal-content">
             <form action="{{ route('tutors.store') }}" method="POST">
                 @csrf
-                <div class="modal-header"><h5 class="modal-title">Tambah Tutor</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-header"><h5 class="modal-title">Tambah tutor</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
                 <div class="modal-body">
-                    <div class="mb-3"><label class="form-label">Nama Tutor</label><input type="text" name="name" class="form-control" required></div>
+                    <div class="mb-3"><label class="form-label">Nama tutor</label><input type="text" name="name" class="form-control" required></div>
                     <div class="mb-3"><label class="form-label">No HP</label><input type="text" name="phone_number" class="form-control"></div>
                     <div class="mb-3"><label class="form-label">Status</label>
                         <select name="status" class="form-select"><option value="full-time">Full-Time</option><option value="part-time">Part-Time</option></select>
                     </div>
                     <p class="small text-muted mb-0">Tutor terdaftar: {{ $tutors->count() }} orang.</p>
                 </div>
-                <div class="modal-footer"><button type="submit" class="btn btn-primary">Simpan Tutor</button></div>
+                <div class="modal-footer"><button type="submit" class="btn btn-primary">Simpan tutor</button></div>
             </form>
         </div>
     </div>
@@ -455,7 +455,7 @@
 
 @push('scripts')
 <script>
-    // ── Switch panel: Manajemen Kelas <-> Manajemen Tutor ──
+    // ── Switch panel: Manajemen kelas <-> Manajemen tutor ──
     (function () {
         const panels = {
             kelas: document.getElementById('panelKelas'),

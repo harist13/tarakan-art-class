@@ -1,5 +1,5 @@
 {{--
-    Pilihan Metode / Channel — dipakai form Buat Invoice maupun Tagihan Bulanan.
+    Pilihan Metode / channel — dipakai form Buat invoice maupun Tagihan bulanan.
 
     Daftar opsinya diambil dari Payment::METHODS, satu-satunya tempat daftar
     metode ditulis. Dua halaman itu memang berbeda peran, tapi kosakata

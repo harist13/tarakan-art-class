@@ -1,6 +1,6 @@
 <div class="row">
     <div class="col-md-6 mb-3">
-        <label class="form-label">Tipe Transaksi</label>
+        <label class="form-label">Tipe transaksi</label>
         <select name="type" class="form-select" required>
             <option value="income" @selected(old('type', $transaction->type ?? '') === 'income')>Pemasukan</option>
             <option value="expense" @selected(old('type', $transaction->type ?? 'expense') === 'expense')>Pengeluaran</option>
@@ -10,7 +10,7 @@
         <label class="form-label">Kategori</label>
         @php($selectedCategory = old('category', $transaction->category ?? ''))
         <select name="category" class="form-select" required>
-            <option value="">-- Pilih Kategori --</option>
+            <option value="">-- Pilih kategori --</option>
             @foreach ($categories as $category)
                 <option value="{{ $category }}" @selected($selectedCategory === $category)>{{ $category }}</option>
             @endforeach

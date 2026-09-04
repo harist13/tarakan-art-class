@@ -10,7 +10,7 @@
 
 <div class="d-sm-flex align-items-center justify-content-between mb-4">
     <div>
-        <h1 class="h3 mb-0 text-gray-800 fw-bold">Laporan Keuangan</h1>
+        <h1 class="h3 mb-0 text-gray-800 fw-bold">Laporan keuangan</h1>
         <div class="small text-muted mt-1">
             <i class="bi bi-calendar3 me-1"></i>
             @if($isAllPeriods)
@@ -25,7 +25,7 @@
     </div>
     <div class="d-flex gap-2">
         @include('partials.export-buttons', ['route' => 'export.financials'])
-        <a href="{{ route('financials.create') }}" class="btn btn-sm btn-primary shadow-sm"><i class="bi bi-plus-lg"></i> Catat Transaksi</a>
+        <a href="{{ route('financials.create') }}" class="btn btn-sm btn-primary shadow-sm"><i class="bi bi-plus-lg"></i> Catat transaksi</a>
     </div>
 </div>
 
@@ -55,7 +55,7 @@
 
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-3">
-        <span class="fw-bold text-nowrap">Rincian Transaksi</span>
+        <span class="fw-bold text-nowrap">Rincian transaksi</span>
         <form method="GET" data-live class="d-flex flex-wrap align-items-center gap-2">
             <div class="input-group input-group-sm" style="width:190px;">
                 <span class="input-group-text bg-transparent border-end-0"><i class="bi bi-search text-muted"></i></span>
@@ -66,12 +66,12 @@
             @if($isAllPeriods)
                 <a href="{{ route('financials.index', array_merge($filterParams, ['month' => $currentMonth])) }}"
                    class="btn btn-sm btn-outline-primary text-nowrap" title="Kembali ke bulan berjalan">
-                    <i class="bi bi-calendar-event"></i> Bulan Ini
+                    <i class="bi bi-calendar-event"></i> Bulan ini
                 </a>
             @else
                 <a href="{{ route('financials.index', array_merge($filterParams, ['month' => ''])) }}"
                    class="btn btn-sm btn-outline-primary text-nowrap" title="Tampilkan seluruh periode">
-                    <i class="bi bi-calendar-range"></i> Semua Bulan
+                    <i class="bi bi-calendar-range"></i> Semua bulan
                 </a>
             @endif
             <select name="type" class="form-select form-select-sm" style="width:150px;">
@@ -102,9 +102,9 @@
                             <td>
                                 {{ $trx->category }}
                                 @if($trx->payment_id)
-                                    <span class="badge bg-light text-dark border ms-1 rounded-pill px-2 py-1 fw-semibold" title="Tercatat otomatis dari invoice lunas"><i class="bi bi-lightning-charge-fill"></i> Dari Invoice</span>
+                                    <span class="badge bg-light text-dark border ms-1 rounded-pill px-2 py-1 fw-semibold" title="Tercatat otomatis dari invoice lunas"><i class="bi bi-lightning-charge-fill"></i> Dari invoice</span>
                                 @elseif($trx->inventory_item_id)
-                                    <span class="badge bg-light text-dark border ms-1 rounded-pill px-2 py-1 fw-semibold" title="Tercatat otomatis saat barang ditambahkan"><i class="bi bi-lightning-charge-fill"></i> Dari Inventaris</span>
+                                    <span class="badge bg-light text-dark border ms-1 rounded-pill px-2 py-1 fw-semibold" title="Tercatat otomatis saat barang ditambahkan"><i class="bi bi-lightning-charge-fill"></i> Dari inventaris</span>
                                 @endif
                             </td>
                             <td class="small">{{ $trx->description ?: '-' }}</td>

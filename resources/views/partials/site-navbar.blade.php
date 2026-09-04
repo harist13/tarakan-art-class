@@ -48,7 +48,7 @@
 
                 <li class="nav-item mt-2 mt-lg-0 ms-lg-2">
                     <a class="tac-btn tac-btn-accent tac-btn-sm w-100" href="{{ route('public.contact') }}">
-                        Daftar Sekarang
+                        Daftar sekarang
                     </a>
                 </li>
             </ul>

@@ -1,6 +1,6 @@
 @extends('layouts.public')
 
-@section('title', 'Kelas Seni Anak di Tarakan')
+@section('title', 'Kelas seni anak di Tarakan')
 @section('description', 'Kelas menggambar dan mewarnai untuk anak usia 3–12 tahun di Tarakan. Kelas kecil maksimal 8 anak, tutor berpengalaman, dan raport perkembangan tiap semester.')
 
 @section('content')
@@ -77,13 +77,13 @@
 
                 <div class="tac-rise tac-d4 d-flex flex-column flex-sm-row gap-3 mt-4">
                     <x-site.btn :href="route('public.contact')" variant="coral">
-                        Daftar Sekarang
+                        Daftar sekarang
                         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                              stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                             <path d="M5 12h14M13 6l6 6-6 6"/>
                         </svg>
                     </x-site.btn>
-                    <x-site.btn :href="route('public.programs')" variant="ghost">Lihat Program</x-site.btn>
+                    <x-site.btn :href="route('public.programs')" variant="ghost">Lihat program</x-site.btn>
                 </div>
 
                 <dl class="tac-rise tac-d5 tac-hero-stats row g-4 mt-4 mb-0">
@@ -160,7 +160,7 @@
 <x-site.section tone="paper-2">
     <x-site.heading
         eyebrow="Pengumuman"
-        title="Pengumuman & Agenda Terkini"
+        title="Pengumuman & agenda terkini"
         subtitle="Informasi kegiatan, sesi Holiday Class, dan kabar terbaru dari Tarakan Art Class." />
 
     @if($hasPengumuman)
@@ -195,11 +195,11 @@
     @else
         <div class="tac-card text-center px-4 py-5 mt-4 mx-auto" style="max-width: 38rem;">
             <span class="tac-icon tac-bg-sun fs-4 mx-auto mb-3" aria-hidden="true">📢</span>
-            <h3 class="fs-5 mb-2">Semua Kelas Berjalan Sesuai Jadwal</h3>
+            <h3 class="fs-5 mb-2">Semua kelas berjalan sesuai jadwal</h3>
             <p class="small tac-muted mb-4">
                 Saat ini belum ada pengumuman khusus. Seluruh kelas reguler berjalan seperti biasa.
             </p>
-            <x-site.btn :href="route('public.contact')" size="sm" variant="coral">Tanya Info Pendaftaran</x-site.btn>
+            <x-site.btn :href="route('public.contact')" size="sm" variant="coral">Tanya info pendaftaran</x-site.btn>
         </div>
     @endif
 </x-site.section>
@@ -207,7 +207,7 @@
 {{-- ─── 4. Kenapa Tarakan Art Class ────────────────────────────── --}}
 <x-site.section tone="paper">
     <x-site.heading
-        eyebrow="Kenapa Kami"
+        eyebrow="Kenapa kami"
         title="Bukan sekadar tempat menitipkan anak"
         subtitle="Kami merancang kelas supaya anak pulang membawa keterampilan baru, bukan cuma lembar mewarnai." />
 
@@ -257,7 +257,7 @@
             @endforeach
         </div>
     @else
-        {{-- Belum ada karya yang diunggah admin (Galeri Karya) → arahkan ke Instagram. --}}
+        {{-- Belum ada karya yang diunggah admin (Galeri karya) → arahkan ke Instagram. --}}
         <div class="row row-cols-2 row-cols-sm-3 g-4 mt-3" aria-hidden="true">
             @foreach(['tac-bg-coral-soft','tac-bg-sun-soft','tac-bg-sky-soft','tac-bg-leaf-soft','tac-bg-grape-soft','tac-bg-sun-soft'] as $tone)
                 <div class="col">

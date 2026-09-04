@@ -129,7 +129,7 @@ class MidtransSnapPaymentTest extends TestCase
 
         $this->get(route('pay.show', $payment->pay_token))
             ->assertOk()
-            ->assertSee('Bayar Sekarang')
+            ->assertSee('Bayar sekarang')
             ->assertSee('Rp 250.000')
             ->assertSee('snap-token-1', false);
 
@@ -269,8 +269,8 @@ class MidtransSnapPaymentTest extends TestCase
 
         $this->get(route('pay.show', $payment->pay_token))
             ->assertOk()
-            ->assertSee('Pembayaran Diterima')
-            ->assertDontSee('Bayar Sekarang');
+            ->assertSee('Pembayaran diterima')
+            ->assertDontSee('Bayar sekarang');
 
         Http::assertNothingSent();
     }
@@ -292,7 +292,7 @@ class MidtransSnapPaymentTest extends TestCase
 
         $halaman = $this->get(route('pay.show', $payment->pay_token))->assertOk();
 
-        $halaman->assertSee('Kirim bukti ke Admin');
+        $halaman->assertSee('Kirim bukti ke admin');
         $halaman->assertSee('https://wa.me/6281234567890', false);
 
         $pesan = urldecode(InvoiceWhatsApp::receiptLink($payment));
@@ -312,7 +312,7 @@ class MidtransSnapPaymentTest extends TestCase
 
         $this->get(route('pay.show', $payment->pay_token))
             ->assertOk()
-            ->assertDontSee('Kirim bukti ke Admin');
+            ->assertDontSee('Kirim bukti ke admin');
     }
 
     public function test_tautan_bayar_yang_tidak_dikenal_menghasilkan_404(): void

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Raport Siswa - Tarakan Art Class</title>
+    <title>Raport siswa - Tarakan Art Class</title>
     <script>
         (function () {
             var t = localStorage.getItem('tac-theme') || 'light';
@@ -125,13 +125,13 @@
     </style>
 </head>
 <body class="py-5">
-    <button type="button" class="theme-toggle" id="themeToggle" title="Ganti Tema Terang / Gelap">
+    <button type="button" class="theme-toggle" id="themeToggle" title="Ganti tema terang / gelap">
         <i class="bi bi-moon-stars-fill" id="themeIcon"></i>
     </button>
     <div class="container" style="max-width: 720px;">
         <div class="text-center mb-4">
             <div class="brand fs-3"><i class="bi bi-palette-fill me-2"></i>Tarakan Art Class</div>
-            <p class="text-white-50 mb-0">Akses Raport Perkembangan Siswa</p>
+            <p class="text-white-50 mb-0">Akses raport perkembangan siswa</p>
         </div>
 
         @if(!isset($report))
@@ -141,7 +141,7 @@
                          style="width:64px;height:64px;border-radius:50%;background:rgba(14,165,233,0.12);color:#0EA5E9;font-size:1.8rem;">
                         <i class="bi bi-shield-lock"></i>
                     </div>
-                    <h5 class="fw-bold mb-2">Masukkan Credential Key</h5>
+                    <h5 class="fw-bold mb-2">Masukkan credential key</h5>
                     <p class="text-muted small mb-4">Masukkan credential key yang diberikan admin untuk melihat raport perkembangan putra/putri Anda.</p>
                     @if($errors->any())
                         <div class="alert alert-danger py-2 text-start"><i class="bi bi-exclamation-circle me-1"></i>{{ $errors->first('credential_key') }}</div>
@@ -151,7 +151,7 @@
                         <div class="mb-3">
                             <input type="text" name="credential_key" class="form-control form-control-lg text-center fw-bold text-uppercase" style="letter-spacing:2px;" placeholder="Contoh: TAC-2026-0001" value="{{ old('credential_key') }}" required autofocus>
                         </div>
-                        <button type="submit" class="btn btn-primary btn-lg w-100"><i class="bi bi-unlock me-1"></i> Lihat Raport</button>
+                        <button type="submit" class="btn btn-primary btn-lg w-100"><i class="bi bi-unlock me-1"></i> Lihat raport</button>
                     </form>
                 </div>
             </div>
@@ -182,7 +182,7 @@
 
                 @if($report->tutor_notes)
                     <div class="report-section">
-                        <h6><i class="bi bi-chat-square-quote"></i> Catatan Tutor</h6>
+                        <h6><i class="bi bi-chat-square-quote"></i> Catatan tutor</h6>
                         <p>{{ $report->tutor_notes }}</p>
                     </div>
                 @endif
@@ -191,7 +191,7 @@
                      raportnya bila muridnya menunggak — akses keduanya satu pintu. --}}
                 @if($artworks->isNotEmpty())
                     <div class="report-section">
-                        <h6><i class="bi bi-images"></i> Karya Periode Ini ({{ $artworks->count() }})</h6>
+                        <h6><i class="bi bi-images"></i> Karya periode ini ({{ $artworks->count() }})</h6>
                         <div class="artwork-grid">
                             @foreach($artworks as $artwork)
                                 <figure class="artwork-item">
@@ -210,10 +210,10 @@
 
                 <div class="report-section text-center no-print d-flex flex-wrap justify-content-center gap-2">
                     <button type="button" class="btn btn-primary btn-sm d-inline-flex align-items-center gap-1" onclick="window.print()">
-                        <i class="bi bi-printer"></i> Cetak / Simpan PDF
+                        <i class="bi bi-printer"></i> Cetak / simpan PDF
                     </button>
                     <a href="{{ route('reports.guest') }}" class="btn btn-outline-primary btn-sm d-inline-flex align-items-center gap-1">
-                        <i class="bi bi-arrow-left"></i> Cek Raport Lain
+                        <i class="bi bi-arrow-left"></i> Cek raport lain
                     </a>
                 </div>
             </div>

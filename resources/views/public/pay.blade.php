@@ -29,7 +29,7 @@
                 <div class="text-center mb-4">
                     <span class="tac-eyebrow">{{ config('site.name') }}</span>
                     <h1 class="fs-3 lh-sm mt-2 mb-2 tac-text-ink">
-                        {{ $paid ? 'Pembayaran Diterima' : 'Pembayaran Kelas Seni' }}
+                        {{ $paid ? 'Pembayaran diterima' : 'Pembayaran kelas seni' }}
                     </h1>
                     <p class="tac-muted mb-0">
                         @if($paid)
@@ -71,7 +71,7 @@
                                 <x-site.btn :href="$adminWaUrl" variant="coral" target="_blank" rel="noopener"
                                             class="d-inline-flex align-items-center gap-2">
                                     <img src="{{ asset('images/whatsapp.png') }}" alt="" width="20" height="20" decoding="async">
-                                    Kirim bukti ke Admin
+                                    Kirim bukti ke admin
                                 </x-site.btn>
                             @endif
                             <x-site.btn :href="route('public.home')" variant="ghost">Kembali ke beranda</x-site.btn>
@@ -89,7 +89,7 @@
                     @endif
 
                     <div class="d-grid gap-2">
-                        <x-site.btn id="tac-pay" size="lg">Bayar Sekarang</x-site.btn>
+                        <x-site.btn id="tac-pay" size="lg">Bayar sekarang</x-site.btn>
                         {{-- Cadangan bila popup Snap gagal terbuka (pemblokir popup,
                              JavaScript mati): halaman pembayaran Midtrans langsung. --}}
                         <a href="{{ $redirectUrl }}" class="text-center small tac-muted text-decoration-underline">
@@ -109,7 +109,7 @@
                             di studio atau hubungi admin lewat WhatsApp untuk instruksi transfer.
                         </p>
                         <x-site.btn href="https://wa.me/{{ config('site.contact.whatsapp') }}" variant="coral" target="_blank" rel="noopener">
-                            Hubungi Admin
+                            Hubungi admin
                         </x-site.btn>
                     </div>
 
@@ -120,7 +120,7 @@
                             beberapa saat lagi atau hubungi admin kami.
                         </p>
                         <x-site.btn href="https://wa.me/{{ config('site.contact.whatsapp') }}" variant="coral" target="_blank" rel="noopener">
-                            Hubungi Admin
+                            Hubungi admin
                         </x-site.btn>
                     </div>
                 @endif

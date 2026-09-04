@@ -78,7 +78,7 @@ class DashboardTest extends TestCase
         $response = $this->actingAs($user)->get(route('dashboard'));
 
         $response->assertOk();
-        $response->assertSee('Pertumbuhan Murid (1 Tahun Terakhir)');
+        $response->assertSee('Pertumbuhan murid (1 tahun terakhir)');
         $response->assertSee('Murid per Tipe Kelas');
         $response->assertSee('Preschool');
         $response->assertSee('Coloring');

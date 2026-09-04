@@ -2,7 +2,7 @@
 
 @section('content')
 <div class="d-sm-flex align-items-center justify-content-between mb-4">
-    <h1 class="h3 mb-0 text-gray-800 fw-bold">Edit Raport — {{ $report->credential_key }}</h1>
+    <h1 class="h3 mb-0 text-gray-800 fw-bold">Edit raport — {{ $report->credential_key }}</h1>
     <a href="{{ route('reports.index') }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i> Kembali</a>
 </div>
 <div class="card">

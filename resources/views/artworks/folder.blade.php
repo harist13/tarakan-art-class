@@ -8,7 +8,7 @@
         <h1 class="h3 mb-0 text-gray-800 fw-bold">{{ $student->name }}</h1>
         <nav aria-label="breadcrumb" class="mt-1">
             <ol class="breadcrumb mb-0 small">
-                <li class="breadcrumb-item"><a href="{{ route('artworks.index') }}">Galeri Karya</a></li>
+                <li class="breadcrumb-item"><a href="{{ route('artworks.index') }}">Galeri karya</a></li>
                 <li class="breadcrumb-item"><a href="{{ route('artworks.index', ['month' => $month]) }}">{{ $dt->locale('id')->translatedFormat('F Y') }}</a></li>
                 <li class="breadcrumb-item active">{{ $student->name }}</li>
             </ol>
@@ -16,7 +16,7 @@
     </div>
     <div class="d-flex gap-2 mt-2 mt-sm-0">
         <a href="{{ route('artworks.create', ['student_id' => $student->id, 'month' => $month]) }}" class="btn btn-sm btn-primary shadow-sm">
-            <i class="bi bi-cloud-arrow-up me-1"></i>Tambah Karya
+            <i class="bi bi-cloud-arrow-up me-1"></i>Tambah karya
         </a>
     </div>
 </div>
@@ -30,7 +30,7 @@
             credential key <code class="fw-bold">{{ $report->credential_key }}</code>.
             Karya di folder ini ikut terlihat orang tua saat membukanya.
         </span>
-        <a href="{{ route('reports.show', $report) }}" class="btn btn-sm btn-outline-success"><i class="bi bi-journal-bookmark me-1"></i>Lihat Raport</a>
+        <a href="{{ route('reports.show', $report) }}" class="btn btn-sm btn-outline-success"><i class="bi bi-journal-bookmark me-1"></i>Lihat raport</a>
     </div>
 @else
     <div class="alert alert-warning d-flex flex-wrap align-items-center justify-content-between gap-2">
@@ -38,7 +38,7 @@
             <i class="bi bi-exclamation-triangle me-1"></i>Belum ada raport {{ $dt->locale('id')->translatedFormat('F Y') }} untuk {{ $student->name }},
             jadi karya ini belum bisa dibuka orang tua lewat credential key.
         </span>
-        <a href="{{ route('reports.create', ['month' => $month, 'student_id' => $student->id]) }}" class="btn btn-sm btn-outline-warning text-dark"><i class="bi bi-plus-lg me-1"></i>Buat Raport</a>
+        <a href="{{ route('reports.create', ['month' => $month, 'student_id' => $student->id]) }}" class="btn btn-sm btn-outline-warning text-dark"><i class="bi bi-plus-lg me-1"></i>Buat raport</a>
     </div>
 @endif
 
@@ -82,7 +82,7 @@
                     <i class="bi bi-images fs-1 d-block mb-3 opacity-50"></i>
                     <p class="mb-3">Folder ini masih kosong.</p>
                     <a href="{{ route('artworks.create', ['student_id' => $student->id, 'month' => $month]) }}" class="btn btn-sm btn-primary">
-                        <i class="bi bi-cloud-arrow-up me-1"></i>Tambah Karya
+                        <i class="bi bi-cloud-arrow-up me-1"></i>Tambah karya
                     </a>
                 </div>
             @endforelse
@@ -99,7 +99,7 @@
             @csrf @method('PUT')
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title"><i class="bi bi-pencil me-2 text-info"></i>Ubah Karya</h5>
+                    <h5 class="modal-title"><i class="bi bi-pencil me-2 text-info"></i>Ubah karya</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
@@ -120,7 +120,7 @@
                         </div>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Tanggal Karya</label>
+                        <label class="form-label">Tanggal karya</label>
                         <input type="date" name="taken_on" class="form-control" max="{{ now()->toDateString() }}" required>
                         <small class="text-muted">Mengubah bulannya akan memindahkan foto ini ke folder bulan lain.</small>
                     </div>

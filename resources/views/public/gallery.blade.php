@@ -1,6 +1,6 @@
 @extends('layouts.public')
 
-@section('title', 'Galeri Karya')
+@section('title', 'Galeri karya')
 @section('description', 'Kumpulan karya murid Tarakan Art Class dan dokumentasi kegiatan kelas, Holiday Class, serta pameran karya anak di Tarakan.')
 
 @section('content')
@@ -58,7 +58,7 @@
             </div>
         @endif
     @else
-        {{-- Belum ada karya yang diunggah admin (Galeri Karya) maupun foto statis
+        {{-- Belum ada karya yang diunggah admin (Galeri karya) maupun foto statis
              di config/site.php → arahkan ke Instagram. --}}
         <div class="mx-auto text-center" style="max-width: 34rem;">
             <span class="tac-dashed-box tac-thumb-placeholder mx-auto" style="width: 5rem; height: 5rem;" aria-hidden="true">🖼️</span>

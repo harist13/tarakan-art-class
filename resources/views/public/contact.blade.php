@@ -1,6 +1,6 @@
 @extends('layouts.public')
 
-@section('title', 'Kontak & Pendaftaran')
+@section('title', 'Kontak & pendaftaran')
 @section('description', 'Alamat studio, jam operasional, dan form pendaftaran Tarakan Art Class. Kirim data anak, admin kami akan menghubungi Anda lewat WhatsApp.')
 
 @section('content')
@@ -14,7 +14,7 @@
 <x-site.section tone="paper-2" :paint="true">
     <x-site.heading
         level="h1"
-        eyebrow="Kontak & Pendaftaran"
+        eyebrow="Kontak & pendaftaran"
         title="Mari mulai dari perkenalan"
         subtitle="Isi form di bawah dan admin kami akan menghubungi Anda untuk mengatur jadwal kelas percobaan. Ingin langsung mengobrol? Sapa kami di WhatsApp." />
 </x-site.section>

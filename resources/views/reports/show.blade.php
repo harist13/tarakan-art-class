@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Detail Raport')
+@section('title', 'Detail raport')
 
 @push('styles')
 <style>
@@ -42,7 +42,7 @@
 @endphp
 
 <div class="d-sm-flex align-items-center justify-content-between mb-4">
-    <h1 class="h3 mb-0 text-gray-800 fw-bold">Detail Raport</h1>
+    <h1 class="h3 mb-0 text-gray-800 fw-bold">Detail raport</h1>
     <div class="d-flex gap-2">
         <a href="{{ route('reports.edit', $report) }}" class="btn btn-sm btn-primary shadow-sm"><i class="bi bi-pencil me-1"></i> Edit</a>
         <a href="{{ route('reports.index') }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i> Kembali</a>
@@ -71,27 +71,27 @@
 
     <div class="report-section">
         <div class="credential-box">
-            <span class="fw-semibold"><i class="bi bi-key-fill text-primary me-2"></i>Credential Key untuk orang tua</span>
+            <span class="fw-semibold"><i class="bi bi-key-fill text-primary me-2"></i>Credential key untuk orang tua</span>
             <code class="fs-5 fw-bold text-primary">{{ $report->credential_key }}</code>
         </div>
     </div>
 
     <div class="report-section">
-        <h6><i class="bi bi-graph-up-arrow"></i> Catatan Aktivitas / Perkembangan</h6>
+        <h6><i class="bi bi-graph-up-arrow"></i> Catatan aktivitas / perkembangan</h6>
         <p>{{ $report->activity_notes }}</p>
     </div>
 
     @if($report->tutor_notes)
         <div class="report-section">
-            <h6><i class="bi bi-chat-square-quote"></i> Catatan Tutor</h6>
+            <h6><i class="bi bi-chat-square-quote"></i> Catatan tutor</h6>
             <p>{{ $report->tutor_notes }}</p>
         </div>
     @endif
 
     {{-- Karya sepanjang periode raport — sama persis dengan yang dilihat orang
-         tua lewat credential key. Unggahnya di modul Galeri Karya. --}}
+         tua lewat credential key. Unggahnya di modul Galeri karya. --}}
     <div class="report-section">
-        <h6><i class="bi bi-images"></i> Karya Periode Ini ({{ $artworks->count() }})</h6>
+        <h6><i class="bi bi-images"></i> Karya periode ini ({{ $artworks->count() }})</h6>
         @if($artworks->isNotEmpty())
             <div class="row g-2">
                 @foreach($artworks as $artwork)
@@ -110,7 +110,7 @@
         @if($report->student)
             <a href="{{ route('artworks.folder', ['student' => $report->student, 'month' => $report->period_start->format('Y-m')]) }}"
                class="btn btn-sm btn-outline-primary mt-3">
-                <i class="bi bi-folder2-open me-1"></i>Kelola Folder Karya
+                <i class="bi bi-folder2-open me-1"></i>Kelola folder karya
             </a>
         @endif
     </div>
@@ -121,7 +121,7 @@
             pada {{ $report->created_at->format('d M Y H:i') }}
         </span>
         <a href="{{ route('reports.guest') }}" target="_blank" class="btn btn-sm btn-outline-primary">
-            <i class="bi bi-box-arrow-up-right me-1"></i> Buka Halaman Akses Orang Tua
+            <i class="bi bi-box-arrow-up-right me-1"></i> Buka halaman akses orang tua
         </a>
     </div>
 </div>

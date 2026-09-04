@@ -58,7 +58,7 @@ class FinanceVisibilityTest extends TestCase
 
         $response->assertOk();
         $response->assertViewHas('canViewFinance', true);
-        $response->assertSee('Total Pendapatan');
+        $response->assertSee('Total pendapatan');
         $response->assertSee('Rp 1.100.000');
     }
 
@@ -71,11 +71,11 @@ class FinanceVisibilityTest extends TestCase
         $response->assertOk();
         $response->assertViewHas('canViewFinance', false);
         $response->assertViewHas('totalIncome', 0);
-        $response->assertDontSee('Total Pendapatan');
+        $response->assertDontSee('Total pendapatan');
         $response->assertDontSee('Rp 1.100.000');
         // Scorecard lain tetap ada.
-        $response->assertSee('Total Murid');
-        $response->assertSee('Total Kelas');
+        $response->assertSee('Total murid');
+        $response->assertSee('Total kelas');
     }
 
     public function test_super_admin_melihat_ringkasan_laporan_keuangan(): void
@@ -156,6 +156,6 @@ class FinanceVisibilityTest extends TestCase
         $response->assertDontSee('Saldo (Profit/Loss)');
         $response->assertDontSee('Rp -4.650.000');
         // Rincian transaksi tetap bisa dibuka admin.
-        $response->assertSee('Rincian Transaksi');
+        $response->assertSee('Rincian transaksi');
     }
 }
