@@ -1,15 +1,8 @@
-{{-- ─── Bagian 1: Data Murid & Akademik ──────────────────────── --}}
-<div class="mb-4">
-    <div class="d-flex align-items-center gap-2 mb-3 pb-2 border-bottom">
-        <span class="badge rounded-circle p-2 bg-primary-subtle text-primary">
-            <i class="bi bi-person-badge fs-6"></i>
-        </span>
-        <div>
-            <h6 class="fw-bold mb-0 text-dark">Data Murid & Kelas</h6>
-            <small class="text-muted">Informasi identitas murid dan program kelas yang diikuti</small>
-        </div>
-    </div>
+{{-- ─── Bagian 1: Data Murid & Akademik ────────────────────────
 
+     Tanpa kepala bagian: label tiap kolom sudah menyebut isinya, dan kalimat
+     pengantar yang cuma mengulang label hanya menambah tinggi halaman. --}}
+<div class="mb-4">
     <div class="row g-3">
         <div class="col-md-6">
             <label class="form-label fw-semibold">Nama Lengkap Murid <span class="text-danger">*</span></label>
@@ -101,15 +94,28 @@
         <div class="col-md-6">
             <label class="form-label fw-semibold">Jadwal Kelas</label>
             @php $selectedClassId = (int) old('class_id', $selectedClass->id ?? 0); @endphp
+
+            {{-- Yang dilihat admin: kotak baca-saja berisi jadwal yang akan dipakai.
+                 Jadwalnya sepenuhnya ditentukan kategori, jadi tidak ada keputusan
+                 yang perlu diambil di sini. --}}
             <div class="input-group">
                 <span class="input-group-text bg-light text-muted"><i class="bi bi-calendar-week"></i></span>
-                {{-- data-no-search: dropdown ini TIDAK boleh dibungkus Tom Select.
-                     Penyaring di bawah menonaktifkan & menyembunyikan <option> pada
-                     select asli, sedangkan Tom Select menyalin daftar opsinya sekali
-                     saat inisialisasi dan tidak pernah membacanya lagi — jadi slot
-                     penuh tetap bisa diklik di daftar yang terlihat, dan nilai yang
-                     dibersihkan penyaring tidak tampak berubah di layar. --}}
-                <select name="class_id" id="class_id" class="form-select @error('class_id') is-invalid @enderror" data-no-search>
+                <input type="text" id="class_id_display" class="form-control bg-body-secondary @error('class_id') is-invalid @enderror"
+                       value="Pilih kategori kelas dulu" readonly tabindex="-1" aria-label="Jadwal kelas yang akan diisi murid ini">
+                @error('class_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
+            </div>
+
+            {{-- Pembawa nilai sekaligus sumber datanya. <select> tidak mengenal
+                 readonly — hanya disabled, dan yang disabled tidak ikut terkirim.
+                 Jadi select-nya disembunyikan, bukan dimatikan: penyaring di bawah
+                 tetap memakainya untuk memilih slot & membaca biayanya, dan
+                 nilainya tetap sampai ke server.
+
+                 data-no-search: jangan dibungkus Tom Select. Tom Select menyalin
+                 daftar opsi sekali saat inisialisasi dan tidak pernah membacanya
+                 lagi, sehingga slot yang dinonaktifkan penyaring tetap terpilih. --}}
+            <div class="d-none">
+                <select name="class_id" id="class_id" class="form-select" data-no-search tabindex="-1" aria-hidden="true">
                     <option value="">-- Pilihkan otomatis --</option>
                     @foreach($classes as $slot)
                         @php
@@ -139,7 +145,6 @@
                         </option>
                     @endforeach
                 </select>
-                @error('class_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
             </div>
             {{-- Menyebut jadwal yang benar-benar akan dipakai, termasuk saat
                  dibiarkan otomatis — admin harus tahu anak ini masuk hari apa
@@ -355,17 +360,11 @@
 </script>
 @endpush
 
-{{-- ─── Bagian 2: Data Wali & Kontak ─────────────────────────── --}}
+{{-- ─── Bagian 2: Data Wali & Kontak ───────────────────────────
+
+     Tanpa pemisah apa pun: jarak antar baris sudah cukup memisahkan, dan garis
+     mendatar di form sepanjang ini hanya memotongnya tanpa menambah keterangan. --}}
 <div class="mb-4">
-    <div class="d-flex align-items-center gap-2 mb-3 pb-2 border-bottom">
-        <span class="badge rounded-circle p-2 bg-success-subtle text-success">
-            <i class="bi bi-people fs-6"></i>
-        </span>
-        <div>
-            <h6 class="fw-bold mb-0 text-dark">Informasi Wali & Kontak</h6>
-            <small class="text-muted">Kontak orang tua / wali untuk konfirmasi jadwal dan informasi akademik</small>
-        </div>
-    </div>
 
     <div class="row g-3">
         <div class="col-md-6">
@@ -517,6 +516,9 @@
         // ── Jadwal mengikuti kategori ──
         const slotSelect = document.getElementById('class_id');
         const slotHint = document.getElementById('class_id_hint');
+        // Kotak baca-saja yang dilihat admin; select-nya sendiri tersembunyi dan
+        // hanya bertugas membawa nilai ke server.
+        const slotDisplay = document.getElementById('class_id_display');
         if (!slotSelect || !slotHint) return;
 
         // Ditandai supaya keterangannya jujur: nilai yang diisikan kategori bukan
@@ -593,36 +595,36 @@
                 },
             }));
 
+            // Kotak baca-saja adalah satu-satunya yang dilihat admin, jadi ia yang
+            // harus menyatakan keadaan — termasuk saat tidak ada jadwal yang bisa
+            // dipakai. Kotak kosong tanpa keterangan akan terbaca sebagai
+            // "belum terisi", padahal masalahnya kelasnya yang tidak ada.
+            const setDisplay = function (teks) {
+                if (slotDisplay) slotDisplay.value = teks;
+            };
+
             if (kategori === '') {
-                slotHint.innerHTML = '<i class="bi bi-info-circle me-1"></i>Pilih kategori kelas dulu untuk melihat jadwalnya.';
+                setDisplay('Pilih kategori kelas dulu');
+                slotHint.innerHTML = '<i class="bi bi-info-circle me-1"></i>Jadwalnya mengikuti kategori yang dipilih.';
                 slotHint.className = 'form-text mt-1 text-muted';
             } else if (sekategori === 0) {
-                slotHint.innerHTML = '<i class="bi bi-info-circle-fill me-1"></i>Belum ada jadwal untuk kategori ini.';
+                setDisplay('Belum ada jadwal untuk kategori ini');
+                slotHint.innerHTML = '<i class="bi bi-info-circle-fill me-1"></i>Tambahkan kelasnya dulu di menu Manajemen Kelas.';
                 slotHint.className = 'form-text mt-1 text-warning';
             } else if (bisaDipilih === 0) {
-                slotHint.innerHTML = '<i class="bi bi-exclamation-triangle-fill me-1"></i>Semua jadwal kategori ini penuh atau ditutup.';
+                setDisplay('Semua jadwal penuh atau sudah lewat');
+                slotHint.innerHTML = '<i class="bi bi-exclamation-triangle-fill me-1"></i>Tidak ada jadwal yang bisa diisi untuk kategori ini.';
                 slotHint.className = 'form-text mt-1 text-danger';
             } else {
                 const label = (dipakai ? dipakai.textContent : '').trim();
-
-                if (!adaNilai) {
-                    // Admin sengaja mengembalikannya ke "Pilihkan otomatis".
-                    slotHint.innerHTML = '<i class="bi bi-magic me-1"></i>Dibiarkan otomatis — anak ini masuk <strong>' + label + '</strong>.';
-                } else if (diisiKategori) {
-                    slotHint.innerHTML = '<i class="bi bi-magic me-1"></i>Terisi otomatis dari kategori'
-                        + (bisaDipilih > 1 ? '. Ganti bila anaknya masuk jadwal lain.' : '.');
-                } else {
-                    slotHint.innerHTML = '<i class="bi bi-calendar-check me-1"></i>Dipilih manual.';
-                }
+                setDisplay(label);
 
                 // Tanggal pertemuan pertamanya disebutkan supaya angka pekan &
                 // nominal invoice di bawah bisa ditelusuri admin, bukan muncul
                 // begitu saja.
-                if (sesiLabel) {
-                    slotHint.innerHTML += '<br><i class="bi bi-calendar-event me-1"></i>Pertemuan pertamanya <strong>'
-                        + sesiLabel + '</strong>.';
-                }
-
+                slotHint.innerHTML = sesiLabel
+                    ? '<i class="bi bi-calendar-event me-1"></i>Pertemuan pertamanya <strong>' + sesiLabel + '</strong>.'
+                    : '<i class="bi bi-calendar-check me-1"></i>Mengikuti kategori yang dipilih.';
                 slotHint.className = 'form-text mt-1 text-muted';
             }
         }

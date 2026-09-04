@@ -13,7 +13,11 @@
         <form action="{{ route('classes.store') }}" method="POST">
             @csrf
             @include('classes._form', ['class' => null])
-            <button type="submit" class="btn btn-primary"><i class="bi bi-save me-1"></i> Simpan</button>
+            {{-- Diberi jarak & garis pemisah: tombolnya menempel pada kotak harga
+                 di atasnya, sehingga terbaca seolah bagian dari kotak itu. --}}
+            <div class="mt-4 pt-3 border-top">
+                <button type="submit" class="btn btn-primary"><i class="bi bi-save me-1"></i> Simpan</button>
+            </div>
         </form>
     </div>
 </div>

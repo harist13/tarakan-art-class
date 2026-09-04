@@ -10,7 +10,11 @@
         <form action="{{ route('classes.update', $class) }}" method="POST">
             @csrf @method('PUT')
             @include('classes._form', ['class' => $class])
-            <button type="submit" class="btn btn-primary"><i class="bi bi-save me-1"></i> Perbarui</button>
+            {{-- Diberi jarak & garis pemisah: tombolnya menempel pada kotak harga
+                 di atasnya, sehingga terbaca seolah bagian dari kotak itu. --}}
+            <div class="mt-4 pt-3 border-top">
+                <button type="submit" class="btn btn-primary"><i class="bi bi-save me-1"></i> Perbarui</button>
+            </div>
         </form>
     </div>
 </div>

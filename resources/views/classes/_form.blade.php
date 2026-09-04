@@ -1,41 +1,65 @@
-{{-- Blok 1 — Identitas kelas: apa yang diajarkan, siapa tutornya, muat berapa anak. --}}
+{{-- Blok 1 — Identitas kelas: apa yang diajarkan, siapa tutornya, muat berapa
+     anak, dan pola pertemuannya.
+
+     Pola Kelas duduk di sini, bukan di blok Jadwal: ia sepenuhnya turunan dari
+     Tipe Kelas di sebelahnya (trial sekali jalan, reguler mingguan), jadi
+     tempatnya di samping penyebabnya — bukan di antara isian jam. --}}
 <h6 class="text-uppercase text-muted fw-bold small mb-3"><i class="bi bi-easel2 me-1"></i>Informasi Kelas</h6>
 <div class="row g-3">
     <div class="col-md-6">
-        <label class="form-label">Kategori</label>
-        <input type="text" name="class_category" class="form-control @error('class_category') is-invalid @enderror" value="{{ old('class_category', $class->class_category ?? '') }}" placeholder="Contoh: Preschool, Coloring, Drawing" required>
-        @error('class_category')
-            <div class="invalid-feedback">{{ $message }}</div>
-        @enderror
+        <label class="form-label fw-semibold">Kategori <span class="text-danger">*</span></label>
+        <div class="input-group">
+            <span class="input-group-text bg-light text-muted"><i class="bi bi-palette"></i></span>
+            <input type="text" name="class_category" class="form-control @error('class_category') is-invalid @enderror" value="{{ old('class_category', $class->class_category ?? '') }}" placeholder="Contoh: Preschool, Coloring, Drawing" required>
+            @error('class_category')<div class="invalid-feedback">{{ $message }}</div>@enderror
+        </div>
     </div>
     <div class="col-md-6">
-        <label class="form-label">Tutor</label>
-        <select name="tutor_id" class="form-select @error('tutor_id') is-invalid @enderror" required>
-            <option value="">— Pilih Tutor —</option>
-            @foreach($tutors as $tutor)
-                <option value="{{ $tutor->id }}" @selected(old('tutor_id', $class->tutor_id ?? '') == $tutor->id)>{{ $tutor->name }}</option>
-            @endforeach
-        </select>
-        @error('tutor_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+        <label class="form-label fw-semibold">Tutor <span class="text-danger">*</span></label>
+        <div class="input-group">
+            <span class="input-group-text bg-light text-muted"><i class="bi bi-person-video3"></i></span>
+            <select name="tutor_id" class="form-select @error('tutor_id') is-invalid @enderror" required>
+                <option value="">— Pilih Tutor —</option>
+                @foreach($tutors as $tutor)
+                    <option value="{{ $tutor->id }}" @selected(old('tutor_id', $class->tutor_id ?? '') == $tutor->id)>{{ $tutor->name }}</option>
+                @endforeach
+            </select>
+            @error('tutor_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+        </div>
     </div>
     <div class="col-md-4">
         {{-- Tipe kelas menggantikan saklar pengulangan: trial hanya sekali pertemuan,
              reguler berjalan tiap pekan. Controller yang menurunkan is_recurring. --}}
-        <label class="form-label">Tipe Kelas</label>
-        <select name="class_type" id="class_type" class="form-select @error('class_type') is-invalid @enderror" data-no-search required>
-            @foreach(\App\Models\ClassRoom::TYPE_LABELS as $value => $label)
-                <option value="{{ $value }}" @selected(old('class_type', $class->class_type ?? 'regular') === $value)>{{ $label }}</option>
-            @endforeach
-        </select>
-        @error('class_type')<div class="invalid-feedback">{{ $message }}</div>@enderror
+        <label class="form-label fw-semibold">Tipe Kelas <span class="text-danger">*</span></label>
+        <div class="input-group">
+            <span class="input-group-text bg-light text-muted"><i class="bi bi-bookmark"></i></span>
+            <select name="class_type" id="class_type" class="form-select @error('class_type') is-invalid @enderror" data-no-search required>
+                @foreach(\App\Models\ClassRoom::TYPE_LABELS as $value => $label)
+                    <option value="{{ $value }}" @selected(old('class_type', $class->class_type ?? 'regular') === $value)>{{ $label }}</option>
+                @endforeach
+            </select>
+            @error('class_type')<div class="invalid-feedback">{{ $message }}</div>@enderror
+        </div>
     </div>
     <div class="col-md-4">
-        <label class="form-label">Kapasitas</label>
+        <label class="form-label fw-semibold">Kapasitas <span class="text-danger">*</span></label>
         <div class="input-group">
-            <input type="number" name="capacity" min="1" class="form-control @error('capacity') is-invalid @enderror" value="{{ old('capacity', $class->capacity ?? '') }}" required>
+            <span class="input-group-text bg-light text-muted"><i class="bi bi-people"></i></span>
+            <input type="number" name="capacity" min="1" class="form-control @error('capacity') is-invalid @enderror" value="{{ old('capacity', $class->capacity ?? '') }}" placeholder="0" required>
             <span class="input-group-text">murid</span>
             @error('capacity')<div class="invalid-feedback">{{ $message }}</div>@enderror
         </div>
+    </div>
+    <div class="col-md-4">
+        {{-- Kotak baca-saja setinggi kontrol di sebelahnya, supaya barisnya rata.
+             Kalimat panjangnya turun ke keterangan di bawah — di dalam kotak ia
+             akan membuat baris ini lebih tinggi dari dua kolom lainnya. --}}
+        <label class="form-label fw-semibold">Pola Kelas</label>
+        <div class="input-group">
+            <span class="input-group-text bg-light text-muted"><i class="bi bi-arrow-repeat"></i></span>
+            <div class="form-control bg-body-secondary" id="recurringPattern">Berulang tiap pekan</div>
+        </div>
+        <small class="text-muted d-block mt-1" id="recurringHint">Kelas berulang tiap pekan sejak tanggal kelasnya.</small>
     </div>
 </div>
 
@@ -45,28 +69,31 @@
 <h6 class="text-uppercase text-muted fw-bold small mb-3"><i class="bi bi-calendar-week me-1"></i>Jadwal</h6>
 <div class="row g-3">
     <div class="col-md-4">
-        <label class="form-label">Tanggal Kelas</label>
-        <input type="date" name="schedule_date" id="schedule_date" class="form-control @error('schedule_date') is-invalid @enderror"
-            value="{{ old('schedule_date', isset($class) ? $class->schedule_date->format('Y-m-d') : now()->toDateString()) }}" required>
-        @error('schedule_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
+        <label class="form-label fw-semibold">Tanggal Kelas <span class="text-danger">*</span></label>
+        <div class="input-group">
+            <span class="input-group-text bg-light text-muted"><i class="bi bi-calendar-event"></i></span>
+            <input type="date" name="schedule_date" id="schedule_date" class="form-control @error('schedule_date') is-invalid @enderror"
+                value="{{ old('schedule_date', isset($class) ? $class->schedule_date->format('Y-m-d') : now()->toDateString()) }}" required>
+            @error('schedule_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
+        </div>
         <small class="text-muted d-block mt-1" id="scheduleDateHint"><i class="bi bi-calendar-event me-1"></i>Hari kelas diambil dari tanggal ini.</small>
     </div>
-    <div class="col-md-2">
-        <label class="form-label">Jam Mulai</label>
-        <input type="time" name="schedule_time" id="schedule_time" class="form-control @error('schedule_time') is-invalid @enderror" value="{{ old('schedule_time', isset($class) ? \Illuminate\Support\Str::of($class->schedule_time)->substr(0,5) : '') }}" required>
-        @error('schedule_time')<div class="invalid-feedback">{{ $message }}</div>@enderror
-    </div>
-    <div class="col-md-2">
-        <label class="form-label">Jam Selesai</label>
-        <input type="time" name="schedule_end_time" id="schedule_end_time" class="form-control @error('schedule_end_time') is-invalid @enderror" value="{{ old('schedule_end_time', isset($class) ? \Illuminate\Support\Str::of($class->schedule_end_time)->substr(0,5) : '') }}" required>
-        @error('schedule_end_time')<div class="invalid-feedback">{{ $message }}</div>@enderror
-        <small class="text-muted d-block mt-1" id="durationHint"></small>
+    <div class="col-md-4">
+        <label class="form-label fw-semibold">Jam Mulai <span class="text-danger">*</span></label>
+        <div class="input-group">
+            <span class="input-group-text bg-light text-muted"><i class="bi bi-clock"></i></span>
+            <input type="time" name="schedule_time" id="schedule_time" class="form-control @error('schedule_time') is-invalid @enderror" value="{{ old('schedule_time', isset($class) ? \Illuminate\Support\Str::of($class->schedule_time)->substr(0,5) : '') }}" required>
+            @error('schedule_time')<div class="invalid-feedback">{{ $message }}</div>@enderror
+        </div>
     </div>
     <div class="col-md-4">
-        <label class="form-label">Pola Kelas</label>
-        <div class="alert alert-light border mb-0 py-2 px-3 small" id="recurringHint">
-            <i class="bi bi-arrow-repeat me-1"></i>Kelas berulang tiap pekan sejak tanggal di samping.
+        <label class="form-label fw-semibold">Jam Selesai <span class="text-danger">*</span></label>
+        <div class="input-group">
+            <span class="input-group-text bg-light text-muted"><i class="bi bi-clock-history"></i></span>
+            <input type="time" name="schedule_end_time" id="schedule_end_time" class="form-control @error('schedule_end_time') is-invalid @enderror" value="{{ old('schedule_end_time', isset($class) ? \Illuminate\Support\Str::of($class->schedule_end_time)->substr(0,5) : '') }}" required>
+            @error('schedule_end_time')<div class="invalid-feedback">{{ $message }}</div>@enderror
         </div>
+        <small class="text-muted d-block mt-1" id="durationHint"></small>
     </div>
 </div>
 
@@ -77,26 +104,30 @@
 <h6 class="text-uppercase text-muted fw-bold small mb-3"><i class="bi bi-wallet2 me-1"></i>Biaya</h6>
 <div class="row g-3">
     <div class="col-md-4">
-        <label class="form-label">Biaya Kelas</label>
+        <label class="form-label fw-semibold">Biaya Kelas <span class="text-danger">*</span></label>
         <div class="input-group">
-            <span class="input-group-text">Rp</span>
+            <span class="input-group-text bg-light text-muted">Rp</span>
             <input type="number" step="1000" min="0" name="class_fee" id="class_fee" class="form-control @error('class_fee') is-invalid @enderror" value="{{ old('class_fee', isset($class) ? (int) $class->class_fee : '') }}" placeholder="0" required>
             @error('class_fee')<div class="invalid-feedback">{{ $message }}</div>@enderror
         </div>
+        <small class="text-muted d-block mt-1">Iuran per bulan, ditagih penuh mulai bulan kedua.</small>
     </div>
     <div class="col-md-4">
-        <label class="form-label">Uang Pendaftaran <span class="badge bg-body-secondary text-body-secondary border fw-semibold ms-1">Add-on</span></label>
+        <label class="form-label fw-semibold">Uang Pendaftaran <span class="badge bg-body-secondary text-body-secondary border fw-semibold ms-1">Opsional</span></label>
         <div class="input-group">
-            <span class="input-group-text">Rp</span>
+            <span class="input-group-text bg-light text-muted">Rp</span>
             <input type="number" step="1000" min="0" name="registration_fee" id="registration_fee" class="form-control @error('registration_fee') is-invalid @enderror" value="{{ old('registration_fee', isset($class) ? (int) $class->registration_fee : '') }}" placeholder="0">
             @error('registration_fee')<div class="invalid-feedback">{{ $message }}</div>@enderror
         </div>
-        <small class="text-muted d-block mt-1">Kosongkan bila kelas ini tidak memungut pendaftaran.</small>
+        <small class="text-muted d-block mt-1">Kosongkan bila kelas ini tidak memungutnya.</small>
     </div>
     <div class="col-md-4">
-        <label class="form-label">Total Bayar Awal</label>
-        <div class="form-control bg-body-secondary fw-bold" id="totalFeePreview">Rp 0</div>
-        <small class="text-muted d-block mt-1"><i class="bi bi-info-circle me-1"></i>Biaya kelas + uang pendaftaran.</small>
+        <label class="form-label fw-semibold">Total Bayar Awal</label>
+        <div class="input-group">
+            <span class="input-group-text bg-light text-muted"><i class="bi bi-calculator"></i></span>
+            <div class="form-control bg-body-secondary fw-bold" id="totalFeePreview">Rp 0</div>
+        </div>
+        <small class="text-muted d-block mt-1">Biaya kelas + uang pendaftaran.</small>
     </div>
 </div>
 
@@ -132,6 +163,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const classType = document.getElementById('class_type');
     const dateHint = document.getElementById('scheduleDateHint');
     const recurringHint = document.getElementById('recurringHint');
+    const recurringPattern = document.getElementById('recurringPattern');
     const startTime = document.getElementById('schedule_time');
     const endTime = document.getElementById('schedule_end_time');
     const durationHint = document.getElementById('durationHint');
@@ -161,13 +193,22 @@ document.addEventListener('DOMContentLoaded', function () {
                 : '<i class="bi bi-calendar-event me-1"></i>Hari kelas diambil dari tanggal ini.';
         }
 
+        // Kotaknya menyebut polanya sesingkat mungkin; alasan & akibatnya turun
+        // ke keterangan di bawah, supaya tinggi barisnya tetap sama dengan
+        // Tipe Kelas & Kapasitas di sebelahnya.
+        if (recurringPattern) {
+            recurringPattern.textContent = trial
+                ? 'Sekali pertemuan'
+                : (hari ? 'Berulang tiap ' + hari : 'Berulang tiap pekan');
+        }
+
         if (recurringHint) {
             if (trial) {
-                recurringHint.innerHTML = '<i class="bi bi-calendar-x me-1"></i><strong>Trial Class</strong> hanya berjalan sekali pada tanggal itu, lalu ditandai sudah lewat.';
+                recurringHint.innerHTML = '<i class="bi bi-calendar-x me-1"></i>Berjalan sekali pada Tanggal Kelas, lalu ditandai sudah lewat.';
             } else {
                 recurringHint.innerHTML = hari
-                    ? '<i class="bi bi-arrow-repeat me-1"></i>Kelas reguler berulang <strong>tiap ' + hari + '</strong> sejak tanggal itu, sampai statusnya ditutup.'
-                    : '<i class="bi bi-arrow-repeat me-1"></i>Kelas berulang tiap pekan sejak tanggal di samping.';
+                    ? '<i class="bi bi-arrow-repeat me-1"></i>Berulang <strong>tiap ' + hari + '</strong> sejak Tanggal Kelas, sampai statusnya ditutup.'
+                    : '<i class="bi bi-arrow-repeat me-1"></i>Berulang tiap pekan sejak Tanggal Kelas.';
             }
         }
     }
