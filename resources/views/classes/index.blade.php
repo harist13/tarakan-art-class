@@ -2,20 +2,30 @@
 
 @push('styles')
 <style>
-    /* Tabel di halaman ini punya tujuh kolom. Dengan padding 1rem bawaan, ruang
-       kosongnya sendiri sudah memakan ratusan piksel dan memaksa tabel bergulir
+    /* Tabel kelas memakai pola dua baris yang sama dengan tabel murid: jawaban
+       utamanya di baris pertama, keterangan pendukungnya di baris kedua yang
+       lebih kecil. Enam kolom masih perlu padding yang dirapatkan — dengan 1rem
+       bawaan, ruang kosongnya saja sudah memaksa tabel bergulir. */
+    .kelas-table thead th,
+    .kelas-table tbody td { padding: 0.75rem 0.7rem; }
+    .kelas-table th { white-space: nowrap; }
+    .kelas-table .cell-main { font-weight: 600; line-height: 1.3; }
+    .kelas-table .cell-sub { font-size: 0.8rem; color: var(--text-muted); line-height: 1.35; }
+
+    /* Kolom aksi menempel di kanan saat tabel digulir di layar sempit. */
+    .kelas-table .col-actions { position: sticky; right: 0; background-color: var(--surface); }
+    .kelas-table thead .col-actions { background-color: var(--surface-2); }
+    .kelas-table .col-actions::before {
+        content: ''; position: absolute; top: 0; bottom: 0; left: 0;
+        border-left: 1px solid var(--border);
+    }
+    .kelas-table tbody tr:hover > td.col-actions { background-color: var(--surface-2); }
+
+    /* Tabel tutor masih enam kolom: padding bawaan 1rem membuatnya bergulir
        pada layar yang sebenarnya cukup lebar. */
-    #panelKelas .table th,
-    #panelKelas .table td,
     #panelTutor .table th,
     #panelTutor .table td {
         padding: 0.75rem 0.6rem;
-    }
-
-    /* Kolom sempit tidak boleh memotong isinya sendiri: nama tutor & kategori
-       boleh turun baris, sedangkan angka uang & tanggal tidak. */
-    #panelKelas .table td,
-    #panelTutor .table td {
         word-break: break-word;
     }
 
@@ -105,86 +115,88 @@
             </div>
         @endif
         <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
+            <table class="table table-hover align-middle mb-0 kelas-table">
                 <thead>
                     <tr>
                         <th>Kelas</th>
-                        <th>Tutor</th>
-                        <th>Jadwal</th>
-                        <th>Kapasitas</th>
+                        <th>Jadwal &amp; tutor</th>
                         <th>Ketersediaan</th>
-                        <th class="text-end">Biaya</th>
-                        <th class="text-end">Aksi</th>
+                        <th class="text-end" title="Iuran bulanan + uang pendaftaran (ditagih sekali saat murid mendaftar)">Biaya</th>
+                        <th class="text-end col-actions">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($classes as $class)
                         @php
                             $av = $class->availability();
-                            $terisi = $class->enrolledCount();
-                            $persen = $class->capacity > 0 ? min(100, round($terisi / $class->capacity * 100)) : 0;
-                            $warnaIsi = $persen >= 100 ? 'bg-danger' : ($persen >= 75 ? 'bg-warning' : 'bg-success');
+                            // Sifat jadwal (berulang / sekali jalan) & sesi berikutnya adalah
+                            // keterangan, bukan yang dicari admin saat memindai tabel — jadi
+                            // dititipkan ke tooltip agar barisnya tetap dua baris.
+                            $catatanJadwal = ! $class->is_recurring
+                                ? 'Kelas sekali jalan — tidak berulang tiap pekan.'
+                                : (($sesi = $class->nextOccurrence())
+                                    ? 'Kelas berulang tiap pekan. Sesi berikutnya '.$sesi->format('d M Y').'.'
+                                    : 'Kelas berulang tiap pekan. Belum ada sesi mendatang.');
                         @endphp
                         <tr>
-                            {{-- Kode & kategori disatukan: keduanya menjawab "kelas yang mana",
-                                 dan kolom terpisah hanya melebarkan tabel tanpa menambah info. --}}
+                            {{-- Kode di depan nama: kode itulah yang dipakai admin saat
+                                 menyebut sebuah kelas, sedangkan tipenya keterangan. --}}
                             <td>
-                                <div class="fw-bold text-capitalize">{{ $class->class_category }}</div>
-                                <div class="d-flex align-items-center gap-2 mt-1">
-                                    <span class="small text-muted">{{ $class->class_code }}</span>
-                                    @php $warnaTipe = $class->isTrial() ? 'warning' : 'primary'; @endphp
-                                    <span class="badge bg-{{ $warnaTipe }}-subtle text-{{ $warnaTipe }}-emphasis border border-{{ $warnaTipe }}-subtle">{{ $class->typeLabel() }}</span>
+                                <div class="cell-main">
+                                    {{ $class->class_code }} - <span class="text-capitalize">{{ $class->class_category }}</span>
                                 </div>
+                                {{-- Tipe kelas ditulis polos, tanpa badge berwarna: kolom
+                                     Ketersediaan sudah memakai warna, dan dua penanda berwarna
+                                     dalam satu baris saling berebut perhatian. --}}
+                                <div class="cell-sub">{{ $class->typeLabel() }}</div>
                             </td>
-                            <td>{{ $class->tutor->name ?? '-' }}</td>
+                            {{-- "Kapan & siapa yang mengajar" dibaca sekali jalan, jadi tutor
+                                 tidak lagi berdiri sebagai kolom sendiri. --}}
                             <td>
-                                <div>{{ $class->scheduleLabel() }}</div>
-                                <small class="text-muted d-block">
-                                    @if(! $class->is_recurring)
-                                        <i class="bi bi-calendar-x me-1"></i>Sekali jalan
-                                    @elseif($next = $class->nextOccurrence())
-                                        <i class="bi bi-arrow-repeat me-1"></i>Sesi berikutnya {{ $next->format('d M Y') }}
+                                <div class="d-flex align-items-center gap-2" title="{{ $catatanJadwal }}">
+                                    <span>{{ $class->scheduleLabel() }}</span>
+                                    <i class="bi bi-{{ $class->is_recurring ? 'arrow-repeat' : 'calendar-x' }} text-muted small"></i>
+                                </div>
+                                <div class="cell-sub">
+                                    @if($class->tutor)
+                                        <i class="bi bi-person me-1"></i>{{ $class->tutor->name }}
                                     @else
-                                        Belum ada sesi mendatang
+                                        {{-- Tanpa warna khusus: kolom Ketersediaan sudah menandai
+                                             keadaan ini dengan badge "Tutor kosong". --}}
+                                        <i class="bi bi-person-dash me-1"></i>Tutor belum ditentukan
                                     @endif
-                                </small>
-                            </td>
-                            {{-- Angka saja sulit dibaca sekilas; bar tipis membuat kelas yang
-                                 hampir penuh langsung terlihat tanpa membandingkan dua angka. --}}
-                            <td>
-                                <div class="fw-semibold">{{ $terisi }} <span class="text-muted fw-normal">/ {{ $class->capacity }}</span></div>
-                                <div class="progress mt-1" style="height:5px; min-width:56px;" role="progressbar"
-                                    aria-label="Keterisian kelas {{ $class->class_code }}" aria-valuenow="{{ $persen }}" aria-valuemin="0" aria-valuemax="100">
-                                    <div class="progress-bar {{ $warnaIsi }}" style="width: {{ $persen }}%"></div>
                                 </div>
                             </td>
+                            {{-- Kolom kapasitas dilepas: badge di bawah ini sudah menyebut sisa
+                                 kursinya, dan jumlah terisi/kapasitas ada di form edit kelas. --}}
                             <td>
                                 <span class="badge rounded-pill px-3 py-1 text-white fw-semibold" style="background-color: {{ $av['bg'] ?? '#475569' }};">{{ $av['text'] }}</span>
                             </td>
-                            {{-- Uang pendaftaran hanya ditagih sekali, jadi ditulis sebagai
-                                 tambahan di bawah iuran, bukan dijumlah diam-diam. --}}
+                            {{-- Satu angka: iuran bulanan + uang pendaftaran. Uang pendaftaran
+                                 hanya ditagih sekali, jadi angka ini tagihan bulan pertama.
+                                 Rinciannya, tarif sepekan, & tangga harga bulan pertama muncul
+                                 saat angkanya disinggahi kursor — judul kolomnya juga menyebut
+                                 isi angka ini, jadi tak perlu penanda tersendiri di tiap baris. --}}
                             <td class="text-end">
-                                <div class="fw-semibold text-nowrap">Rp {{ number_format($class->class_fee, 0, ',', '.') }}</div>
-                                @if($class->registration_fee > 0)
-                                    <small class="text-muted text-nowrap d-block" title="Uang pendaftaran, ditagih sekali saat murid mendaftar">
-                                        + Rp {{ number_format($class->registration_fee, 0, ',', '.') }} daftar
-                                    </small>
-                                @endif
-                                {{-- Tarif sepekan: dasar harga bulan pertama murid yang masuk
-                                     di pertengahan bulan. Tangga lengkapnya di tooltip —
-                                     empat angka di baris tabel akan menenggelamkan iuran pokoknya. --}}
-                                @if($class->class_fee > 0)
-                                    @php
-                                        $rincian = collect(\App\Models\ClassRoom::START_WEEKS)
-                                            ->map(fn ($w) => 'Masuk minggu ke-'.$w.': Rp '.number_format($class->feeForStartWeek($w), 0, ',', '.'))
-                                            ->implode(' · ');
-                                    @endphp
-                                    <small class="text-muted text-nowrap d-block" title="Harga bulan pertama — {{ $rincian }}">
-                                        ≈ Rp {{ number_format($class->weeklyFee(), 0, ',', '.') }} / pekan
-                                    </small>
-                                @endif
+                                @php
+                                    $rincianBiaya = 'Iuran Rp '.number_format($class->class_fee, 0, ',', '.').' / bulan';
+                                    if ($class->registration_fee > 0) {
+                                        $rincianBiaya .= ' + uang pendaftaran Rp '.number_format($class->registration_fee, 0, ',', '.')
+                                            .' (ditagih sekali saat murid mendaftar)';
+                                    }
+                                    if ($class->class_fee > 0) {
+                                        $rincianBiaya .= '. Tarif sepekan ≈ Rp '.number_format($class->weeklyFee(), 0, ',', '.')
+                                            .'. Iuran bulan pertama — '
+                                            .collect(\App\Models\ClassRoom::START_WEEKS)
+                                                ->map(fn ($w) => 'masuk minggu ke-'.$w.': Rp '.number_format($class->feeForStartWeek($w), 0, ',', '.'))
+                                                ->implode(' · ');
+                                    }
+                                @endphp
+                                <div class="cell-main text-nowrap" title="{{ $rincianBiaya }}">
+                                    Rp {{ number_format($class->initialFee(), 0, ',', '.') }}
+                                </div>
                             </td>
-                            <td class="text-end">
+                            <td class="text-end col-actions">
                                 <div class="d-inline-flex flex-nowrap gap-1">
                                     <form action="{{ route('classes.toggle-status', $class) }}" method="POST">
                                         @csrf @method('PATCH')
@@ -203,7 +215,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="7" class="text-center text-muted py-4">
+                        <tr><td colspan="5" class="text-center text-muted py-4">
                             @if($search !== '' || $category !== '' || $status !== '' || $day !== '')
                                 Tidak ada kelas yang cocok dengan filter.
                             @else

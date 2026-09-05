@@ -16,7 +16,7 @@
         </div>
 
         <div class="col-md-6">
-            <label class="form-label fw-semibold">Tipe / kategori kelas <span class="text-danger">*</span></label>
+            <label class="form-label fw-semibold">Kategori kelas <span class="text-danger">*</span></label>
             @php
                 $selectedClass = $selectedClass ?? null;
                 // Datang dari layar Ketersediaan slot: kategori slot itulah yang
