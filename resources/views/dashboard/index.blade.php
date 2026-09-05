@@ -139,19 +139,39 @@
 
 <!-- Middle Section: Growth Chart & Class Types -->
 <div class="row mb-4">
-    <!-- Growth Chart (1 Year) -->
+    <!-- Growth Chart -->
     <div class="col-xl-8 col-lg-7 mb-4 mb-lg-0">
         <div class="card border-0 shadow-sm rounded-4 h-100" style="background: var(--surface); border: 1px solid var(--border) !important;">
-            <div class="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center py-3 px-4">
+            <div class="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center py-3 px-4 gap-2">
                 <div>
-                    <h5 class="fw-bold mb-0 text-gray-800" style="font-size: 1.05rem;">Pertumbuhan murid (1 tahun terakhir)</h5>
-                    <div class="text-muted small" style="font-size: 0.78rem;">Kumulatif murid aktif per bulan</div>
+                    <h5 class="fw-bold mb-0 text-gray-800" style="font-size: 1.05rem;">Pertumbuhan murid</h5>
+                    {{-- Subjudulnya sengaja tidak menyebut "kumulatif murid aktif" saja.
+                         Yang dihitung adalah murid yang aktif SEKARANG, dipetakan ke bulan
+                         bergabungnya — jadi bar bulan lalu ikut turun kalau ada murid
+                         berhenti, dan itu perlu terbaca sebelum ada yang salah simpul. --}}
+                    <div class="text-muted small" style="font-size: 0.78rem;">
+                        Murid aktif saat ini, diakumulasi dari bulan bergabung
+                        <i class="bi bi-info-circle ms-1" style="cursor: help;"
+                           title="Grafik ini snapshot, bukan riwayat. Murid yang berhenti tidak lagi terhitung di bulan-bulan sebelumnya, sehingga tinggi bar lama bisa berubah."></i>
+                    </div>
                 </div>
+                @if(count($growthLabels))
+                    <span class="badge bg-light text-dark border rounded-pill px-2 py-1 text-nowrap" style="font-size: 0.75rem;">
+                        {{ $growthLabels[0] }} &ndash; {{ $growthLabels[count($growthLabels) - 1] }}
+                    </span>
+                @endif
             </div>
             <div class="card-body p-4">
                 <div style="position: relative; height: 260px; width: 100%;">
                     <canvas id="growthChart"></canvas>
                 </div>
+                @if($growthFirstMonthLabel)
+                    {{-- Bulan-bulan kosong di awal grafik punya sebab; ini yang menamainya. --}}
+                    <div class="d-flex align-items-center gap-2 mt-3 text-muted" style="font-size: 0.76rem;">
+                        <span class="growth-first-marker"></span>
+                        Murid pertama bergabung &mdash; {{ $growthFirstMonthLabel }}
+                    </div>
+                @endif
             </div>
         </div>
     </div>
@@ -262,12 +282,17 @@
                                 <span class="fw-bold text-gray-800" style="font-size: 0.9rem;">Rp {{ number_format($payment->payment_amount, 0, ',', '.') }}</span>
                             </td>
                             <td class="py-3">
+                                {{-- Badge solid + teks putih, sama seperti payments/_status.blade.php.
+                                     Varian -subtle terlalu pucat dan membuat status di dashboard
+                                     terbaca beda bobot dengan status yang sama di halaman Payments. --}}
                                 @if($payment->payment_status === 'paid')
-                                    <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1 fw-semibold" style="font-size: 0.75rem;">
+                                    <span class="badge rounded-pill px-3 py-1 fw-semibold"
+                                          style="font-size: 0.75rem; background-color: var(--badge-success-bg); color: var(--badge-text-light);">
                                         <i class="bi bi-check-circle-fill me-1"></i>Lunas
                                     </span>
                                 @else
-                                    <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-3 py-1 fw-semibold" style="font-size: 0.75rem;">
+                                    <span class="badge rounded-pill px-3 py-1 fw-semibold"
+                                          style="font-size: 0.75rem; background-color: var(--badge-warning-bg); color: var(--badge-text-light);">
                                         <i class="bi bi-clock-fill me-1"></i>Belum lunas
                                     </span>
                                 @endif
@@ -334,6 +359,17 @@
         opacity: 0;
         pointer-events: none;
     }
+
+    /* Kotak kecil di keterangan bawah grafik. Warnanya harus sama dengan bar
+       bulan pertama di canvas — token yang sama, alpha yang sama. */
+    .growth-first-marker {
+        width: 10px;
+        height: 10px;
+        border-radius: 3px;
+        flex-shrink: 0;
+        background: var(--primary-dark);
+        opacity: 0.62;
+    }
 </style>
 @endpush
 
@@ -358,37 +394,99 @@
 </script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
-    const ctx = document.getElementById('growthChart');
-    if (ctx && window.Chart) {
-        const chartCtx = ctx.getContext('2d');
-        const gradient = chartCtx.createLinearGradient(0, 0, 0, 240);
-        gradient.addColorStop(0, 'rgba(14, 165, 233, 0.25)');
-        gradient.addColorStop(1, 'rgba(14, 165, 233, 0.00)');
+    (function () {
+        const canvas = document.getElementById('growthChart');
+        if (!canvas || !window.Chart) return;
 
+        const values = @json($growthData);
+        const labels = @json($growthLabels);
         const fullMonthNames = @json($growthFullLabels);
+        const firstMonthIndex = @json($growthFirstMonthIndex);
 
-        new Chart(ctx, {
-            type: 'line',
+        // Warna diambil dari token tema, bukan hex baru, supaya grafik ikut
+        // pindah palet saat mode gelap dinyalakan. Alpha-nya diturunkan agar
+        // birunya tidak menyala ketika dashboard dipandang lama.
+        const token = (name, fallback) =>
+            getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
+
+        const withAlpha = (color, alpha) => {
+            const hex = color.replace('#', '');
+            if (!/^[0-9a-f]{6}$/i.test(hex)) return color;
+            const n = parseInt(hex, 16);
+            return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
+        };
+
+        const readPalette = () => {
+            const primary = token('--primary-color', '#0EA5E9');
+            const dark = token('--primary-dark', '#0369A1');
+            return {
+                bar: withAlpha(primary, 0.62),
+                barHover: withAlpha(primary, 0.85),
+                // Bulan murid pertama dibedakan dengan nada yang lebih dalam —
+                // pasangan visual dari keterangan kecil di bawah grafik.
+                firstBar: withAlpha(dark, 0.62),
+                firstBarHover: withAlpha(dark, 0.85),
+                text: token('--text', '#1E293B'),
+                muted: token('--text-muted', '#64748B'),
+                grid: token('--border', '#E1EAF4'),
+            };
+        };
+
+        let colors = readPalette();
+
+        const fillColors = () => values.map((_, i) => i === firstMonthIndex ? colors.firstBar : colors.bar);
+        const hoverColors = () => values.map((_, i) => i === firstMonthIndex ? colors.firstBarHover : colors.barHover);
+
+        // Gridline melompat per 2, jadi jumlah ganjil tidak terbaca dari sumbu Y.
+        // Angkanya ditulis langsung di atas bar, diberi jarak 6px supaya tidak
+        // menempel, dan ruang untuk barisnya disiapkan lewat layout.padding.
+        const valueLabels = {
+            id: 'growthValueLabels',
+            afterDatasetsDraw(chart) {
+                const meta = chart.getDatasetMeta(0);
+                if (meta.hidden) return;
+
+                const ctx = chart.ctx;
+                ctx.save();
+                ctx.font = "600 11px " + getComputedStyle(document.body).fontFamily;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'bottom';
+
+                meta.data.forEach((bar, i) => {
+                    const value = chart.data.datasets[0].data[i];
+                    if (value === null || value === undefined) return;
+                    // Nol dibiarkan tampil tapi diredupkan: bulan kosong di awal
+                    // grafik adalah informasi, bukan sekadar ruang sisa.
+                    ctx.fillStyle = value > 0 ? colors.text : colors.muted;
+                    ctx.fillText(value, bar.x, bar.y - 6);
+                });
+
+                ctx.restore();
+            }
+        };
+
+        const chart = new Chart(canvas, {
+            type: 'bar',
+            plugins: [valueLabels],
             data: {
-                labels: @json($growthLabels),
+                labels: labels,
                 datasets: [{
-                    label: 'Total murid aktif',
-                    data: @json($growthData),
-                    borderColor: '#0EA5E9',
-                    borderWidth: 2.5,
-                    backgroundColor: gradient,
-                    fill: true,
-                    tension: 0,
-                    pointBackgroundColor: '#0EA5E9',
-                    pointBorderColor: '#FFFFFF',
-                    pointBorderWidth: 2,
-                    pointRadius: 4,
-                    pointHoverRadius: 6,
+                    label: 'Murid aktif',
+                    data: values,
+                    backgroundColor: fillColors(),
+                    hoverBackgroundColor: hoverColors(),
+                    borderWidth: 0,
+                    borderRadius: 6,
+                    borderSkipped: false,
+                    // Bar tidak dibiarkan melebar penuh saat rentangnya pendek,
+                    // supaya bentuknya sama di 12 bulan maupun 4 bulan.
+                    maxBarThickness: 38,
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                layout: { padding: { top: 20 } },
                 interaction: {
                     intersect: false,
                     mode: 'index',
@@ -400,16 +498,23 @@
                         padding: 12,
                         titleFont: { size: 12, weight: 'bold' },
                         bodyFont: { size: 12 },
+                        footerFont: { size: 11, weight: 'normal' },
                         cornerRadius: 8,
                         displayColors: false,
                         callbacks: {
-                            title: function(items) {
+                            title: function (items) {
                                 if (!items.length) return '';
                                 const idx = items[0].dataIndex;
                                 return fullMonthNames[idx] || items[0].label;
                             },
-                            label: function(context) {
-                                return ' ' + context.parsed.y + ' Murid Aktif';
+                            label: function (context) {
+                                return ' ' + context.parsed.y + ' murid aktif';
+                            },
+                            footer: function (items) {
+                                if (!items.length) return '';
+                                return items[0].dataIndex === firstMonthIndex
+                                    ? 'Bulan murid pertama bergabung'
+                                    : '';
                             }
                         }
                     }
@@ -423,18 +528,30 @@
                             autoSkip: true,
                             maxTicksLimit: 12,
                             font: { size: 11, weight: '600' },
-                            color: '#64748B',
+                            color: colors.muted,
                             padding: 8,
                         }
                     },
                     y: {
                         beginAtZero: true,
-                        grid: { color: 'rgba(226, 232, 240, 0.7)', borderDash: [4, 4] },
-                        ticks: { precision: 0, font: { size: 11 }, color: '#64748B', padding: 8 }
+                        grid: { color: colors.grid, borderDash: [4, 4] },
+                        ticks: { precision: 0, font: { size: 11 }, color: colors.muted, padding: 8 }
                     }
                 }
             }
         });
-    }
+
+        // Tema bisa ditukar tanpa reload, jadi warna yang sudah terlanjur
+        // dibaca dari :root harus dibaca ulang saat atributnya berubah.
+        new MutationObserver(() => {
+            colors = readPalette();
+            chart.data.datasets[0].backgroundColor = fillColors();
+            chart.data.datasets[0].hoverBackgroundColor = hoverColors();
+            chart.options.scales.x.ticks.color = colors.muted;
+            chart.options.scales.y.ticks.color = colors.muted;
+            chart.options.scales.y.grid.color = colors.grid;
+            chart.update();
+        }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-bs-theme'] });
+    })();
 </script>
 @endpush
