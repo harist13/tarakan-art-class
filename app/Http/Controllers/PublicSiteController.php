@@ -550,34 +550,9 @@ class PublicSiteController extends Controller
             ->filter(fn (Artwork $artwork) => Storage::disk('public')->exists($artwork->photo_path))
             ->map(fn (Artwork $artwork) => [
                 'category' => $artwork->student?->class_type,
-                'caption' => $this->artworkCaption($artwork),
                 'url' => $artwork->photoUrl(),
             ])
             ->values();
-    }
-
-    /**
-     * Keterangan foto di galeri publik.
-     *
-     * Deskripsi dari admin dipakai apa adanya bila ada. Bila kosong, dipakai nama
-     * depan murid saja — cukup untuk membuat karyanya terasa personal tanpa
-     * memajang nama lengkap anak di halaman publik.
-     */
-    private function artworkCaption(Artwork $artwork): string
-    {
-        if (filled($artwork->description)) {
-            return $artwork->description;
-        }
-
-        $student = $artwork->student;
-
-        if (! $student) {
-            return '';
-        }
-
-        $firstName = explode(' ', trim($student->name))[0];
-
-        return 'Karya '.$firstName.($student->age ? ', '.$student->age.' tahun' : '');
     }
 
     /**
@@ -593,7 +568,6 @@ class PublicSiteController extends Controller
             ->filter(fn (array $item) => is_file(public_path('images/gallery/'.$item['file'])))
             ->map(fn (array $item) => $item + [
                 'url' => asset('images/gallery/'.$item['file']),
-                'caption' => $item['caption'] ?? '',
             ])
             ->values();
     }

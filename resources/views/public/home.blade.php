@@ -247,11 +247,8 @@
             @foreach($galleryPreview as $item)
                 <div class="col">
                     <figure class="tac-card overflow-hidden h-100 mb-0">
-                        <img src="{{ $item['url'] }}" alt="{{ $item['caption'] ?: 'Karya murid Tarakan Art Class' }}"
+                        <img src="{{ $item['url'] }}" alt="Karya murid Tarakan Art Class"
                              loading="lazy" decoding="async" class="tac-thumb">
-                        @if($item['caption'])
-                            <figcaption class="px-3 py-2 tac-muted" style="font-size: 0.75rem;">{{ $item['caption'] }}</figcaption>
-                        @endif
                     </figure>
                 </div>
             @endforeach

@@ -37,16 +37,8 @@
                 <div class="col">
                     <figure class="tac-card tac-card-hover overflow-hidden h-100 mb-0">
                         <img src="{{ $item['url'] }}"
-                             alt="{{ $item['caption'] ?: 'Karya murid Tarakan Art Class' }}"
+                             alt="Karya murid Tarakan Art Class"
                              loading="lazy" decoding="async" class="tac-thumb">
-                        <figcaption class="d-flex justify-content-between align-items-center gap-2 px-3 py-2">
-                            <span class="text-truncate tac-muted" style="font-size: 0.75rem;" title="{{ $item['caption'] ?: 'Karya murid' }}">
-                                {{ $item['caption'] ?: 'Karya murid' }}
-                            </span>
-                            <span class="tac-badge tac-bg-paper-2 flex-shrink-0" style="font-size: 0.625rem;">
-                                {{ config('site.gallery_categories.'.$item['category'], $item['category']) }}
-                            </span>
-                        </figcaption>
                     </figure>
                 </div>
             @endforeach

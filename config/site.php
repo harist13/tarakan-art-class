@@ -200,7 +200,7 @@ return [
     // Taruh file di public/images/gallery/, lalu daftarkan di sini.
     // `category` harus salah satu slug program di atas (atau 'kegiatan').
     'gallery' => [
-        // ['file' => 'karya-01.webp', 'category' => 'coloring', 'caption' => 'Karya Alya, 7 tahun'],
+        // ['file' => 'karya-01.webp', 'category' => 'coloring'],
     ],
 
     'gallery_categories' => [
