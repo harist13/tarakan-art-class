@@ -427,6 +427,57 @@ class StudentManagementTest extends TestCase
     }
 
     /**
+     * Satu kategori bisa memuat slot Reguler dan Trial sekaligus, dan tarifnya
+     * berbeda. Tanpa tipe di label jadwalnya, keduanya terbaca sebagai baris yang
+     * sama — dan salah pilih baru ketahuan di nominal invoice.
+     */
+    public function test_label_jadwal_menyebut_tipe_kelasnya(): void
+    {
+        $reguler = $this->makeClass('drawing');
+        $trial = $this->makeClass('drawing');
+        $trial->update([
+            'class_type' => 'trial',
+            'is_recurring' => false,
+            'schedule_date' => now()->addWeek()->toDateString(),
+        ]);
+
+        $html = $this->actingAs($this->makeUser('admin'))
+            ->get(route('students.create'))->assertOk()->getContent();
+
+        $this->assertStringContainsString('· Reguler (', $html);
+        $this->assertStringContainsString('· Trial Class (', $html);
+
+        // Kode kelas tidak ikut di label: admin tidak sedang mencocokkan data
+        // dengan menu lain di form ini.
+        $this->assertDoesNotMatchRegularExpression(
+            '/<option value="'.$reguler->id.'"[^>]*>[^<]*'.preg_quote($reguler->class_code, '/').'/s',
+            $html
+        );
+    }
+
+    /**
+     * Jadwal punya dua tampilan yang bergantian: kotak baca-saja saat kategorinya
+     * hanya punya satu slot, dropdown saat ada lebih.
+     *
+     * Yang bisa diuji di sini keberadaan keduanya — pergantiannya dikerjakan
+     * JavaScript, di luar jangkauan PHPUnit.
+     */
+    public function test_form_menyediakan_kotak_baca_saja_dan_dropdown_jadwal(): void
+    {
+        $this->makeClass('drawing');
+
+        $html = $this->actingAs($this->makeUser('admin'))
+            ->get(route('students.create'))->assertOk()->getContent();
+
+        $this->assertStringContainsString('id="class_id_readonly"', $html);
+        $this->assertStringContainsString('id="class_id_control"', $html);
+        // Kotak baca-saja tidak boleh punya name — kalau ikut terkirim, isinya
+        // yang berupa teks jadwal akan menimpa id kelas yang sebenarnya.
+        $this->assertStringContainsString('id="class_id_display"', $html);
+        $this->assertDoesNotMatchRegularExpression('/<input[^>]*id="class_id_display"[^>]*name=/', $html);
+    }
+
+    /**
      * Pekan mulai adalah kotak isian tersendiri, dengan keterangan yang menyebut
      * akibatnya: pekan ke berapa menentukan berapa pekan yang ditagih di bulan
      * pertama, dan itu yang perlu dilihat admin — bukan angkanya diulang.

@@ -95,27 +95,32 @@
             <label class="form-label fw-semibold">Jadwal kelas</label>
             @php $selectedClassId = (int) old('class_id', $selectedClass->id ?? 0); @endphp
 
-            {{-- Yang dilihat admin: kotak baca-saja berisi jadwal yang akan dipakai.
-                 Jadwalnya sepenuhnya ditentukan kategori, jadi tidak ada keputusan
-                 yang perlu diambil di sini. --}}
-            <div class="input-group">
+            {{-- Dua tampilan, satu nilai — yang aktif ditentukan syncSlots():
+
+                 baca-saja  : kategori ini cuma punya satu slot terpakai, jadi tak
+                              ada yang perlu diputuskan.
+                 dropdown   : ada dua slot atau lebih. Ini bukan soal kenyamanan —
+                              satu kategori bisa memuat slot Reguler DAN Trial
+                              sekaligus, dan salah pilih di antara keduanya
+                              langsung jadi salah nominal invoice. --}}
+            <div class="input-group" id="class_id_readonly">
                 <span class="input-group-text bg-light text-muted"><i class="bi bi-calendar-week"></i></span>
-                <input type="text" id="class_id_display" class="form-control bg-body-secondary @error('class_id') is-invalid @enderror"
+                <input type="text" id="class_id_display" class="form-control bg-body-secondary"
                        value="Pilih kategori kelas dulu" readonly tabindex="-1" aria-label="Jadwal kelas yang akan diisi murid ini">
-                @error('class_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
             </div>
 
-            {{-- Pembawa nilai sekaligus sumber datanya. <select> tidak mengenal
+            {{-- Pembawa nilai sekaligus sumber datanya, dan dropdown yang dipakai
+                 saat kategorinya memang punya lebih dari satu slot.
+
+                 Select-nya disembunyikan, bukan dimatikan: <select> tidak mengenal
                  readonly — hanya disabled, dan yang disabled tidak ikut terkirim.
-                 Jadi select-nya disembunyikan, bukan dimatikan: penyaring di bawah
-                 tetap memakainya untuk memilih slot & membaca biayanya, dan
-                 nilainya tetap sampai ke server.
 
                  data-no-search: jangan dibungkus Tom Select. Tom Select menyalin
                  daftar opsi sekali saat inisialisasi dan tidak pernah membacanya
                  lagi, sehingga slot yang dinonaktifkan penyaring tetap terpilih. --}}
-            <div class="d-none">
-                <select name="class_id" id="class_id" class="form-select" data-no-search tabindex="-1" aria-hidden="true">
+            <div class="input-group d-none" id="class_id_control">
+                <span class="input-group-text bg-light text-muted"><i class="bi bi-calendar-week"></i></span>
+                <select name="class_id" id="class_id" class="form-select @error('class_id') is-invalid @enderror" data-no-search>
                     <option value="">-- Pilihkan otomatis --</option>
                     @foreach($classes as $slot)
                         @php
@@ -141,10 +146,21 @@
                             data-registration="{{ (int) $slot->registration_fee }}"
                             @disabled(! $slotSelectable)
                             @selected($selectedClassId === $slot->id)>
-                            {{ $slot->scheduleLabel() }} — {{ $slot->class_code }} ({{ $slotAv['text'] }})
+                            {{-- Tipe kelas ikut disebut: satu kategori bisa memuat slot
+                                 Reguler dan Trial sekaligus, dan tarifnya berbeda.
+                                 Tanpa ini, keduanya terbaca sebagai baris yang sama
+                                 dan salah pilih baru ketahuan di nominal invoice.
+
+                                 Kode kelas sengaja tidak ikut: di form ini admin tidak
+                                 sedang mencocokkan data dengan menu lain, ia cuma perlu
+                                 tahu anaknya masuk hari apa. Keterangan dalam kurung
+                                 tetap ada — untuk baris yang mati, itulah satu-satunya
+                                 penjelasan kenapa ia tak bisa dipilih. --}}
+                            {{ $slot->scheduleLabel() }} · {{ $slot->typeLabel() }} ({{ $slotAv['text'] }})
                         </option>
                     @endforeach
                 </select>
+                @error('class_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
             </div>
             {{-- Menyebut jadwal yang benar-benar akan dipakai, termasuk saat
                  dibiarkan otomatis — admin harus tahu anak ini masuk hari apa
@@ -516,9 +532,16 @@
         // ── Jadwal mengikuti kategori ──
         const slotSelect = document.getElementById('class_id');
         const slotHint = document.getElementById('class_id_hint');
-        // Kotak baca-saja yang dilihat admin; select-nya sendiri tersembunyi dan
-        // hanya bertugas membawa nilai ke server.
+        // Dua tampilan bergantian: kotak baca-saja saat tak ada yang perlu
+        // diputuskan, dropdown saat ada.
         const slotDisplay = document.getElementById('class_id_display');
+        const slotReadonly = document.getElementById('class_id_readonly');
+        const slotControl = document.getElementById('class_id_control');
+
+        // Kiriman yang gagal validasi harus membuka dropdown-nya apa pun keadaan
+        // kategorinya — pesan error di balik kotak baca-saja tidak bisa
+        // ditindaklanjuti admin.
+        const adaErrorJadwal = @json($errors->has('class_id'));
         if (!slotSelect || !slotHint) return;
 
         // Ditandai supaya keterangannya jujur: nilai yang diisikan kategori bukan
@@ -602,6 +625,13 @@
             const setDisplay = function (teks) {
                 if (slotDisplay) slotDisplay.value = teks;
             };
+
+            // Dropdown hanya muncul kalau memang ada yang bisa diputuskan. Satu slot
+            // berarti tidak ada pilihan; dua atau lebih berarti ada — dan di situ
+            // Reguler vs Trial bisa bercampur, jadi keputusannya milik admin.
+            const bolehPilih = bisaDipilih >= 2 || adaErrorJadwal;
+            if (slotControl) slotControl.classList.toggle('d-none', !bolehPilih);
+            if (slotReadonly) slotReadonly.classList.toggle('d-none', bolehPilih);
 
             if (kategori === '') {
                 setDisplay('Pilih kategori kelas dulu');
