@@ -315,17 +315,133 @@ class SlotAvailabilityTest extends TestCase
     }
 
     /**
-     * Tab lain tidak ikut menyusun eventnya: satu slot mingguan merentang jadi
-     * ratusan kejadian, dan itu pekerjaan yang tak ada gunanya di halaman daftar.
+     * Kalender adalah panel bawaan layar ini: yang dicari admin saat membukanya
+     * adalah "jam ini siapa yang mengajar", bukan inventaris kelas.
      */
-    public function test_tab_kelas_tidak_memuat_kalender(): void
+    public function test_manajemen_kelas_membuka_kalender_lebih_dulu(): void
+    {
+        $this->actingAs($this->makeUser());
+        $class = $this->makeClass();
+
+        $this->get(route('classes.index'))
+            ->assertOk()
+            ->assertSee('id="calendar"', false)
+            ->assertSee($class->class_category)
+            // Tabel daftar kelas tidak ikut dirender — itu yang "double" bagi admin.
+            ->assertDontSee('id="panelKelas"', false)
+            // Tapi kelas baru tetap bisa dibuat dari sini: tombolnya ikut pindah
+            // ke kalender, bukan ikut tersembunyi bersama tabelnya.
+            ->assertSee(route('classes.create'), false);
+    }
+
+    /**
+     * Tab lain tidak ikut menyusun eventnya: satu slot mingguan merentang jadi
+     * ratusan kejadian, dan itu pekerjaan yang tak ada gunanya di panel tutor
+     * maupun di daftar kelas.
+     */
+    public function test_tab_selain_kalender_tidak_memuat_kalender(): void
     {
         $this->actingAs($this->makeUser());
         $this->makeClass();
 
-        $this->get(route('classes.index'))
+        foreach (['kelas', 'tutor'] as $tab) {
+            $this->get(route('classes.index', ['tab' => $tab]))
+                ->assertOk()
+                ->assertDontSee('id="calendar"', false);
+        }
+    }
+
+    /**
+     * Tabel CRUD kelas disembunyikan, bukan dibuang: tombolnya hilang dari layar
+     * tapi ?tab=kelas masih membukanya utuh.
+     */
+    public function test_daftar_kelas_masih_bisa_dibuka_lewat_tab_kelas(): void
+    {
+        $this->actingAs($this->makeUser());
+        $class = $this->makeClass();
+
+        $this->get(route('classes.index', ['tab' => 'kelas']))
             ->assertOk()
-            ->assertDontSee('id="calendar"', false);
+            ->assertSee('id="panelKelas"', false)
+            ->assertSee($class->class_code)
+            ->assertSee(route('classes.create'), false);
+    }
+
+    /** Jam yang ditawarkan lebih dulu: enam pita 1,5 jam mulai 09:00. */
+    public function test_slot_bawaan_mulai_sembilan_dan_berdurasi_satu_setengah_jam(): void
+    {
+        $this->assertSame(
+            ['09:00', '10:30', '12:00', '13:30', '15:00', '16:30'],
+            ClassRoom::slots()
+        );
+        $this->assertSame('10:30', ClassRoom::slotEnd('09:00'));
+        $this->assertSame('17:00', ClassRoom::slotEnd('16:00', 60));
+    }
+
+    /**
+     * Slot bawaan adalah tawaran, bukan pengunci.
+     *
+     * Preschool hanya berjalan Senin 16:00–17:00 — jamnya di antara dua slot dan
+     * durasinya 60 menit, bukan 90. Kelas seperti ini harus bisa disimpan apa
+     * adanya: jadwal yang tak bisa dicatat akan hidup di kepala orang, bukan di
+     * sistem.
+     */
+    public function test_kelas_di_luar_slot_bawaan_tetap_bisa_disimpan(): void
+    {
+        $this->actingAs($this->makeUser());
+        $tutor = Tutor::create(['name' => 'Kak Tutor', 'status' => 'full-time']);
+
+        $this->post(route('classes.store'), [
+            'class_category' => 'Preschool',
+            'tutor_id' => $tutor->id,
+            'capacity' => 10,
+            // Senin terdekat.
+            'schedule_date' => now()->next(1)->toDateString(),
+            'schedule_time' => '16:00',
+            'schedule_end_time' => '17:00',
+            'class_type' => 'regular',
+            'class_fee' => 350000,
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $class = ClassRoom::where('class_category', 'Preschool')->firstOrFail();
+        $this->assertSame('16:00', $class->timeLabel());
+        $this->assertSame('17:00', $class->endTimeLabel());
+        $this->assertSame(60, $class->durationMinutes());
+        $this->assertSame('Senin', $class->dayName());
+    }
+
+    /**
+     * Klik di kalender dijepret ke pita berlabel yang memuatnya: garisnya kini
+     * tiap setengah jam, tapi satuan yang dilihat admin tetap 1,5 jam.
+     */
+    public function test_jam_di_luar_slot_tetap_masuk_pita_berlabelnya(): void
+    {
+        $this->assertSame('15:00', ClassRoom::slotBandFor('16:00'));
+        $this->assertSame('09:00', ClassRoom::slotBandFor('09:30'));
+        $this->assertSame('16:30', ClassRoom::slotBandFor('17:45'));
+        // Sebelum sanggar buka: jatuh ke pita pertama, bukan ke luar daftar.
+        $this->assertSame('09:00', ClassRoom::slotBandFor('07:00'));
+    }
+
+    /**
+     * Jam kelas diketik, bukan dipilih dari daftar tertutup.
+     *
+     * Sempat berupa dropdown enam slot dengan durasi tetap; itu membuat jadwal
+     * seperti Preschool Senin 16:00-17:00 mustahil dicatat.
+     */
+    public function test_form_kelas_memakai_isian_jam_bebas(): void
+    {
+        $this->actingAs($this->makeUser());
+
+        $this->get(route('classes.create'))
+            ->assertOk()
+            ->assertSee('type="time" name="schedule_time"', false)
+            ->assertSee('type="time" name="schedule_end_time"', false)
+            ->assertDontSee('id="durasiPilih"', false)
+            ->assertDontSee('id="slotPilih"', false)
+            // Jam selesai mengikuti jam mulai, tapi tetap kotak yang bisa
+            // diketik — bukan kotak baca-saja seperti sebelumnya.
+            ->assertDontSee('id="endTimeDisplay"', false);
     }
 
     /**
@@ -410,7 +526,7 @@ class SlotAvailabilityTest extends TestCase
             'is_recurring' => false,
         ]);
 
-        $senin = $this->get(route('classes.index', ['day' => 1]))->assertOk();
+        $senin = $this->get(route('classes.index', ['tab' => 'kelas', 'day' => 1]))->assertOk();
         $this->assertSame(
             ['Kelas Senin Pagi', 'Kelas Senin'],
             $senin->viewData('classes')->pluck('class_category')->all()
@@ -418,11 +534,11 @@ class SlotAvailabilityTest extends TestCase
 
         // Minggu = 0. Nilai ini mudah terjatuh sebagai "kosong" di pengecekan
         // filter, jadi sengaja ikut diuji.
-        $minggu = $this->get(route('classes.index', ['day' => 0]))->assertOk();
+        $minggu = $this->get(route('classes.index', ['tab' => 'kelas', 'day' => 0]))->assertOk();
         $this->assertSame(['Kelas Minggu'], $minggu->viewData('classes')->pluck('class_category')->all());
 
         // Tanpa filter, semuanya tampil — termasuk yang sekali jalan & sudah lewat.
-        $semua = $this->get(route('classes.index'))->assertOk();
+        $semua = $this->get(route('classes.index', ['tab' => 'kelas']))->assertOk();
         $this->assertContains('Kelas Senin Lampau', $semua->viewData('classes')->pluck('class_category')->all());
         $this->assertCount(5, $semua->viewData('classes'));
     }
@@ -432,7 +548,7 @@ class SlotAvailabilityTest extends TestCase
         $this->actingAs($this->makeUser());
         $class = $this->makeClass();
 
-        $this->get(route('classes.index'))
+        $this->get(route('classes.index', ['tab' => 'kelas']))
             ->assertOk()
             ->assertSee($class->scheduleLabel())
             ->assertSee('Sesi berikutnya')

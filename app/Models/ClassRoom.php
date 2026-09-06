@@ -65,6 +65,73 @@ class ClassRoom extends Model
      */
     public const START_WEEKS = [1, 2, 3, 4];
 
+    /**
+     * Jam buka sanggar (WITA) & irama slot bawaannya.
+     *
+     * Sanggar buka 09:00–18:00, dan sebagian besar kelas berjalan 1,5 jam mulai
+     * 09:00 — enam slot yang selalu sama. Tapi itu kebiasaan, bukan hukum:
+     * Preschool hanya berjalan Senin 16:00–17:00, dan tiap kategori punya
+     * aturan jam & harinya sendiri.
+     *
+     * Karena itu angka-angka di sini adalah *bawaan*, bukan pengunci. Yang
+     * dijaganya cuma dua hal: label petak di kalender jadwal, dan jam apa yang
+     * ditawarkan lebih dulu di form kelas. Kelas yang jamnya di luar irama ini
+     * tetap sah, tersimpan apa adanya, dan tergambar di posisi sebenarnya.
+     */
+    public const SLOT_START = '09:00';
+
+    public const SLOT_END = '18:00';
+
+    public const SLOT_MINUTES = 90;
+
+    /**
+     * Jam mulai yang ditawarkan lebih dulu: 09:00, 10:30, 12:00, 13:30, 15:00,
+     * 16:30. Bukan satu-satunya jam yang sah — lihat catatan di SLOT_START.
+     *
+     * @return list<string>
+     */
+    public static function slots(): array
+    {
+        $jam = [];
+        $at = Carbon::createFromFormat('H:i', self::SLOT_START);
+        $tutup = Carbon::createFromFormat('H:i', self::SLOT_END);
+
+        while ($at->copy()->addMinutes(self::SLOT_MINUTES)->lessThanOrEqualTo($tutup)) {
+            $jam[] = $at->format('H:i');
+            $at->addMinutes(self::SLOT_MINUTES);
+        }
+
+        return $jam;
+    }
+
+    /** Jam berakhirnya sebuah slot bawaan: slotEnd('09:00') === '10:30'. */
+    public static function slotEnd(string $mulai, ?int $menit = null): string
+    {
+        return Carbon::createFromFormat('H:i', $mulai)
+            ->addMinutes($menit ?? self::SLOT_MINUTES)->format('H:i');
+    }
+
+    /**
+     * Slot bawaan yang memuat sebuah jam: slotBandFor('16:00') === '15:00'.
+     *
+     * Kalender menggambar garis tiap setengah jam supaya kelas 16:00–17:00
+     * tergambar di tempatnya, tapi labelnya tetap tiap 1,5 jam. Saat sebuah
+     * petak diklik, yang dibuka adalah pita berlabel itu — bukan setengah jam
+     * yang kebetulan tersentuh kursor.
+     */
+    public static function slotBandFor(string $jam): string
+    {
+        $band = self::SLOT_START;
+
+        foreach (self::slots() as $slot) {
+            if ($slot <= $jam) {
+                $band = $slot;
+            }
+        }
+
+        return $band;
+    }
+
     protected $fillable = [
         'class_code',
         'class_category',

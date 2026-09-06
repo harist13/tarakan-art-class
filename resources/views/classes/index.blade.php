@@ -45,31 +45,49 @@
 
 @section('content')
 <div class="d-sm-flex align-items-center justify-content-between mb-4">
-    <h1 class="h3 mb-0 text-gray-800 fw-bold" id="pageTitle">Manajemen kelas & tutor</h1>
+    <h1 class="h3 mb-0 text-gray-800 fw-bold" id="pageTitle">Manajemen kelas &amp; tutor</h1>
+    {{-- Tiap panel punya satu perbuatan utama, tapi "Tambah kelas" ikut berdiri
+         di kalender: tabel kelas yang biasanya memuat tombol itu kini
+         disembunyikan, dan kelas baru tetap harus bisa dibuat dari layar yang
+         memang dibuka admin. Di panel tutor ia tidak ikut — yang ditambah di
+         sana orang, bukan jadwal. --}}
     <div class="d-flex gap-2">
-        <button id="btnAddTutor" class="btn btn-sm btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#tutorModal" style="display:none;"><i class="bi bi-person-plus"></i> Tambah tutor</button>
-        <button type="button" id="btnReplacement" class="btn btn-sm btn-primary shadow-sm" style="display:none;"><i class="bi bi-pencil-square"></i> Ubah</button>
-        <a id="btnAddClass" href="{{ route('classes.create') }}" class="btn btn-sm btn-primary shadow-sm"><i class="bi bi-plus-lg"></i> Tambah kelas</a>
+        @if($tab === 'tutor')
+            <button id="btnAddTutor" class="btn btn-sm btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#tutorModal"><i class="bi bi-person-plus"></i> Tambah tutor</button>
+        @else
+            @if($tab === 'kalender')
+                <button type="button" id="btnReplacement" class="btn btn-sm btn-outline-primary shadow-sm"><i class="bi bi-pencil-square"></i> Ubah</button>
+            @endif
+            <a id="btnAddClass" href="{{ route('classes.create') }}" class="btn btn-sm btn-primary shadow-sm"><i class="bi bi-plus-lg"></i> Tambah kelas</a>
+        @endif
     </div>
 </div>
 
-{{-- Switch panel: Kelas <-> Tutor <-> Kalender.
+{{-- Pemilih panel: Kalender <-> Tutor.
 
-     Dua yang pertama berpindah di sisi klien karena datanya sudah dirender.
-     Kalender berupa tautan biasa: eventnya ratusan dan hanya disusun saat panel
-     itu memang diminta -- lihat ClassRoomController::index. --}}
+     Berupa tautan, bukan tombol yang berpindah di sisi klien: isi tiap panel
+     hanya dirender saat panel itu yang diminta (lihat ClassRoomController),
+     jadi panel yang disembunyikan bukan cuma tak terlihat — memang kosong.
+
+     "Daftar kelas" tidak lagi punya tombol. Tabel CRUD-nya masih hidup di
+     ?tab=kelas dan tombolnya muncul kembali begitu pintu itu dibuka, tapi
+     jadwal yang sama sudah terbaca lebih cepat di kalender. --}}
 <div class="btn-group mb-4 shadow-sm flex-wrap" role="group" aria-label="Pilih panel">
-    <input type="radio" class="btn-check" name="panelToggle" id="toggleKelas" autocomplete="off" @checked($tab === 'kelas')>
-    <label class="btn btn-outline-primary" for="toggleKelas"><i class="bi bi-easel2 me-1"></i> Manajemen kelas</label>
-    <input type="radio" class="btn-check" name="panelToggle" id="toggleTutor" autocomplete="off" @checked($tab === 'tutor')>
-    <label class="btn btn-outline-primary" for="toggleTutor"><i class="bi bi-person-video3 me-1"></i> Manajemen tutor</label>
-    <a href="{{ route('classes.index', ['tab' => 'kalender']) }}" id="toggleKalender"
+    <a href="{{ route('classes.index') }}" id="toggleKalender"
         class="btn btn-outline-primary @if($tab === 'kalender') active @endif">
         <i class="bi bi-calendar3-week me-1"></i> Kalender jadwal
     </a>
+    <a href="{{ route('classes.index', ['tab' => 'tutor']) }}" id="toggleTutor"
+        class="btn btn-outline-primary @if($tab === 'tutor') active @endif">
+        <i class="bi bi-person-video3 me-1"></i> Manajemen tutor
+    </a>
+    @if($tab === 'kelas')
+        <span class="btn btn-outline-primary active"><i class="bi bi-easel2 me-1"></i> Daftar kelas</span>
+    @endif
 </div>
 
-<div class="card" id="panelKelas" @if($tab === 'tutor') style="display:none;" @endif>
+@if($tab === 'kelas')
+<div class="card" id="panelKelas">
     <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-3">
         <span class="fw-bold text-nowrap">Daftar kelas</span>
         <form method="GET" data-live class="d-flex flex-wrap align-items-center gap-2">
@@ -229,9 +247,11 @@
         {{ $classes->links() }}
     </div>
 </div>
+@endif
 
 {{-- Panel Manajemen tutor --}}
-<div class="card" id="panelTutor" @if($tab !== 'tutor') style="display:none;" @endif>
+@if($tab === 'tutor')
+<div class="card" id="panelTutor">
     <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-3">
         <span class="fw-bold text-nowrap">Daftar tutor <span class="badge bg-primary ms-1">{{ $tutors->count() }}</span></span>
         <form method="GET" data-live class="d-flex flex-wrap align-items-center gap-2">
@@ -387,20 +407,19 @@
         </div>
     </div>
 </div>
+@endif
 
 {{-- Panel Kalender jadwal -- kelas reguler, Holiday Class, & replacement.
-     Isinya hanya dirender saat panel ini yang diminta; di tab lain kotaknya
-     kosong dan tersembunyi. --}}
-<div id="panelKalender" @if($tab !== 'kalender') style="display:none;" @endif>
-    @if($tab === 'kalender')
-        @include('schedules._calendar-panel', [
-            'events' => $calendarEvents,
-            'students' => $calendarStudents,
-            'rosters' => $calendarRosters,
-        ])
-    @endif
-</div>
+     Panel bawaan layar ini: jadwal sepekan dalam petak hari x jam. --}}
+@if($tab === 'kalender')
+    @include('schedules._calendar-panel', [
+        'events' => $calendarEvents,
+        'students' => $calendarStudents,
+        'rosters' => $calendarRosters,
+    ])
+@endif
 
+@if($tab === 'tutor')
 <!-- Tutor Edit Modal -->
 <div class="modal fade" id="tutorEditModal" tabindex="-1">
     <div class="modal-dialog">
@@ -463,53 +482,11 @@
         </div>
     </div>
 </div>
+@endif
 @endsection
 
 @push('scripts')
 <script>
-    // ── Switch panel: Manajemen kelas <-> Manajemen tutor ──
-    (function () {
-        const panels = {
-            kelas: document.getElementById('panelKelas'),
-            tutor: document.getElementById('panelTutor'),
-            kalender: document.getElementById('panelKalender'),
-        };
-        const toggleKelas = document.getElementById('toggleKelas');
-        const toggleTutor = document.getElementById('toggleTutor');
-        const toggleKalender = document.getElementById('toggleKalender');
-        const btnAddClass = document.getElementById('btnAddClass');
-        const btnAddTutor = document.getElementById('btnAddTutor');
-        const btnReplacement = document.getElementById('btnReplacement');
-
-        function applyPanel(tab) {
-            Object.keys(panels).forEach(function (nama) {
-                if (panels[nama]) panels[nama].style.display = nama === tab ? '' : 'none';
-            });
-
-            // Tombol aksi mengikuti panel: tiap panel punya satu perbuatan utama.
-            btnAddClass.style.display = tab === 'kelas' ? '' : 'none';
-            btnAddTutor.style.display = tab === 'tutor' ? '' : 'none';
-            if (btnReplacement) btnReplacement.style.display = tab === 'kalender' ? '' : 'none';
-            if (toggleKalender) toggleKalender.classList.toggle('active', tab === 'kalender');
-
-            // Simpan tab di URL agar bertahan saat reload / setelah submit filter.
-            const url = new URL(location);
-            if (tab === 'kelas') { url.searchParams.delete('tab'); } else { url.searchParams.set('tab', tab); }
-            history.replaceState(null, '', url);
-
-            // FullCalendar mengukur tinggi & lebarnya saat render; di dalam panel
-            // yang tersembunyi hasilnya nol, dan kalender tampil sebagai garis
-            // tipis sampai jendela diubah ukurannya.
-            if (tab === 'kalender' && window.jadwalCalendar) {
-                window.jadwalCalendar.updateSize();
-            }
-        }
-
-        toggleKelas.addEventListener('change', function () { applyPanel('kelas'); });
-        toggleTutor.addEventListener('change', function () { applyPanel('tutor'); });
-        applyPanel(@json($tab));
-    })();
-
     // ── Isi modal edit tutor ──
     (function () {
         const form = document.getElementById('tutorEditForm');

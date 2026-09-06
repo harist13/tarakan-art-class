@@ -201,4 +201,33 @@ class ScheduleCalendarDrilldownTest extends TestCase
         $this->assertStringContainsString('Budi', $content);
         $this->assertStringContainsString('Kak Sari', $content);
     }
+
+    /**
+     * Kalender digambar sebagai petak hari x jam mengikuti jam buka sanggar,
+     * bukan tampilan bulan. Angkanya harus datang dari ClassRoom — grid yang
+     * pelan-pelan menyimpang dari slot yang bisa dipilih di form kelas akan
+     * menggambar kelas di luar petaknya.
+     */
+    public function test_kalender_digambar_sebagai_petak_hari_kali_jam(): void
+    {
+        $this->actingAs($this->admin());
+        $this->makeClass();
+
+        $content = $this->get(route('classes.index', ['tab' => 'kalender']))->assertOk()->getContent();
+
+        $this->assertStringContainsString("initialView: 'timeGridWeek'", $content);
+        $this->assertStringContainsString('"'.ClassRoom::SLOT_START.':00"', $content);
+        $this->assertStringContainsString('"'.ClassRoom::SLOT_END.':00"', $content);
+        // Digambar tiap 30 menit supaya kelas di luar irama 1,5 jam (Preschool
+        // 16:00-17:00) tergambar di posisi sebenarnya; labelnya tetap 1,5 jam.
+        $this->assertStringContainsString("slotDuration: '00:30:00'", $content);
+        $this->assertStringContainsString('slotLabelInterval: slotDurasi', $content);
+        $this->assertStringContainsString('"01:30:00"', $content);
+        $this->assertStringContainsString('function bukaSlot(', $content);
+        // Kalender berbahasa Indonesia: bundel locale-nya ikut dimuat, dan kepala
+        // kolom hari tidak menunggu bundel itu untuk jadi "Senin".
+        $this->assertStringContainsString("locale: 'id'", $content);
+        $this->assertStringContainsString('locales/id.global.min.js', $content);
+        $this->assertStringContainsString('dayHeaderContent:', $content);
+    }
 }

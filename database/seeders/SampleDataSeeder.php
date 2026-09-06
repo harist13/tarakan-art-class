@@ -28,19 +28,44 @@ class SampleDataSeeder extends Seeder
         ])->map(fn ($t) => Tutor::firstOrCreate(['name' => $t['name']], $t));
 
         // Classes
-        $classDefs = [
-            ['class_category' => 'preschool', 'capacity' => 10, 'class_fee' => 350000],
-            ['class_category' => 'coloring', 'capacity' => 12, 'class_fee' => 300000],
-            ['class_category' => 'drawing', 'capacity' => 8, 'class_fee' => 450000],
+        //
+        // Jadwalnya sengaja tersebar di beberapa hari & beberapa jam: layar
+        // Manajemen kelas kini petak hari x jam, dan grid yang cuma terisi tiga
+        // kotak tidak menunjukkan apa pun tentang bagaimana pekan sanggar
+        // terlihat.
+        //
+        // Tiap kategori punya aturan jam & harinya sendiri, jadi tabel di bawah
+        // menyebutkan hari, jam, dan durasi satu per satu alih-alih menurunkan
+        // semuanya dari satu irama. Preschool memang begitu di dunia nyata:
+        // hanya Senin, 16:00-17:00, satu jam — bukan 1,5 jam seperti yang lain.
+        $tarif = [
+            'preschool' => ['capacity' => 10, 'class_fee' => 350000],
+            'coloring' => ['capacity' => 12, 'class_fee' => 300000],
+            'drawing' => ['capacity' => 8, 'class_fee' => 450000],
         ];
-        $classes = collect($classDefs)->map(function ($c, $i) use ($tutors) {
+
+        // [kategori, hari (1=Senin), jam mulai, durasi menit]
+        $classDefs = [
+            ['preschool', 1, '16:00', 60],
+            ['coloring', 1, '09:00', 90],
+            ['drawing', 1, '13:30', 90],
+            ['coloring', 2, '10:30', 90],
+            ['drawing', 3, '09:00', 90],
+            ['coloring', 4, '13:30', 90],
+            ['drawing', 5, '10:30', 90],
+            ['coloring', 6, '09:00', 90],
+        ];
+
+        $classes = collect($classDefs)->map(function ($def, $i) use ($tutors, $tarif) {
+            [$kategori, $hari, $mulai, $menit] = $def;
+
             return ClassRoom::firstOrCreate(
-                ['class_category' => $c['class_category']],
-                array_merge($c, [
+                ['class_category' => $kategori, 'schedule_time' => $mulai.':00'],
+                array_merge($tarif[$kategori], [
                     'tutor_id' => $tutors[$i % $tutors->count()]->id,
-                    // Kelas mingguan: Senin, Selasa, Rabu terdekat.
-                    'schedule_date' => now()->next($i + 1)->toDateString(),
-                    'schedule_time' => sprintf('%02d:00:00', 9 + $i),
+                    // Kelas mingguan; harinya diturunkan dari tanggal ini.
+                    'schedule_date' => now()->next($hari)->toDateString(),
+                    'schedule_end_time' => ClassRoom::slotEnd($mulai, $menit).':00',
                 ])
             );
         });

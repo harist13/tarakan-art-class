@@ -39,14 +39,18 @@ class ClassRoomController extends Controller
         );
     }
 
-    public function index(Request $request)
+    /**
+     * Daftar kelas untuk panel "Manajemen kelas".
+     *
+     * Dipisah dari index() karena panel itu kini tidak lagi punya tombol di
+     * layar — hanya dijangkau lewat ?tab=kelas. Menjalankan query beserta
+     * seluruh filternya di tiap kunjungan kalender berarti membayar untuk
+     * daftar yang tak pernah dirender.
+     *
+     * @return LengthAwarePaginator<int, ClassRoom>
+     */
+    private function classList(Request $request, string $search, string $category, string $status, string $day): LengthAwarePaginator
     {
-        $search = $request->string('search')->toString();
-        $status = $request->string('status')->toString();     // tersedia | penuh | tanpa-tutor | ditutup
-        $category = $request->string('category')->toString();  // salah satu class_category yang ada; '' = semua
-        // Hari mingguan slot; '' = semua. '0' valid (Minggu), jadi dibandingkan sebagai string.
-        $day = $request->string('day')->toString();
-
         // Subquery jumlah murid aktif per kelas (untuk membandingkan dengan kapasitas).
         $enrolledSql = '(select count(*) from student_class where student_class.class_id = classes.id and student_class.status = ?)';
 
@@ -89,7 +93,7 @@ class ClassRoomController extends Controller
         // pertanyaannya "apa yang jalan hari Senin", bukan "apa yang pernah jalan".
         // Kelas mingguan selalu punya sesi berikutnya, jadi tak pernah tersaring.
         // Daftar tanpa filter tetap menampilkan semuanya — itu inventaris kelas.
-        $classes = ($day !== '' && is_numeric($day))
+        return ($day !== '' && is_numeric($day))
             ? $this->paginateFiltered(
                 $query->get()
                     ->filter(fn (ClassRoom $c) => $c->day_of_week === (int) $day && $c->nextOccurrence() !== null)
@@ -97,6 +101,32 @@ class ClassRoomController extends Controller
                 $request
             )
             : $query->paginate(self::PER_PAGE)->withQueryString();
+    }
+
+    public function index(Request $request)
+    {
+        // Panel aktif: 'kalender' (default), 'tutor', atau 'kelas'.
+        //
+        // Kalender yang jadi pintu masuk, bukan lagi tabel kelas: yang dicari
+        // admin saat membuka layar ini adalah "Rabu jam 9 siapa yang mengajar
+        // dan kelas apa", dan daftar baris menjawabnya paling lambat. Tabelnya
+        // tidak dibuang — masih hidup di ?tab=kelas beserta seluruh CRUD-nya —
+        // tapi tidak lagi punya tombol yang menuju ke sana.
+        $tab = in_array($request->string('tab')->toString(), ['tutor', 'kelas'], true)
+            ? $request->string('tab')->toString()
+            : 'kalender';
+
+        $search = $request->string('search')->toString();
+        $status = $request->string('status')->toString();     // tersedia | penuh | tanpa-tutor | ditutup
+        $category = $request->string('category')->toString();  // salah satu class_category yang ada; '' = semua
+        // Hari mingguan slot; '' = semua. '0' valid (Minggu), jadi dibandingkan sebagai string.
+        $day = $request->string('day')->toString();
+
+        // Paginator kosong saat panelnya tidak dirender: view tetap menerima
+        // $classes, jadi tak perlu cabang lain di sana.
+        $classes = $tab === 'kelas'
+            ? $this->classList($request, $search, $category, $status, $day)
+            : $this->paginateFiltered(collect(), $request);
 
         // Filter panel tutor: cari nama/HP, status, & kelas yang diampu.
         $tutorSearch = $request->string('tutor_search')->toString();
@@ -104,8 +134,9 @@ class ClassRoomController extends Controller
         $tutorStatus = $request->string('tutor_status')->toString();
 
         // `withActiveStudents` memuat rantai kelas → murid sekali untuk seluruh
-        // daftar: kolom "Murid Diampu" dan rinciannya membaca dari sana.
-        $tutors = Tutor::withActiveStudents()
+        // daftar: kolom "Murid Diampu" dan rinciannya membaca dari sana. Rantai
+        // itu yang paling mahal di layar ini, jadi ikut menunggu panelnya dibuka.
+        $tutors = $tab !== 'tutor' ? collect() : Tutor::withActiveStudents()
             ->withCount('classes')
             ->when($tutorSearch, fn ($q) => $q->where(function ($sub) use ($tutorSearch) {
                 $sub->where('name', 'like', "%{$tutorSearch}%")
@@ -124,15 +155,10 @@ class ClassRoomController extends Controller
         // Daftar kategori unik untuk dropdown filter.
         $categories = ClassRoom::query()->distinct()->orderBy('class_category')->pluck('class_category');
 
-        // Panel aktif: 'kelas' (default), 'tutor', atau 'kalender'.
-        $tab = in_array($request->string('tab')->toString(), ['tutor', 'kalender'], true)
-            ? $request->string('tab')->toString()
-            : 'kelas';
-
         // Kalender merentangkan tiap slot mingguan jadi ratusan kejadian, jadi
-        // hanya disusun saat panelnya memang yang dibuka. Panel kelas & tutor
-        // berpindah di sisi klien, tapi kalender selalu lewat muat ulang halaman
-        // — lihat tombolnya di classes/index.
+        // hanya disusun saat panelnya memang yang dibuka. Karena ia kini panel
+        // bawaan, itu berarti hampir tiap kunjungan — tab tutor & kelas yang
+        // gantian tidak menyusunnya.
         $calendarEvents = [];
         $calendarStudents = collect();
         $calendarRosters = [];

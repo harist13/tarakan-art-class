@@ -78,22 +78,38 @@
         </div>
         <small class="text-muted d-block mt-1" id="scheduleDateHint"><i class="bi bi-calendar-event me-1"></i>Hari kelas diambil dari tanggal ini.</small>
     </div>
+    {{-- Jam mulai & selesai diketik apa adanya.
+
+         Sanggar memang berjalan dengan irama 1,5 jam mulai 09:00, tapi itu
+         kebiasaan mayoritas, bukan hukum: tiap kategori punya aturan jam & hari
+         sendiri, dan Preschool cuma Senin 16:00–17:00. Kotak jam yang menawarkan
+         pilihan tertutup — enam slot, durasi tetap — membuat jadwal seperti itu
+         mustahil dicatat, dan jadwal yang tak bisa dicatat akan hidup di kepala
+         orang, bukan di sistem.
+
+         Jam selesai mengikuti jam mulai — 1,5 jam sesudahnya, panjang sesi
+         kebanyakan kelas — tapi tetap kotak biasa yang boleh diketik ulang.
+         Kelas 60 menit cukup diperbaiki angkanya, dan angka itu bertahan sampai
+         jam mulainya sendiri diubah. --}}
     <div class="col-md-4">
-        <label class="form-label fw-semibold">Jam mulai <span class="text-danger">*</span></label>
+        <label class="form-label fw-semibold" for="schedule_time">Jam mulai <span class="text-danger">*</span></label>
         <div class="input-group">
             <span class="input-group-text bg-light text-muted"><i class="bi bi-clock"></i></span>
-            <input type="time" name="schedule_time" id="schedule_time" class="form-control @error('schedule_time') is-invalid @enderror" value="{{ old('schedule_time', isset($class) ? \Illuminate\Support\Str::of($class->schedule_time)->substr(0,5) : '') }}" required>
+            <input type="time" name="schedule_time" id="schedule_time" class="form-control @error('schedule_time') is-invalid @enderror"
+                value="{{ old('schedule_time', isset($class) ? \Illuminate\Support\Str::of($class->schedule_time)->substr(0, 5) : \App\Models\ClassRoom::SLOT_START) }}" required>
             @error('schedule_time')<div class="invalid-feedback">{{ $message }}</div>@enderror
         </div>
+        <small class="text-muted d-block mt-1"><i class="bi bi-clock me-1"></i>Sanggar buka {{ \App\Models\ClassRoom::SLOT_START }}–{{ \App\Models\ClassRoom::SLOT_END }} WITA.</small>
     </div>
     <div class="col-md-4">
-        <label class="form-label fw-semibold">Jam selesai <span class="text-danger">*</span></label>
+        <label class="form-label fw-semibold" for="schedule_end_time">Jam selesai <span class="text-danger">*</span></label>
         <div class="input-group">
             <span class="input-group-text bg-light text-muted"><i class="bi bi-clock-history"></i></span>
-            <input type="time" name="schedule_end_time" id="schedule_end_time" class="form-control @error('schedule_end_time') is-invalid @enderror" value="{{ old('schedule_end_time', isset($class) ? \Illuminate\Support\Str::of($class->schedule_end_time)->substr(0,5) : '') }}" required>
+            <input type="time" name="schedule_end_time" id="schedule_end_time" class="form-control @error('schedule_end_time') is-invalid @enderror"
+                value="{{ old('schedule_end_time', isset($class) ? \Illuminate\Support\Str::of($class->schedule_end_time)->substr(0, 5) : '') }}" required>
             @error('schedule_end_time')<div class="invalid-feedback">{{ $message }}</div>@enderror
         </div>
-        <small class="text-muted d-block mt-1" id="durationHint"></small>
+        <small class="text-muted d-block" id="durationHint"></small>
     </div>
 </div>
 
@@ -240,18 +256,31 @@ document.addEventListener('DOMContentLoaded', function () {
         return Number.isFinite(j) && Number.isFinite(m) ? j * 60 + m : null;
     };
 
-    // Jam selesai diisikan satu jam setelah mulai — hanya bila masih kosong.
-    // Menimpa isian yang sudah ada berarti mengubah jadwal di belakang admin,
-    // dan kelas 90 menit di sanggar ini bukan hal aneh.
-    function suggestEnd() {
-        if (!endTime || endTime.value) return;
+    // Panjang sesi bawaan sanggar. Bukan aturan: kelas 60 menit maupun 2 jam
+    // sama sahnya, admin tinggal mengubah angka jam selesainya.
+    const SLOT_MENIT = {{ \App\Models\ClassRoom::SLOT_MINUTES }};
+
+    /**
+     * Isi jam selesai 1,5 jam setelah jam mulai.
+     *
+     * `paksa` memisahkan dua keadaan yang tampak mirip tapi berlawanan:
+     *
+     *  - Saat admin mengetik jam mulai (paksa), jam selesai ikut bergeser. Itu
+     *    yang diharapkan: mengubah jam kelas berarti mengubah seluruh sesinya,
+     *    dan angka lama yang tertinggal justru jadi jadwal yang tak pernah
+     *    dimaksud siapa pun.
+     *  - Saat form baru dibuka (tanpa paksa), yang sudah tertulis dibiarkan.
+     *    Kelas Preschool 16:00-17:00 yang dibuka untuk sekadar ganti tutor tidak
+     *    boleh diam-diam berubah jadi 17:30.
+     */
+    function ikutiJamMulai(paksa) {
+        if (!endTime || (!paksa && endTime.value)) return;
 
         const mulai = menitDari(startTime.value);
         if (mulai === null) return;
 
-        const selesai = (mulai + 60) % (24 * 60);
+        const selesai = (mulai + SLOT_MENIT) % (24 * 60);
         endTime.value = String(Math.floor(selesai / 60)).padStart(2, '0') + ':' + String(selesai % 60).padStart(2, '0');
-        updateDuration();
     }
 
     // Lamanya sesi disebutkan langsung: "12:30" di sebelah "11:00" tidak
@@ -283,7 +312,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     if (startTime) {
-        startTime.addEventListener('input', function () { suggestEnd(); updateDuration(); });
+        startTime.addEventListener('input', function () { ikutiJamMulai(true); updateDuration(); });
     }
     if (endTime) endTime.addEventListener('input', updateDuration);
     if (dateInput) dateInput.addEventListener('input', updateHints);
@@ -294,6 +323,9 @@ document.addEventListener('DOMContentLoaded', function () {
     updateHints();
     updateTotal();
     updateWeekLadder();
+    // Kelas baru & kelas lama yang jam selesainya belum pernah diisi mendapat
+    // isiannya begitu form dibuka, bukan menunggu admin menyentuh jam mulai.
+    ikutiJamMulai(false);
     updateDuration();
 });
 </script>
