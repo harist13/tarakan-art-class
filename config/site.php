@@ -19,8 +19,8 @@ return [
     // ─── Kontak ────────────────────────────────────────────────────────
     'contact' => [
         // Format internasional tanpa "+" — dipakai untuk tautan wa.me
-        'whatsapp' => env('SITE_WHATSAPP', '6281234567890'),
-        'whatsapp_display' => env('SITE_WHATSAPP_DISPLAY', '+62 812-3456-7890'),
+        'whatsapp' => env('SITE_WHATSAPP', '6288744947466'),
+        'whatsapp_display' => env('SITE_WHATSAPP_DISPLAY', '+62 887-4494-7466'),
         'email' => env('SITE_EMAIL', 'halo@tarakanartclass.com'),
         'instagram' => env('SITE_INSTAGRAM', 'tarakanartclass'),
         'address' => env('SITE_ADDRESS', 'Jl. Yos Sudarso No. 12, Tarakan, Kalimantan Utara'),
@@ -38,6 +38,46 @@ return [
         ['day' => 'Senin – Jumat', 'time' => '13.00 – 18.00 WITA'],
         ['day' => 'Sabtu', 'time' => '09.00 – 17.00 WITA'],
         ['day' => 'Minggu', 'time' => 'Tutup (kecuali Holiday Class)'],
+    ],
+
+    // Jam operasional yang sama, tapi dalam bentuk yang bisa dibaca mesin —
+    // dipakai untuk openingHoursSpecification di data terstruktur (schema.org).
+    // Dipisah dari 'hours' di atas karena yang itu ditulis untuk dibaca manusia
+    // dan formatnya bebas berubah tanpa merusak apa pun.
+    'hours_schema' => [
+        ['days' => ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'], 'opens' => '13:00', 'closes' => '18:00'],
+        ['days' => ['Saturday'], 'opens' => '09:00', 'closes' => '17:00'],
+    ],
+
+    // ─── SEO ───────────────────────────────────────────────────────────
+    // Bahan untuk data terstruktur & verifikasi mesin pencari. Alamat dipecah
+    // per bagian di sini karena schema.org menuntut komponen terpisah,
+    // sedangkan contact.address di atas satu baris utuh untuk ditampilkan.
+    'seo' => [
+        // Isi dengan kode dari Google Search Console → Verifikasi → Tag HTML
+        // (hanya bagian content="..."-nya). Kosong = tag tidak dicetak.
+        'google_verification' => env('SITE_GOOGLE_VERIFICATION'),
+
+        'address' => [
+            'street' => env('SITE_ADDRESS_STREET', 'Jl. Yos Sudarso No. 12'),
+            'locality' => env('SITE_ADDRESS_CITY', 'Tarakan'),
+            'region' => env('SITE_ADDRESS_REGION', 'Kalimantan Utara'),
+            'postal_code' => env('SITE_ADDRESS_POSTAL'),
+            'country' => 'ID',
+        ],
+
+        // Koordinat studio. Nilai bawaan diambil dari URL embed peta di atas
+        // (!3d = lintang, !2d = bujur). Perbarui bila alamat studio pindah.
+        'geo' => [
+            'lat' => env('SITE_GEO_LAT', '3.3064980'),
+            'lng' => env('SITE_GEO_LNG', '117.5775501'),
+        ],
+
+        // Rentang harga termurah–termahal dari daftar 'programs' di bawah.
+        'price_range' => 'Rp150.000 – Rp300.000',
+
+        // Kota/wilayah yang dilayani — dipakai sebagai areaServed.
+        'area_served' => ['Tarakan', 'Kalimantan Utara'],
     ],
 
     // ─── Program & Kelas ───────────────────────────────────────────────

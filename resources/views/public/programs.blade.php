@@ -3,6 +3,10 @@
 @section('title', 'Program & kelas')
 @section('description', 'Preschool Art, Coloring Class, Drawing Class, dan Holiday Class di Tarakan. Lihat rentang usia, durasi, kapasitas, dan biaya tiap kelas.')
 
+@push('head')
+    @include('partials.site-schema-programs')
+@endpush
+
 @section('content')
 
 <x-site.section tone="paper-2" :paint="true">
@@ -30,11 +34,7 @@
         @endforeach
     </div>
 
-    <p class="tac-dashed-box tac-bg-paper-2 mx-auto text-center small tac-muted px-4 py-3 mt-5 mb-0" style="max-width: 44rem;">
-        Biaya sudah termasuk seluruh alat dan bahan. Jadwal di atas adalah jadwal umum —
-        jadwal pasti per angkatan dikonfirmasi admin saat pendaftaran.
-        <a href="{{ route('public.schedule') }}" class="fw-semibold tac-text-coral">Lihat jadwal terbaru</a>.
-    </p>
+   
 </x-site.section>
 
 <x-site.cta

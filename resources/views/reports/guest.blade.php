@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    {{-- Halaman ini terbuka tanpa login dan menampilkan data murid. --}}
+    <meta name="robots" content="noindex, nofollow">
     <title>Raport siswa - Tarakan Art Class</title>
     <script>
         (function () {
@@ -149,7 +152,7 @@
                     <form action="{{ route('reports.guest.show') }}" method="POST">
                         @csrf
                         <div class="mb-3">
-                            <input type="text" name="credential_key" class="form-control form-control-lg text-center fw-bold text-uppercase" style="letter-spacing:2px;" placeholder="Contoh: TAC-2026-0001" value="{{ old('credential_key') }}" required autofocus>
+                            <input type="text" name="credential_key" class="form-control form-control-lg text-center fw-bold text-uppercase" style="letter-spacing:2px;" placeholder="Contoh: TAC-0001" value="{{ old('credential_key') }}" required autofocus>
                         </div>
                         <button type="submit" class="btn btn-primary btn-lg w-100"><i class="bi bi-unlock me-1"></i> Lihat raport</button>
                     </form>

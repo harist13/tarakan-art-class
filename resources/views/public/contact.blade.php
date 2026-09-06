@@ -3,6 +3,12 @@
 @section('title', 'Kontak & pendaftaran')
 @section('description', 'Alamat studio, jam operasional, dan form pendaftaran Tarakan Art Class. Kirim data anak, admin kami akan menghubungi Anda lewat WhatsApp.')
 
+@push('head')
+    @if(!empty($faq))
+        @include('partials.site-schema-faq')
+    @endif
+@endpush
+
 @section('content')
 
 @php

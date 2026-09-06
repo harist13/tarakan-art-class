@@ -195,14 +195,34 @@ class PublicSiteController extends Controller
 
     public function sitemap()
     {
-        $urls = collect(['public.home', 'public.about', 'public.programs', 'public.gallery', 'public.schedule', 'public.contact'])
-            ->map(fn (string $name) => [
+        // Halaman publik beserta berkas Blade-nya. lastmod diambil dari waktu
+        // ubah berkas itu, bukan tanggal hari ini: peta situs yang mengaku
+        // "berubah hari ini" setiap hari akan diabaikan Google. Jadwal dikecualikan
+        // karena isinya memang bergerak sendiri tiap minggu tanpa berkas diubah.
+        $pages = [
+            'public.home' => ['view' => 'home', 'priority' => '1.0', 'changefreq' => 'weekly'],
+            'public.programs' => ['view' => 'programs', 'priority' => '0.9', 'changefreq' => 'monthly'],
+            'public.schedule' => ['view' => 'schedule', 'priority' => '0.9', 'changefreq' => 'weekly'],
+            'public.about' => ['view' => 'about', 'priority' => '0.7', 'changefreq' => 'monthly'],
+            'public.gallery' => ['view' => 'gallery', 'priority' => '0.7', 'changefreq' => 'weekly'],
+            'public.contact' => ['view' => 'contact', 'priority' => '0.8', 'changefreq' => 'monthly'],
+        ];
+
+        $urls = collect($pages)->map(function (array $page, string $name) {
+            $file = resource_path('views/public/'.$page['view'].'.blade.php');
+
+            return [
                 'loc' => route($name),
-                'priority' => $name === 'public.home' ? '1.0' : '0.8',
-            ]);
+                'priority' => $page['priority'],
+                'changefreq' => $page['changefreq'],
+                'lastmod' => is_file($file)
+                    ? Carbon::createFromTimestamp(filemtime($file))->toDateString()
+                    : Carbon::today()->toDateString(),
+            ];
+        })->values();
 
         return response()
-            ->view('public.sitemap', ['urls' => $urls, 'lastmod' => Carbon::today()->toDateString()])
+            ->view('public.sitemap', ['urls' => $urls])
             ->header('Content-Type', 'application/xml');
     }
 

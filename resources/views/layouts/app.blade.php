@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@yield('title', 'Dashboard') — Tarakan Art Class</title>
 
+    {{-- Sisi sistem tidak pernah boleh muncul di hasil pencarian. Larangan di
+         robots.txt saja tidak cukup: halaman yang tertaut dari situs lain masih
+         bisa terindeks tanpa pernah dirayapi. Meta ini yang benar-benar menutup. --}}
+    <meta name="robots" content="noindex, nofollow">
+
     {{-- Favicon: palet & kuas lukis --}}
     <link rel="icon" href="{{ asset('favicon.ico') }}?v=2" sizes="any">
     <link rel="icon" href="{{ asset('images/favicon.svg') }}" type="image/svg+xml">

@@ -16,9 +16,7 @@
     ]);
 @endphp
 
-@push('head')
-    <meta name="robots" content="noindex, nofollow">
-@endpush
+@section('robots', 'noindex, nofollow')
 
 @section('content')
 <x-site.section tone="paper-2">

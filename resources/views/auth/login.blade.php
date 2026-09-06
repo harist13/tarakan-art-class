@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login — Tarakan Art Class</title>
 
+    {{-- Pintu masuk sistem admin — bukan bagian dari website publik. --}}
+    <meta name="robots" content="noindex, nofollow">
+
     {{-- Favicon logo resmi, disamakan dengan website publik. --}}
     <link rel="icon" href="{{ asset('images/logo-32.png') }}?v=3" type="image/png" sizes="32x32">
     <link rel="icon" href="{{ asset('images/logo-192.png') }}?v=3" type="image/png" sizes="192x192">

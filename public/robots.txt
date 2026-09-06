@@ -1,7 +1,7 @@
 User-agent: *
 Allow: /
 
-# Area sistem admin — tidak untuk diindeks.
+# Area sistem admin & halaman pribadi — tidak untuk diindeks.
 Disallow: /dashboard
 Disallow: /login
 Disallow: /users
@@ -15,5 +15,13 @@ Disallow: /reports
 Disallow: /inventory
 Disallow: /activity-logs
 Disallow: /export
+Disallow: /holiday-classes
+Disallow: /tutors
+Disallow: /galeri-karya
+Disallow: /bayar/
+Disallow: /raport
+Disallow: /midtrans
 
-Sitemap: /sitemap.xml
+# Google mengabaikan alamat relatif di baris ini, jadi domainnya ditulis penuh.
+# Kalau domain situs berganti, baris ini harus disunting manual.
+Sitemap: https://tarakan-art-class.site/sitemap.xml
