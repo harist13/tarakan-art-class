@@ -36,10 +36,19 @@
          bukan JPEG-nya langsung: dukungan JPEG sebagai favicon tidak merata
          antar peramban, dan penyusutan 225px → 16px oleh peramban hasilnya
          lebih kotor daripada penyusutan yang disiapkan lebih dulu.
-         ?v= dinaikkan supaya favicon lama tidak nyangkut di singgahan. --}}
-    <link rel="icon" href="{{ asset('images/logo-32.png') }}?v=3" type="image/png" sizes="32x32">
-    <link rel="icon" href="{{ asset('images/logo-192.png') }}?v=3" type="image/png" sizes="192x192">
-    <link rel="apple-touch-icon" href="{{ asset('images/logo-180.png') }}?v=3">
+         ?v= dinaikkan supaya favicon lama tidak nyangkut di singgahan.
+
+         Urutannya penting untuk Google Penelusuran: ikon di hasil pencarian
+         diambil dari beranda dan harus persegi dengan sisi kelipatan 48px.
+         Karena itu yang 96 & 192 didaftarkan lebih dulu — logo-32 dulu ada di
+         urutan pertama dan tidak memenuhi syarat itu. /favicon.ico ikut
+         didaftarkan (dan tersedia di akar domain) karena itu tempat cadangan
+         yang dicari Google sendiri kalau deklarasi di bawah tidak terpakai. --}}
+    <link rel="icon" href="{{ asset('favicon.ico') }}?v=4" sizes="any">
+    <link rel="icon" href="{{ asset('images/logo-96.png') }}?v=4" type="image/png" sizes="96x96">
+    <link rel="icon" href="{{ asset('images/logo-192.png') }}?v=4" type="image/png" sizes="192x192">
+    <link rel="icon" href="{{ asset('images/logo-32.png') }}?v=4" type="image/png" sizes="32x32">
+    <link rel="apple-touch-icon" href="{{ asset('images/logo-180.png') }}?v=4">
 
     {{-- Open Graph / Twitter --}}
     <meta property="og:type" content="website">
