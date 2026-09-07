@@ -48,7 +48,7 @@
                                 @php
                                     $attStyles = [
                                         'present' => ['bg' => '#15803D', 'label' => 'Hadir'],
-                                        'absent'  => ['bg' => '#DC2626', 'label' => 'Alfa'],
+                                        'absent'  => ['bg' => '#DC2626', 'label' => 'Tidak hadir'],
                                         'permit'  => ['bg' => 'rgba(245, 136, 12, 1)', 'label' => 'Izin'],
                                     ];
                                     $st = $attStyles[$att->status] ?? ['bg' => '#475569', 'label' => ucfirst($att->status)];

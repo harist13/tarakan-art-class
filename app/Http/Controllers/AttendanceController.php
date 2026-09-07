@@ -230,8 +230,6 @@ class AttendanceController extends Controller
             'present.*' => ['exists:students,id'],
             'permit' => ['nullable', 'array'],
             'permit.*' => ['exists:students,id'],
-            'notes' => ['nullable', 'array'],
-            'notes.*' => ['nullable', 'string'],
             // Penanda kolom "Replacement?", per id murid. Tidak ikut disimpan —
             // dipakai menahan penyimpanan bila jadwal penggantinya belum diatur.
             'replacement' => ['nullable', 'array'],
@@ -253,7 +251,6 @@ class AttendanceController extends Controller
 
                 $nilai = [
                     'status' => $status,
-                    'notes' => $data['notes'][$studentId] ?? null,
                     'recorded_by' => auth()->id(),
                 ];
 

@@ -90,7 +90,7 @@
                                     <th>Murid</th>
                                     <th style="width:100px;" class="text-center">Sesi bulan ini</th>
                                     <th style="width:170px;">Replacement?</th>
-                                    <th style="width:96px;" class="text-end">Izin · Catatan</th>
+                                    <th style="width:64px;" class="text-end">Izin</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -146,14 +146,6 @@
                                                     <i class="bi bi-cash-coin me-1"></i>menunggak {{ $murid->arrearsDays() }} hari
                                                 </span>
                                             @endif
-
-                                            {{-- Catatan disembunyikan sampai dibutuhkan: sebagian besar
-                                                 baris tidak pernah memerlukannya, dan kolom teks di tiap
-                                                 baris membuat daftar centang ini ramai kembali. --}}
-                                            <div class="mt-2 {{ filled($tercatat?->notes) ? '' : 'd-none' }}" data-catatan>
-                                                <input type="text" name="notes[{{ $murid->id }}]" class="form-control form-control-sm"
-                                                       placeholder="catatan untuk {{ $murid->name }}" value="{{ $tercatat->notes ?? '' }}">
-                                            </div>
                                         </td>
                                         <td class="text-center">
                                             <span class="badge rounded-pill {{ $sesiPenuh ? 'bg-success-subtle text-success-emphasis' : 'bg-secondary-subtle text-secondary-emphasis' }}"
@@ -219,15 +211,12 @@
                                         </td>
                                         <td class="text-end text-nowrap">
                                             {{-- Izin: jalan keluar untuk yang berhalangan, bukan pilihan
-                                                 sehari-hari. Menyala berarti status izin, dan centang
+                                                 sehari-hari. Menyala amber berarti status izin, dan centang
                                                  hadirnya ikut dilepas — keduanya tak mungkin benar. --}}
                                             <input type="checkbox" class="btn-check" id="izin-{{ $kelas->id }}-{{ $murid->id }}"
                                                    name="permit[]" value="{{ $murid->id }}" data-izin @checked($izin)>
                                             <label class="btn btn-sm btn-outline-secondary btn-izin" for="izin-{{ $kelas->id }}-{{ $murid->id }}"
-                                                   title="Tandai {{ $murid->name }} izin"><i class="bi bi-envelope"></i></label>
-
-                                            <button type="button" class="btn btn-sm btn-outline-secondary" data-catatan-toggle
-                                                    title="Tulis catatan untuk {{ $murid->name }}"><i class="bi bi-pencil-square"></i></button>
+                                                   title="Tandai {{ $murid->name }} izin"><i class="bi bi-pencil-square"></i></label>
                                         </td>
                                     </tr>
                                 @endforeach
@@ -250,8 +239,11 @@
 
                     <div class="d-flex flex-wrap align-items-center gap-2 mt-3">
                         <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-save me-1"></i>Simpan</button>
-                        <button type="button" class="btn btn-outline-secondary btn-sm" data-centang-semua><i class="bi bi-check-all me-1"></i>Centang semua</button>
-                        <button type="button" class="btn btn-outline-secondary btn-sm" data-hapus-centang>Kosongkan</button>
+                        {{-- Satu tombol untuk dua arah: begitu semua tercentang, satu-satunya
+                             tindakan massal yang masuk akal berikutnya adalah mengosongkannya. --}}
+                        <button type="button" class="btn btn-outline-secondary btn-sm" data-centang-semua>
+                            <i class="bi bi-check-all me-1"></i><span data-centang-teks>Centang semua</span>
+                        </button>
                         @if($sudahTercatat)
                             <span class="small text-muted"><i class="bi bi-clock-history me-1"></i>Sesi ini sudah diabsen — menyimpan lagi akan memperbaruinya.</span>
                         @else
@@ -313,44 +305,80 @@ document.addEventListener('DOMContentLoaded', function () {
         // ── Centang massal ───────────────────────────────────────────────
         // Mayoritas murid biasanya hadir, jadi menyetel satu kelas lalu
         // membetulkan yang menyimpang jauh lebih cepat. Baris yang sudah
-        // ditandai izin atau sedang menulis catatan dilewati: keduanya berarti
-        // "tidak hadir", dan mencentangnya justru menghapus keterangan yang
-        // sudah benar.
+        // ditandai izin dilewati: izin berarti "tidak hadir", dan mencentangnya
+        // menghapus keterangan yang sudah benar.
+        function terlewat(kotak) {
+            var izin = kotak.closest('tr').querySelector('[data-izin]');
+
+            return !! (izin && izin.checked);
+        }
+
         function setSemua(nilai) {
             form.querySelectorAll('[data-hadir]').forEach(function (kotak) {
-                var baris = kotak.closest('tr');
-                var izin = baris.querySelector('[data-izin]');
-                var catatan = baris.querySelector('[data-catatan]');
-                var ditandai = (izin && izin.checked)
-                    || (catatan && ! catatan.classList.contains('d-none'));
-
-                if (nilai && ditandai) {
+                if (nilai && terlewat(kotak)) {
                     return;
                 }
                 kotak.checked = nilai;
             });
         }
 
+        // Tombolnya menyebut tindakan berikutnya, bukan keadaan sekarang: selama
+        // masih ada yang belum tercentang ia berbunyi "Centang semua", dan begitu
+        // penuh ia berganti jadi "Kosongkan" — termasuk ketika admin mencentang
+        // barisnya satu per satu, supaya labelnya tak pernah berbohong.
         var centang = form.querySelector('[data-centang-semua]');
-        var kosong = form.querySelector('[data-hapus-centang]');
+        var centangTeks = form.querySelector('[data-centang-teks]');
+
+        function semuaTercentang() {
+            var kotak = Array.prototype.filter.call(
+                form.querySelectorAll('[data-hadir]'),
+                function (satu) { return ! terlewat(satu); }
+            );
+
+            return kotak.length > 0 && kotak.every(function (satu) { return satu.checked; });
+        }
+
+        function perbaruiTombolCentang() {
+            if (! centang) {
+                return;
+            }
+
+            var kosongkan = semuaTercentang();
+            centang.dataset.aksi = kosongkan ? 'kosongkan' : 'centang';
+
+            if (centangTeks) {
+                centangTeks.textContent = kosongkan ? 'Kosongkan' : 'Centang semua';
+            }
+
+            var ikon = centang.querySelector('i');
+            if (ikon) {
+                ikon.className = (kosongkan ? 'bi bi-eraser' : 'bi bi-check-all') + ' me-1';
+            }
+        }
+
         if (centang) {
-            centang.addEventListener('click', function () { setSemua(true); });
+            centang.addEventListener('click', function () {
+                setSemua(centang.dataset.aksi !== 'kosongkan');
+                perbaruiTombolCentang();
+            });
         }
-        if (kosong) {
-            kosong.addEventListener('click', function () { setSemua(false); });
-        }
+
+        perbaruiTombolCentang();
 
         // ── Izin ⇄ hadir: dua sisi dari satu saklar ──────────────────────
         // Menyalakan izin melepas centang hadir, dan mematikannya mengembalikan
         // centang itu — tombol yang tidak bisa dibatalkan memaksa admin
         // mencentang ulang sendiri setelah salah pencet. Untuk menandai murid
-        // benar-benar tidak hadir, centang hadirnya yang dilepas langsung.
+        // benar-benar tidak hadir tanpa izin, centang hadirnya yang dilepas
+        // langsung.
         form.querySelectorAll('[data-izin]').forEach(function (izin) {
             izin.addEventListener('change', function () {
                 var hadir = izin.closest('tr').querySelector('[data-hadir]');
                 if (hadir) {
                     hadir.checked = ! izin.checked;
                 }
+
+                perbaruiTombolCentang();
             });
         });
 
@@ -360,42 +388,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (hadir.checked && izin) {
                     izin.checked = false;
                 }
-            });
-        });
-
-        // ── Catatan: tersembunyi sampai diminta, dan ikut jadi saklar ────
-        // Sama seperti izin: membuka catatan berarti murid tidak hadir,
-        // menutupnya mengembalikan centang hadirnya. Konsekuensinya, catatan
-        // untuk murid yang hadir tidak bisa ditulis tanpa melepas centangnya
-        // dulu — centang hadir tinggal dipasang lagi setelah catatannya diisi.
-        form.querySelectorAll('[data-catatan-toggle]').forEach(function (tombol) {
-            tombol.addEventListener('click', function () {
-                var baris = tombol.closest('tr');
-                var kotak = baris.querySelector('[data-catatan]');
-                if (! kotak) {
-                    return;
-                }
-
-                kotak.classList.toggle('d-none');
-                var terbuka = ! kotak.classList.contains('d-none');
-
-                var hadir = baris.querySelector('[data-hadir]');
-                if (hadir) {
-                    hadir.checked = ! terbuka;
-                }
-
-                // Menutup catatan mengembalikan murid ke "hadir", jadi tanda izin
-                // yang masih menyala harus ikut padam — kalau tidak, barisnya
-                // tampak hadir sekaligus izin, dan yang tersimpan izin.
-                var izin = baris.querySelector('[data-izin]');
-                if (izin && ! terbuka) {
-                    izin.checked = false;
-                }
-
-                var isian = kotak.querySelector('input');
-                if (isian && terbuka) {
-                    isian.focus();
-                }
+                perbaruiTombolCentang();
             });
         });
 
