@@ -216,7 +216,7 @@
                                             <input type="checkbox" class="btn-check" id="izin-{{ $kelas->id }}-{{ $murid->id }}"
                                                    name="permit[]" value="{{ $murid->id }}" data-izin @checked($izin)>
                                             <label class="btn btn-sm btn-outline-secondary btn-izin" for="izin-{{ $kelas->id }}-{{ $murid->id }}"
-                                                   title="Tandai {{ $murid->name }} izin"><i class="bi bi-pencil-square"></i></label>
+                                                   title="Tandai {{ $murid->name }} izin"><i class="bi bi-check-lg"></i></label>
                                         </td>
                                     </tr>
                                 @endforeach

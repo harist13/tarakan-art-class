@@ -662,20 +662,20 @@ document.addEventListener('DOMContentLoaded', function () {
         let html =
             `<div class="row g-3 mb-3">
                 <div class="col-sm-6">
-                    <div class="border rounded p-2">
+                    <div class="border rounded p-2 h-100">
                         <div class="small text-muted">Tutor</div>
                         <div class="fw-semibold">${escapeHtml(roster.tutor || 'Belum ada tutor')}</div>
                         ${roster.tutorPhone ? `<div class="small text-muted">${escapeHtml(roster.tutorPhone)}</div>` : ''}
                     </div>
                 </div>
                 <div class="col-sm-3">
-                    <div class="border rounded p-2">
+                    <div class="border rounded p-2 h-100">
                         <div class="small text-muted">Jam</div>
                         <div class="fw-semibold">${escapeHtml(roster.time)}</div>
                     </div>
                 </div>
                 <div class="col-sm-3">
-                    <div class="border rounded p-2">
+                    <div class="border rounded p-2 h-100">
                         <div class="small text-muted">Terisi</div>
                         <div class="fw-semibold">${roster.enrolled} / ${roster.capacity}</div>
                     </div>
