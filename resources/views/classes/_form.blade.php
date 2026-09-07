@@ -1,9 +1,5 @@
-{{-- Blok 1 — Identitas kelas: apa yang diajarkan, siapa tutornya, muat berapa
-     anak, dan pola pertemuannya.
-
-     Pola kelas duduk di sini, bukan di blok Jadwal: ia sepenuhnya turunan dari
-     Tipe kelas di sebelahnya (trial sekali jalan, reguler mingguan), jadi
-     tempatnya di samping penyebabnya — bukan di antara isian jam. --}}
+{{-- Blok 1 — Identitas kelas: apa yang diajarkan, siapa tutornya, dan muat
+     berapa anak. Empat isian, dua kolom, dua baris. --}}
 <h6 class="text-uppercase text-muted fw-bold small mb-3"><i class="bi bi-easel2 me-1"></i>Informasi kelas</h6>
 <div class="row g-3">
     <div class="col-md-6">
@@ -27,7 +23,7 @@
             @error('tutor_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
         </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-6">
         {{-- Tipe kelas menggantikan saklar pengulangan: trial hanya sekali pertemuan,
              reguler berjalan tiap pekan. Controller yang menurunkan is_recurring. --}}
         <label class="form-label fw-semibold">Tipe kelas <span class="text-danger">*</span></label>
@@ -41,7 +37,7 @@
             @error('class_type')<div class="invalid-feedback">{{ $message }}</div>@enderror
         </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-6">
         <label class="form-label fw-semibold">Kapasitas <span class="text-danger">*</span></label>
         <div class="input-group">
             <span class="input-group-text bg-light text-muted"><i class="bi bi-people"></i></span>
@@ -50,22 +46,16 @@
             @error('capacity')<div class="invalid-feedback">{{ $message }}</div>@enderror
         </div>
     </div>
-    <div class="col-md-4">
-        {{-- Kotak baca-saja setinggi kontrol di sebelahnya, supaya barisnya rata.
-             Kalimat panjangnya turun ke keterangan di bawah — di dalam kotak ia
-             akan membuat baris ini lebih tinggi dari dua kolom lainnya. --}}
-        <label class="form-label fw-semibold">Pola kelas</label>
-        <div class="input-group">
-            <span class="input-group-text bg-light text-muted"><i class="bi bi-arrow-repeat"></i></span>
-            <div class="form-control bg-body-secondary" id="recurringPattern">Berulang tiap pekan</div>
-        </div>
-        <small class="text-muted d-block mt-1" id="recurringHint">Kelas berulang tiap pekan sejak tanggal kelasnya.</small>
-    </div>
 </div>
 
 <hr class="my-4">
 
-{{-- Blok 2 — Jadwal. Hari kelas tidak diisi admin, diturunkan dari tanggalnya. --}}
+{{-- Blok 2 — Jadwal: kapan kelas berjalan. Tiga isian sejajar — tanggal, jam
+     mulai, jam selesai.
+
+     Hari kelas tidak diisi admin, diturunkan dari tanggalnya; polanya pun tidak,
+     karena sudah ditentukan Tipe kelas (trial sekali jalan, reguler mingguan).
+     Keduanya tak ditampilkan lagi di sini — barisnya dijaga tetap ringkas. --}}
 <h6 class="text-uppercase text-muted fw-bold small mb-3"><i class="bi bi-calendar-week me-1"></i>Jadwal</h6>
 <div class="row g-3">
     <div class="col-md-4">
@@ -76,7 +66,6 @@
                 value="{{ old('schedule_date', isset($class) ? $class->schedule_date->format('Y-m-d') : now()->toDateString()) }}" required>
             @error('schedule_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
         </div>
-        <small class="text-muted d-block mt-1" id="scheduleDateHint"><i class="bi bi-calendar-event me-1"></i>Hari kelas diambil dari tanggal ini.</small>
     </div>
     {{-- Jam mulai & selesai diketik apa adanya.
 
@@ -108,7 +97,7 @@
                 value="{{ old('schedule_end_time', isset($class) ? \Illuminate\Support\Str::of($class->schedule_end_time)->substr(0, 5) : '') }}" required>
             @error('schedule_end_time')<div class="invalid-feedback">{{ $message }}</div>@enderror
         </div>
-        <small class="text-muted d-block" id="durationHint"></small>
+        <small class="text-muted d-block mt-1" id="durationHint"></small>
     </div>
 </div>
 
@@ -174,59 +163,12 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    const dateInput = document.getElementById('schedule_date');
-    const classType = document.getElementById('class_type');
-    const dateHint = document.getElementById('scheduleDateHint');
-    const recurringHint = document.getElementById('recurringHint');
-    const recurringPattern = document.getElementById('recurringPattern');
     const startTime = document.getElementById('schedule_time');
     const endTime = document.getElementById('schedule_end_time');
     const durationHint = document.getElementById('durationHint');
     const classFee = document.getElementById('class_fee');
     const registrationFee = document.getElementById('registration_fee');
     const totalPreview = document.getElementById('totalFeePreview');
-
-    const DAY_NAMES = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-
-    function hariTerpilih() {
-        const p = (dateInput.value || '').split('-');
-        const d = new Date(+p[0], +p[1] - 1, +p[2]);
-
-        return isNaN(d.getTime()) ? '' : DAY_NAMES[d.getDay()];
-    }
-
-    // Hari kelas tidak diisi admin — diturunkan dari tanggal. Ditampilkan di sini
-    // supaya admin tahu hari apa yang sebenarnya ia pilih, dan apa akibat tipe
-    // kelas yang dipilihnya terhadap pengulangan.
-    function updateHints() {
-        const hari = hariTerpilih();
-        const trial = classType && classType.value === 'trial';
-
-        if (dateHint) {
-            dateHint.innerHTML = hari
-                ? '<i class="bi bi-calendar-event me-1"></i>Tanggal ini jatuh pada hari <strong>' + hari + '</strong>.'
-                : '<i class="bi bi-calendar-event me-1"></i>Hari kelas diambil dari tanggal ini.';
-        }
-
-        // Kotaknya menyebut polanya sesingkat mungkin; alasan & akibatnya turun
-        // ke keterangan di bawah, supaya tinggi barisnya tetap sama dengan
-        // Tipe kelas & Kapasitas di sebelahnya.
-        if (recurringPattern) {
-            recurringPattern.textContent = trial
-                ? 'Sekali pertemuan'
-                : (hari ? 'Berulang tiap ' + hari : 'Berulang tiap pekan');
-        }
-
-        if (recurringHint) {
-            if (trial) {
-                recurringHint.innerHTML = '<i class="bi bi-calendar-x me-1"></i>Berjalan sekali pada Tanggal kelas, lalu ditandai sudah lewat.';
-            } else {
-                recurringHint.innerHTML = hari
-                    ? '<i class="bi bi-arrow-repeat me-1"></i>Berulang <strong>tiap ' + hari + '</strong> sejak Tanggal kelas, sampai statusnya ditutup.'
-                    : '<i class="bi bi-arrow-repeat me-1"></i>Berulang tiap pekan sejak Tanggal kelas.';
-            }
-        }
-    }
 
     // Total bayar awal dihitung di layar supaya admin tidak perlu menjumlah
     // sendiri sebelum menyebutkan angkanya ke orang tua murid.
@@ -314,12 +256,9 @@ document.addEventListener('DOMContentLoaded', function () {
         startTime.addEventListener('input', function () { ikutiJamMulai(true); updateDuration(); });
     }
     if (endTime) endTime.addEventListener('input', updateDuration);
-    if (dateInput) dateInput.addEventListener('input', updateHints);
-    if (classType) classType.addEventListener('change', updateHints);
     if (classFee) classFee.addEventListener('input', function () { updateTotal(); updateWeekLadder(); });
     if (registrationFee) registrationFee.addEventListener('input', updateTotal);
 
-    updateHints();
     updateTotal();
     updateWeekLadder();
     // Kelas baru & kelas lama yang jam selesainya belum pernah diisi mendapat

@@ -393,6 +393,14 @@
             </div>
             <div class="modal-footer">
                 <a href="#" id="eventModalLink" class="btn btn-primary d-none"><i class="bi bi-pencil me-1"></i> Kelola Replacement</a>
+                {{-- Hapus kelas — hanya muncul saat modal sedang menampilkan satu
+                     kelas (tingkat 2), supaya tak pernah tersedia di daftar jam
+                     yang belum menunjuk kelas tertentu. --}}
+                <form method="POST" id="eventModalDelete" class="d-none m-0"
+                      onsubmit="return confirm('Hapus kelas ' + (this.dataset.nama || 'ini') + '?\n\nKelas yang masih punya murid, riwayat absensi, atau pengajuan replacement akan ditolak sistem.');">
+                    @csrf @method('DELETE')
+                    <button type="submit" class="btn btn-outline-danger"><i class="bi bi-trash me-1"></i> Hapus kelas</button>
+                </form>
                 <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Tutup</button>
             </div>
         </div>
@@ -435,6 +443,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const tombolKembali = document.getElementById('drillBack');
     const labelKembali = document.getElementById('drillBackLabel');
     const link = document.getElementById('eventModalLink');
+    const hapus = document.getElementById('eventModalDelete');
 
     const escapeHtml = (teks) => String(teks ?? '').replace(/[&<>"']/g, (c) => ({
         '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
@@ -492,6 +501,10 @@ document.addEventListener('DOMContentLoaded', function () {
         [levelJam, levelKelas, levelDetail].forEach(function (el) {
             el.classList.toggle('d-none', el !== aktif);
         });
+
+        // Tombol hapus melekat pada satu kelas, jadi ikut tingkat kelas saja —
+        // dipasang di sini agar tak ada jalan masuk yang lupa menyembunyikannya.
+        hapus.classList.toggle('d-none', aktif !== levelKelas);
 
         if (opsiKembali) {
             labelKembali.textContent = opsiKembali.label;
@@ -703,7 +716,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (titipan.length) {
             html +=
-                `<div class="fw-semibold mt-3 mb-2"><i class="bi bi-arrow-left-right me-1"></i>Murid titipan hari itu (${titipan.length})</div>` +
+                `<div class="fw-semibold mt-3 mb-2"><i class="bi bi-arrow-left-right me-1"></i>Murid replacement hari itu (${titipan.length})</div>` +
                 titipan.map(function (murid) {
                     return `<button type="button" class="drill-row mb-2 drill-murid" data-url="${escapeHtml(murid.url)}">
                         <span class="flex-grow-1"><span class="fw-semibold">${escapeHtml(murid.name)}</span>
@@ -723,6 +736,11 @@ document.addEventListener('DOMContentLoaded', function () {
         link.href = roster.editUrl;
         link.innerHTML = '<i class="bi bi-pencil me-1"></i> Ubah jadwal kelas';
         link.classList.remove('d-none');
+
+        // Sasaran hapus ikut kelas yang sedang dibuka; namanya dipakai di
+        // konfirmasi supaya admin tahu persis kelas mana yang akan hilang.
+        hapus.action = roster.deleteUrl;
+        hapus.dataset.nama = roster.category + ' (' + roster.code + ' · ' + roster.schedule + ')';
 
         // Kembali ke tempat asalnya, bukan selalu ke satu hari penuh: yang dibuka
         // dari petak jam harus kembali ke petak itu juga.

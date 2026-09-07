@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ActivityLog;
 use App\Models\ClassRoom;
+use App\Models\ReplacementRequest;
 use App\Models\Tutor;
 use App\Support\ScheduleCalendar;
 use Illuminate\Http\Request;
@@ -215,14 +216,59 @@ class ClassRoomController extends Controller
         return redirect()->route('classes.index')->with('success', 'Kelas berhasil diperbarui.');
     }
 
+    /**
+     * Hapus kelas — hanya yang sudah benar-benar kosong.
+     *
+     * Kunci asing yang menunjuk kelas memakai cascade: sekali kelas hilang,
+     * pendaftaran murid, absensi, dan pengajuan replacement-nya ikut terhapus
+     * diam-diam. Riwayat semacam itu tidak bisa dipulihkan, jadi kelas yang
+     * masih memegangnya ditahan di sini dan admin diminta memindahkan isinya
+     * lebih dulu.
+     */
     public function destroy(ClassRoom $class)
     {
+        if ($penghalang = $this->deletionBlocker($class)) {
+            return back(fallback: route('classes.index'))->with('error', $penghalang);
+        }
+
         DB::transaction(function () use ($class) {
             ActivityLog::record('deleted', $class, "Menghapus kelas {$class->class_category}");
             $class->delete();
         });
 
-        return redirect()->route('classes.index')->with('success', 'Kelas berhasil dihapus.');
+        // Kembali ke halaman asal: hapus bisa ditekan dari daftar kelas maupun
+        // dari pop-up kalender, dan masing-masing ingin melihat hasilnya di
+        // tempatnya sendiri, bukan dilempar ke daftar kelas.
+        return back(fallback: route('classes.index'))->with('success', 'Kelas berhasil dihapus.');
+    }
+
+    /**
+     * Alasan sebuah kelas tak boleh dihapus, atau null kalau aman dihapus.
+     */
+    private function deletionBlocker(ClassRoom $class): ?string
+    {
+        $nama = $class->class_category.' ('.$class->class_code.')';
+
+        $murid = $class->students()->count();
+        if ($murid > 0) {
+            return "Maaf, kelas {$nama} masih memiliki {$murid} murid terdaftar dan belum bisa dihapus. "
+                .'Pindahkan muridnya ke kelas lain terlebih dahulu, atau tutup kelas ini agar tidak menerima murid baru.';
+        }
+
+        if ($class->attendances()->exists()) {
+            return "Maaf, kelas {$nama} sudah punya riwayat absensi dan belum bisa dihapus. "
+                .'Menghapusnya akan menghilangkan catatan kehadiran murid. Tutup kelas ini saja bila sudah tidak dipakai.';
+        }
+
+        // Replacement bisa menempel sebagai kelas asal maupun kelas tujuan;
+        // dua-duanya kehilangan jejak kalau kelasnya dihapus.
+        if ($class->replacementRequests()->exists()
+            || ReplacementRequest::where('origin_class_id', $class->id)->exists()) {
+            return "Maaf, kelas {$nama} masih terpakai pada pengajuan replacement dan belum bisa dihapus. "
+                .'Selesaikan atau batalkan pengajuannya terlebih dahulu.';
+        }
+
+        return null;
     }
 
     /**

@@ -84,6 +84,9 @@ class ScheduleCalendar
                 'recurring' => (bool) $class->is_recurring,
                 'nextSession' => $next?->format('d M Y'),
                 'editUrl' => route('classes.edit', $class),
+                // Hapus slot ini dari layar yang sedang dilihat, tanpa harus
+                // mencarinya lagi di daftar kelas.
+                'deleteUrl' => route('classes.destroy', $class),
                 // Mendaftarkan anak langsung ke slot ini — form murid menerima
                 // class_id dan memakai slot itu apa adanya, bukan menebak sendiri
                 // kelas mana dalam kategori yang kebetulan masih kosong.
