@@ -35,7 +35,7 @@ class ScheduleCalendar
      */
     public function events(): array
     {
-        return [...$this->classEvents(), ...$this->holidayEvents(), ...$this->replacementEvents()];
+        return [...$this->classEvents(), ...$this->holidayEvents()];
     }
 
     /**
@@ -226,42 +226,16 @@ class ScheduleCalendar
     }
 
     /**
-     * Replacement class, diwarnai menurut status pengajuannya.
-     *
-     * @return list<array<string, mixed>>
-     */
-    private function replacementEvents(): array
-    {
-        $statusColors = ['pending' => '#F59E0B', 'approved' => '#10B981', 'rejected' => '#EF4444'];
-        $events = [];
-
-        foreach (ReplacementRequest::with(['student', 'classRoom', 'originClass'])->get() as $req) {
-            $events[] = [
-                'title' => 'Replacement: '.($req->student->name ?? '-'),
-                'start' => $this->combineDateTime($req->replacement_date, $req->replacement_time),
-                'color' => $statusColors[$req->request_status] ?? '#6B7280',
-                'url' => route('schedules.edit', $req),
-                'extendedProps' => [
-                    'type' => 'Replacement Class',
-                    'status' => ucfirst($req->request_status),
-                    'originClass' => $req->originClass->class_category ?? '-',
-                    'newClass' => $req->classRoom->class_category ?? '-',
-                    'reason' => $req->reason ?: '-',
-                    // Disembunyikan toggle "Hanya slot available" — lihat visibleEvents().
-                    'past' => $req->isPast(),
-                ],
-            ];
-        }
-
-        return $events;
-    }
-
-    /**
      * Murid replacement yang disetujui, dikelompokkan per kelas & tanggal.
      *
      * Hanya yang approved: pengajuan pending belum tentu jadi, dan menampilkannya
      * sebagai peserta membuat tutor menyiapkan kursi untuk anak yang mungkin
      * tidak datang.
+     *
+     * Tiap baris membawa keterangan lengkap pengajuannya, bukan sekadar nama:
+     * sejak replacement tidak lagi punya badge sendiri di kalender, baris inilah
+     * satu-satunya pintu ke detailnya — dan detail itu dibuka di modal yang sama,
+     * tanpa memuat ulang halaman.
      *
      * @return array<int, array<string, list<array<string, mixed>>>>
      */
@@ -269,7 +243,7 @@ class ScheduleCalendar
     {
         $guests = [];
 
-        $requests = ReplacementRequest::with('student')
+        $requests = ReplacementRequest::with(['student', 'classRoom', 'originClass'])
             ->where('request_status', 'approved')
             ->get();
 
@@ -282,7 +256,15 @@ class ScheduleCalendar
                 'id' => $req->student->id,
                 'name' => $req->student->name,
                 'studentId' => $req->student->student_id,
-                'url' => route('students.edit', $req->student),
+                'status' => ucfirst($req->request_status),
+                'originClass' => $req->originClass->class_category ?? '-',
+                'newClass' => $req->classRoom->class_category ?? '-',
+                'reason' => $req->reason ?: '-',
+                'date' => $req->replacement_date->toDateString(),
+                'time' => $req->replacement_time ? substr($req->replacement_time, 0, 5) : null,
+                // Yang ingin diubah admin dari kalender adalah jadwal penggantinya,
+                // bukan data muridnya.
+                'editUrl' => route('schedules.edit', $req),
             ];
         }
 

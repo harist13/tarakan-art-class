@@ -1,4 +1,8 @@
-{{-- Panel kalender jadwal: kelas reguler, Holiday Class, & replacement.
+{{-- Panel kalender jadwal: kelas reguler & Holiday Class.
+
+     Replacement tidak digambar sebagai badge sendiri. Murid replacement yang
+     sudah disetujui muncul di dalam kelas yang dititipi, dan detail
+     pengajuannya dibuka dari baris muridnya.
 
      Dipakai dua halaman — Kalender jadwal dan tab di Manajemen kelas. Isinya
      dipisah ke sini, bukan disalin, supaya keduanya tidak pernah menampilkan
@@ -94,8 +98,8 @@
        kejadian yang sama jadi kotak setinggi sesinya — warna pekat seluas itu
        berubah dari penanda jadi bidang yang mendominasi halaman.
 
-       Jadi artinya tetap sama persis (biru kelas, hijau replacement disetujui,
-       dan seterusnya), hanya kadarnya yang turun: latar seulas tipis dengan
+       Jadi artinya tetap sama persis (biru kelas tersedia, abu penuh/ditutup,
+       fuchsia Holiday Class), hanya kadarnya yang turun: latar seulas tipis dengan
        satu bilah warna penuh di tepi kiri, dan tulisannya memakai warna itu
        sendiri alih-alih putih.
 
@@ -120,7 +124,7 @@
         color: inherit !important;
     }
     /* Hover sengaja tidak menyentuh warna latar. Warna di sini punya arti
-       (biru kelas, hijau replacement disetujui); menggesernya saat kursor lewat
+       (biru kelas tersedia, abu penuh/ditutup); menggesernya saat kursor lewat
        membuat penanda status berkedip jadi status lain. Yang berubah cuma
        kedalaman: bayangan tipis & bilah tepi yang menggelap. */
     #calendar .fc-timegrid-event:hover {
@@ -320,17 +324,13 @@
                 <span class="legend-pill" style="background:rgba(148,163,184,.16); border-color:rgba(148,163,184,.4); color:#475569;">
                     <span class="legend-dot" style="background:#94A3B8;"></span>Penuh / Ditutup
                 </span>
-                {{-- Tiga status replacement dulunya tiga pil berjajar. Bagi yang
-                     membaca, itu tiga hal berbeda yang harus dihafal satu per
-                     satu; padahal ketiganya satu jenis jadwal dengan tiga
-                     keadaan. Digabung jadi satu pil, keterangannya menyusut dari
-                     enam baris jadi empat tanpa satu warna pun hilang. --}}
-                <span class="legend-pill" style="background:var(--surface-2); border-color:var(--border); color:var(--text-muted);">
-                    Replacement
-                    <span class="legend-dot ms-1" style="background:#F59E0B;"></span>menunggu
-                    <span class="legend-dot ms-1" style="background:#10B981;"></span>disetujui
-                    <span class="legend-dot ms-1" style="background:#EF4444;"></span>ditolak
-                </span>
+                {{-- Replacement tak lagi berbadge sendiri di kalender: tiga status
+                     (menunggu, disetujui, ditolak) berarti tiga warna tambahan yang
+                     menumpuk di petak yang sama dengan kelasnya, padahal yang dicari
+                     admin selalu "siapa yang hadir di kelas ini hari itu". Murid
+                     replacement kini muncul di dalam kelas yang dititipi, dan
+                     detailnya dibuka dari sana. Daftar seluruh pengajuan beserta
+                     statusnya tetap ada di halaman Scheduler. --}}
                 <span class="legend-pill" style="background:rgba(192,38,211,.12); border-color:rgba(192,38,211,.35); color:#A21CAF;">
                     <span class="legend-dot" style="background:#C026D3;"></span>Holiday Class
                 </span>
@@ -339,7 +339,7 @@
         <div class="d-flex flex-wrap align-items-center gap-3 small">
             <span class="text-muted"><i class="bi bi-hand-index me-1"></i>Klik petak jam untuk melihat tutor &amp; kelas di jam itu, lalu muridnya.</span>
             <div class="form-check form-switch ms-auto"
-                 title="Menyembunyikan kelas yang penuh/ditutup, serta replacement &amp; Holiday Class yang jadwalnya sudah lewat.">
+                 title="Menyembunyikan kelas yang penuh/ditutup, serta Holiday Class yang jadwalnya sudah lewat.">
                 <input class="form-check-input" type="checkbox" id="onlyAvailable" checked>
                 <label class="form-check-label" for="onlyAvailable">Hanya slot available</label>
             </div>
@@ -388,7 +388,7 @@
                 <div id="levelJam" class="d-none"></div>
                 {{-- Tingkat 2: tutor & murid satu kelas --}}
                 <div id="levelKelas" class="d-none"></div>
-                {{-- Detail event non-kelas (Holiday Class & replacement) --}}
+                {{-- Tingkat 3: detail Holiday Class atau satu pengajuan replacement --}}
                 <div id="levelDetail" class="d-none"></div>
             </div>
             <div class="modal-footer">
@@ -451,6 +451,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const tanggalPanjang = (iso) => new Date(iso + 'T00:00:00')
         .toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+    /** "14 September" — untuk judul yang tanggal lengkapnya sudah tertulis di subjudul. */
+    const tanggalPendek = (iso) => new Date(iso + 'T00:00:00')
+        .toLocaleDateString('id-ID', { day: 'numeric', month: 'long' });
 
     const menitDari = (jam) => Number(jam.slice(0, 2)) * 60 + Number(jam.slice(3, 5));
 
@@ -715,22 +719,37 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         if (titipan.length) {
+            // Tanggalnya disebut, bukan "hari ini": modal ini bisa dibuka untuk sesi
+            // pekan depan, dan replacement selalu melekat pada satu tanggal tertentu.
+            const kapan = konteks.tanggal ? tanggalPendek(konteks.tanggal) : 'hari itu';
+
             html +=
-                `<div class="fw-semibold mt-3 mb-2"><i class="bi bi-arrow-left-right me-1"></i>Murid replacement hari itu (${titipan.length})</div>` +
-                titipan.map(function (murid) {
-                    return `<button type="button" class="drill-row mb-2 drill-murid" data-url="${escapeHtml(murid.url)}">
+                `<div class="fw-semibold mt-3 mb-2"><i class="bi bi-arrow-left-right me-1"></i>Murid replacement ${escapeHtml(kapan)} (${titipan.length})</div>` +
+                titipan.map(function (murid, i) {
+                    return `<button type="button" class="drill-row mb-2 drill-titipan" data-titipan="${i}"
+                        title="Lihat detail replacement ${escapeHtml(murid.name)}">
                         <span class="flex-grow-1"><span class="fw-semibold">${escapeHtml(murid.name)}</span>
                         <span class="small text-muted ms-1">${escapeHtml(murid.studentId)}</span></span>
-                        <i class="bi bi-pencil-square text-primary"></i></button>`;
+                        <i class="bi bi-chevron-right text-muted"></i></button>`;
                 }).join('');
         }
 
         levelKelas.innerHTML = html;
 
-        // Klik nama murid → form datanya, yang memang sudah punya pilihan kategori
+        // Klik murid tetap → form datanya, yang memang sudah punya pilihan kategori
         // kelas (coloring, drawing, dst.) — satu tutor bisa memegang beberapa.
         levelKelas.querySelectorAll('.drill-murid').forEach(function (baris) {
             baris.addEventListener('click', function () { window.location = baris.dataset.url; });
+        });
+
+        // Murid replacement → detail pengajuannya, satu tingkat lebih dalam di
+        // modal yang sama. Bukan langsung ke form ubah: yang dicari admin lebih
+        // dulu adalah keterangannya — dari kelas mana, jam berapa, kenapa — dan
+        // berpindah halaman untuk membacanya berarti kehilangan tempatnya.
+        levelKelas.querySelectorAll('.drill-titipan').forEach(function (baris) {
+            baris.addEventListener('click', function () {
+                bukaTitipan(titipan[Number(baris.dataset.titipan)], classId, konteks);
+            });
         });
 
         link.href = roster.editUrl;
@@ -754,7 +773,48 @@ document.addEventListener('DOMContentLoaded', function () {
         modal.show();
     }
 
-    /** Detail event non-kelas: Holiday Class & replacement. */
+    /**
+     * Tingkat 3 — detail satu pengajuan replacement, dibuka dari baris murid
+     * titipan di daftar kelas.
+     *
+     * Isinya persis keterangan yang dulu muncul saat badge replacement di
+     * kalender diklik. Badge-nya yang hilang, bukan keterangannya: ia sekarang
+     * tinggal di dalam kelas yang dititipi, tempat pertanyaannya memang muncul.
+     */
+    function bukaTitipan(murid, classId, konteks) {
+        if (!murid) return;
+
+        judul.textContent = 'Replacement: ' + murid.name;
+        subJudul.textContent = murid.studentId || '';
+
+        // "Senin, 14 September 2026 pukul 10.00" — jam pakai titik, seperti
+        // penulisan waktu Indonesia di seluruh aplikasi.
+        const waktu = tanggalPanjang(murid.date)
+            + (murid.time ? ' pukul ' + murid.time.replace(':', '.') : '');
+
+        levelDetail.innerHTML =
+            `<p class="mb-1"><strong>Jenis:</strong> Replacement Class</p>
+             <p class="mb-1"><strong>Waktu:</strong> ${escapeHtml(waktu)}</p>
+             <p class="mb-1"><strong>Kelas asal (sebelumnya):</strong> ${escapeHtml(murid.originClass || '-')}</p>
+             <p class="mb-1"><strong>Kelas baru (sekarang):</strong> ${escapeHtml(murid.newClass || '-')}</p>
+             <p class="mb-1"><strong>Status:</strong> ${escapeHtml(murid.status || '-')}</p>
+             <p class="mb-1"><strong>Alasan:</strong> ${escapeHtml(murid.reason || '-')}</p>`;
+
+        link.href = murid.editUrl;
+        link.innerHTML = '<i class="bi bi-pencil me-1"></i> Kelola Replacement';
+        link.classList.remove('d-none');
+
+        // Kembali ke kelas yang dititipi, bukan ke kalender: daftar muridnya
+        // biasanya belum selesai dibaca saat satu nama diklik.
+        const roster = rosters[classId];
+        tampilkanLevel(levelDetail, {
+            label: roster ? roster.category + ' · ' + roster.code : 'Kembali',
+            aksi: function () { bukaKelas(classId, konteks); },
+        });
+        modal.show();
+    }
+
+    /** Detail event non-kelas: Holiday Class. */
     function bukaDetail(info) {
         const p = info.event.extendedProps;
         judul.textContent = info.event.title;
@@ -772,10 +832,6 @@ document.addEventListener('DOMContentLoaded', function () {
         if (p.tutor)        rows += `<p class="mb-1"><strong>Tutor:</strong> ${p.tutor}</p>`;
         if (p.occupancy)    rows += `<p class="mb-1"><strong>Terisi:</strong> ${p.occupancy}</p>`;
         if (p.availability) rows += `<p class="mb-1"><strong>Ketersediaan:</strong> ${p.availability}</p>`;
-        if (p.originClass)  rows += `<p class="mb-1"><strong>Kelas asal (sebelumnya):</strong> ${p.originClass}</p>`;
-        if (p.newClass)     rows += `<p class="mb-1"><strong>Kelas baru (sekarang):</strong> ${p.newClass}</p>`;
-        if (p.status)       rows += `<p class="mb-1"><strong>Status:</strong> ${p.status}</p>`;
-        if (p.reason)       rows += `<p class="mb-1"><strong>Alasan:</strong> ${p.reason}</p>`;
         if (p.note && p.note !== '-') rows += `<p class="mb-1"><strong>Catatan:</strong> ${p.note}</p>`;
         levelDetail.innerHTML = rows;
 
@@ -799,8 +855,7 @@ document.addEventListener('DOMContentLoaded', function () {
             link.classList.remove('d-none');
         } else if (info.event.url) {
             link.href = info.event.url;
-            // Label menyesuaikan jenis event; replacement tetap jadi default.
-            link.innerHTML = '<i class="bi bi-pencil me-1"></i> ' + (p.linkLabel || 'Kelola Replacement');
+            link.innerHTML = '<i class="bi bi-pencil me-1"></i> ' + (p.linkLabel || 'Kelola jadwal');
             link.classList.remove('d-none');
         } else {
             link.classList.add('d-none');
@@ -989,16 +1044,6 @@ document.addEventListener('DOMContentLoaded', function () {
             const judulEl = arg.el.querySelector('.fc-event-title');
             if (! judulEl) return;
 
-            // Judul replacement memuat "Replacement: " di depan nama murid; di
-            // kolom selebar satu hari itu terpotong jadi "Replace ment:". Yang
-            // tersisa cukup namanya — jenis & statusnya dikatakan warnanya,
-            // sama seperti di tampilan Bulan.
-            if (p.type === 'Replacement Class') {
-                judulEl.textContent = arg.event.title.replace(/^Replacement:\s*/, '');
-
-                return;
-            }
-
             if (p.type !== 'Kelas Reguler' || ! p.tutor || p.tutor === '-') return;
 
             // Nama tutor hanya di sesi yang bloknya memang cukup tinggi.
@@ -1084,8 +1129,8 @@ document.addEventListener('DOMContentLoaded', function () {
             // Kelas reguler: 'available' sudah memuat penuh, ditutup, sudah lewat,
             // dan tutor kosong.
             if (p.type === 'Kelas Reguler') return p.available === true;
-            // Jadwal lain yang sudah lewat adalah riwayat, bukan agenda — termasuk
-            // replacement pending yang terlewat, yang juga tidak bisa dipakai lagi.
+            // Jadwal lain (Holiday Class) yang sudah lewat adalah riwayat,
+            // bukan agenda.
             return p.past !== true;
         });
     }

@@ -908,12 +908,16 @@ class SlotAvailabilityTest extends TestCase
     }
 
     /**
-     * Toggle "Hanya slot available" menyaring di sisi klien memakai penanda
-     * `past` dari server, jadi yang diuji di sini adalah penandanya: replacement
-     * yang jadwalnya lewat ditandai true apa pun statusnya — pending yang
-     * terlewat pun tidak bisa dipakai lagi.
+     * Replacement tidak lagi digambar sebagai badge di kalender — apa pun
+     * statusnya.
+     *
+     * Tiga status berarti tiga warna tambahan menumpuk di petak yang sama dengan
+     * kelasnya, padahal pertanyaan yang dibawa admin ke kalender selalu "siapa
+     * yang hadir di kelas ini hari itu". Murid replacement yang disetujui kini
+     * muncul di dalam kelasnya (lihat guests), dan daftar seluruh pengajuan
+     * beserta statusnya tetap ada di halaman Scheduler.
      */
-    public function test_replacement_yang_sudah_lewat_ditandai_past_di_kalender(): void
+    public function test_replacement_tidak_lagi_jadi_event_kalender(): void
     {
         $this->actingAs($this->makeUser());
 
@@ -921,24 +925,18 @@ class SlotAvailabilityTest extends TestCase
         $origin = $this->makeClass();
         $target = $this->makeClass(['class_category' => 'Kelas Tujuan']);
 
-        // Satu per status, semuanya di masa lalu.
         foreach (['pending', 'approved', 'rejected'] as $status) {
             ReplacementRequest::create([
                 'student_id' => $student->id,
                 'origin_class_id' => $origin->id,
                 'class_id' => $target->id,
-                'replacement_date' => now()->subWeek()->toDateString(),
+                'replacement_date' => now()->addWeek()->toDateString(),
                 'replacement_time' => '09:00',
                 'request_status' => $status,
             ]);
         }
 
-        $events = $this->calendarEvents('Replacement Class');
-
-        $this->assertCount(3, $events);
-        foreach ($events as $event) {
-            $this->assertTrue($event['extendedProps']['past'], 'Replacement lewat harus ditandai past.');
-        }
+        $this->assertSame([], $this->calendarEvents('Replacement Class'));
     }
 
     /**
@@ -964,27 +962,47 @@ class SlotAvailabilityTest extends TestCase
         ));
     }
 
-    public function test_replacement_mendatang_tidak_ditandai_past(): void
+    /**
+     * Murid replacement yang disetujui menempel di sesi kelas yang dititipi,
+     * lengkap dengan keterangan pengajuannya: itulah satu-satunya pintu ke
+     * detail replacement dari kalender sejak badge-nya dihapus.
+     */
+    public function test_murid_titipan_membawa_detail_pengajuannya(): void
     {
         $this->actingAs($this->makeUser());
 
         $student = $this->makeStudent();
         $origin = $this->makeClass();
         $target = $this->makeClass(['class_category' => 'Kelas Tujuan']);
+        $tanggal = $target->nextOccurrence()->toDateString();
 
-        ReplacementRequest::create([
+        $req = ReplacementRequest::create([
             'student_id' => $student->id,
             'origin_class_id' => $origin->id,
             'class_id' => $target->id,
-            'replacement_date' => now()->addWeek()->toDateString(),
+            'replacement_date' => $tanggal,
             'replacement_time' => '09:00',
-            'request_status' => 'pending',
+            'reason' => 'Sakit',
+            'request_status' => 'approved',
         ]);
 
-        $events = $this->calendarEvents('Replacement Class');
+        $sesi = collect($this->calendarEvents('Kelas Reguler'))
+            ->first(fn (array $ev) => $ev['extendedProps']['classId'] === $target->id
+                && str_starts_with($ev['start'], $tanggal));
 
-        $this->assertCount(1, $events);
-        $this->assertFalse($events[0]['extendedProps']['past']);
+        $this->assertNotNull($sesi, 'Sesi kelas yang dititipi harus ada di kalender.');
+
+        $titipan = $sesi['extendedProps']['guests'][0];
+
+        $this->assertSame($student->name, $titipan['name']);
+        $this->assertSame('Approved', $titipan['status']);
+        $this->assertSame($origin->class_category, $titipan['originClass']);
+        $this->assertSame($target->class_category, $titipan['newClass']);
+        $this->assertSame('Sakit', $titipan['reason']);
+        $this->assertSame($tanggal, $titipan['date']);
+        $this->assertSame('09:00', $titipan['time']);
+        // Tombol di detailnya membuka form Edit Replacement Class, bukan data murid.
+        $this->assertSame(route('schedules.edit', $req), $titipan['editUrl']);
     }
 
     public function test_kelas_mingguan_direntangkan_jadi_banyak_event_kalender(): void
