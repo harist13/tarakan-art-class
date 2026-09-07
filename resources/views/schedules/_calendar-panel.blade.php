@@ -47,8 +47,10 @@
     #calendar .fc-daygrid-day { cursor: pointer; }
     #calendar .fc-daygrid-day:hover { background-color: var(--surface-2); }
     #calendar .fc-timegrid-col-frame { cursor: pointer; }
-    /* Barisnya kini setengah jam, jadi tingginya sepertiga dari sebelumnya —
-       satu pita 1,5 jam tetap setinggi ~4,8rem, cukup untuk dua baris teks. */
+    /* Barisnya setengah jam. 1,6rem berarti sesi 60 menit setinggi ~51px, dan itu
+       memuat judul 13px dua baris (36px) beserta paddingnya — tapi tidak beserta
+       nama tutor. Maka nama tutor yang mengalah, bukan judulnya: lihat batas
+       durasi di eventDidMount. Sesi 90 menit (~77px) tetap memuat keduanya. */
     #calendar .fc-timegrid-slot { height: 1.6rem; }
 
     /* Garis setengah jam ada untuk menempatkan kelas, bukan untuk dibaca.
@@ -86,9 +88,73 @@
 
     /* Satu kelas mengisi penuh petaknya: yang dicari admin di tampilan pekan
        adalah "jam ini terpakai atau tidak", bukan menit persisnya. */
+    /* ── Warna di tampilan pekan ──
+       Tampilan bulan memberi satu baris tipis per kejadian, jadi bidang warna
+       penuh di sana kecil dan justru membantu memindai. Di tampilan pekan
+       kejadian yang sama jadi kotak setinggi sesinya — warna pekat seluas itu
+       berubah dari penanda jadi bidang yang mendominasi halaman.
+
+       Jadi artinya tetap sama persis (biru kelas, hijau replacement disetujui,
+       dan seterusnya), hanya kadarnya yang turun: latar seulas tipis dengan
+       satu bilah warna penuh di tepi kiri, dan tulisannya memakai warna itu
+       sendiri alih-alih putih.
+
+       --ev diisi eventDidMount dari warna eventnya. Kalau color-mix tidak
+       didukung browser, seluruh deklarasi ini gugur dan kotaknya kembali ke
+       warna pekat bawaan — turun pangkat, bukan rusak. */
     #calendar .fc-timegrid-event {
-        padding: 4px 6px;
+        padding: 4px 7px;
         box-shadow: none;
+        border-radius: 6px;
+        /* Dicampur ke warna permukaan, bukan ke transparent: latar tembus membuat
+           garis grid & indikator "sekarang" ikut terbaca menembus badge, dan
+           pastel yang seharusnya rata jadi belang di tiap garis setengah jam. */
+        background-color: color-mix(in srgb, var(--ev, #0EA5E9) 14%, var(--surface, #fff)) !important;
+        border-left: 4px solid var(--ev, #0EA5E9) !important;
+        color: color-mix(in srgb, var(--ev, #0EA5E9) 70%, #0F172A);
+        transition: box-shadow 0.15s ease, border-color 0.15s ease;
+    }
+    #calendar .fc-timegrid-event .fc-event-main,
+    #calendar .fc-timegrid-event .fc-event-title,
+    #calendar .fc-timegrid-event .fc-event-time {
+        color: inherit !important;
+    }
+    /* Hover sengaja tidak menyentuh warna latar. Warna di sini punya arti
+       (biru kelas, hijau replacement disetujui); menggesernya saat kursor lewat
+       membuat penanda status berkedip jadi status lain. Yang berubah cuma
+       kedalaman: bayangan tipis & bilah tepi yang menggelap. */
+    #calendar .fc-timegrid-event:hover {
+        filter: none;
+        box-shadow: 0 2px 6px rgba(15, 23, 42, 0.13);
+        border-left-color: color-mix(in srgb, var(--ev, #0EA5E9) 75%, #000) !important;
+    }
+
+    /* Terpilih: badge yang barusan dibuka tetap ditandai, jadi setelah modalnya
+       ditutup admin tahu di mana ia tadi berada. */
+    #calendar .fc-timegrid-event.is-selected {
+        outline: 2px solid var(--ev, #0EA5E9);
+        outline-offset: 1px;
+    }
+
+    /* Fokus papan ketik. Badge & tautan "+N" bukan tautan ber-href, jadi
+       keduanya diberi tabindex di eventDidMount — cincin fokusnya harus ikut
+       ada, kalau tidak navigasi Tab berjalan tanpa jejak di layar. */
+    #calendar .fc-timegrid-event:focus-visible,
+    #calendar .fc-timegrid-more-link:focus-visible {
+        outline: 2px solid var(--primary-color, #0EA5E9);
+        outline-offset: 2px;
+        box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.25);
+    }
+
+    /* Latar gelap: ulasannya sedikit lebih tebal & tulisannya dicerahkan, bukan
+       digelapkan — rumus terang yang sama akan hilang di sana. */
+    [data-bs-theme="dark"] #calendar .fc-timegrid-event {
+        background-color: color-mix(in srgb, var(--ev, #0EA5E9) 26%, var(--surface, #0F172A)) !important;
+        color: color-mix(in srgb, var(--ev, #0EA5E9) 45%, #F8FAFC);
+    }
+    [data-bs-theme="dark"] #calendar .fc-timegrid-event:hover {
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+        border-left-color: color-mix(in srgb, var(--ev, #0EA5E9) 70%, #FFF) !important;
     }
     #calendar .fc-timegrid-event .fc-event-main,
     #calendar .fc-timegrid-event .fc-event-main-frame {
@@ -111,8 +177,9 @@
         white-space: normal;
         word-break: normal;
         overflow-wrap: normal;
-        font-size: 0.75rem;
-        line-height: 1.25;
+        font-size: 0.8125rem;
+        font-weight: 600;
+        line-height: 1.4;
         text-transform: capitalize;
         display: -webkit-box;
         -webkit-line-clamp: 2;
@@ -120,19 +187,67 @@
         overflow: hidden;
     }
 
+    /* Tautan "+N": penanda bahwa masih ada jadwal lain di jam itu, jadi ia
+       sengaja tidak berwarna seperti event — kalau ikut berwarna, ia terbaca
+       sebagai jadwal ketiga alih-alih sebagai pintu ke sisanya.
+
+       Yang harus jelas justru bahwa ia bisa diklik: berlatar, bergaris, kursor
+       pointer, dan garisnya menegas saat disinggahi kursor. */
+    #calendar .fc-timegrid-more-link {
+        background: var(--surface);
+        border: 1px dashed var(--border);
+        color: var(--text-muted);
+        font-size: 0.72rem;
+        font-weight: 700;
+        border-radius: 5px;
+        padding: 2px 6px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        white-space: nowrap;
+        transition: border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease;
+    }
+    #calendar .fc-timegrid-more-link:hover {
+        border-style: solid;
+        border-color: var(--primary-color);
+        color: var(--primary-dark);
+        background: var(--surface-2);
+    }
+
+    /* Daftar yang muncul saat "+N" diklik. */
+    #calendar .fc-more-popover { z-index: 1060; }
+    #calendar .fc-more-popover .fc-popover-body { min-width: 16rem; padding: 0.5rem; }
+    #calendar .fc-more-popover .fc-popover-title { font-weight: 700; }
+    #calendar .fc-more-popover .fc-event { margin-bottom: 0.35rem; }
+
     /* Nama tutor ikut tertulis di petaknya — lihat eventDidMount. Sedikit lebih
        redup dari nama kelas supaya keduanya tidak berebut dibaca duluan, dan
        satu baris ber-ellipsis: "Kak Bagu…" masih terbaca sebagai nama, "Kak B"
        yang terpotong setengah huruf tidak. */
     #calendar .fc-event-tutor {
-        margin-top: 1px;
-        font-size: 0.7rem;
-        font-weight: 500;
-        opacity: 0.85;
+        margin-top: 2px;
+        font-size: 0.75rem;
+        font-weight: 400;
+        line-height: 1.4;
+        opacity: 0.8;
         text-transform: none;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+    }
+
+    /* ── Layar sempit ──
+       Kolom hari menyusut jadi sekitar 40px di ponsel; nama tutor di situ tidak
+       akan pernah jadi nama, cuma satu-dua huruf lalu ellipsis. Ia disembunyikan
+       dan tetap terbaca lewat tooltip badge — lihat atribut title di
+       eventDidMount, yang memang memuat tutor & jam lengkap. */
+    @media (max-width: 767.98px) {
+        #calendar .fc-event-tutor { display: none; }
+        #calendar .fc-timegrid-event { padding: 3px 5px; }
+        #calendar .fc-timegrid-event .fc-event-title {
+            font-size: 0.75rem;
+            line-height: 1.35;
+        }
     }
 
 
@@ -677,6 +792,37 @@ document.addEventListener('DOMContentLoaded', function () {
         modal.show();
     }
 
+    /**
+     * Tandai badge yang sedang dibuka.
+     *
+     * Modalnya menutupi kalender, jadi tanpa ini admin kehilangan tempatnya
+     * begitu modal ditutup — terutama di jam yang berisi dua badge berdampingan.
+     */
+    function tandaiTerpilih(el) {
+        document.querySelectorAll('#calendar .fc-event.is-selected')
+            .forEach(function (n) { n.classList.remove('is-selected'); });
+        if (el) el.classList.add('is-selected');
+    }
+
+    /**
+     * Tautan "+N" juga <a> tanpa href. Dibereskan setelah tiap penggambaran,
+     * bukan sekali saat muat: FullCalendar membuatnya ulang tiap ganti pekan.
+     */
+    function aksesTautanLain() {
+        document.querySelectorAll('#calendar .fc-timegrid-more-link').forEach(function (el) {
+            if (el.dataset.siap) return;
+            el.dataset.siap = '1';
+            el.setAttribute('tabindex', '0');
+            el.setAttribute('role', 'button');
+            el.setAttribute('aria-label', el.textContent.trim() + ' di jam ini');
+            el.addEventListener('keydown', function (e) {
+                if (e.key !== 'Enter' && e.key !== ' ') return;
+                e.preventDefault();
+                el.click();
+            });
+        });
+    }
+
     const calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
         // Pekan per jam, bukan bulan: jadwal sanggar adalah petak hari x jam yang
         // sama tiap pekan, dan itu yang dibaca admin. Tampilan bulan & daftar
@@ -691,6 +837,31 @@ document.addEventListener('DOMContentLoaded', function () {
         // dibagi lagi oleh event yang saling tindih: dua jadwal di jam yang sama
         // berdiri berdampingan dengan lebar penuh, bukan bertumpuk sebagian.
         slotEventOverlap: false,
+        // Satu kolom hari lebarnya sekitar 130px. Dibagi dua masih terbaca;
+        // dibagi tiga tinggal 44px dan tak ada satu kata pun yang muat — yang
+        // tersisa cuma "Pr… Art". Jadi paling banyak dua yang berdampingan, dan
+        // sisanya turun ke tautan "+N" yang membuka daftarnya.
+        eventMaxStack: 2,
+        // "+1" telanjang tidak menyebutkan apa-apa tentang dirinya. Ditulis
+        // penuh beserta ikonnya supaya terbaca sebagai "ada satu lagi, klik
+        // untuk melihat" — bukan sebagai potongan angka yang tercecer.
+        moreLinkContent: function (arg) {
+            return { html: '<i class="bi bi-chevron-down me-1"></i>' + arg.num + ' jadwal lagi' };
+        },
+        moreLinkClick: 'popover',
+        // Yang berhak atas dua tempat itu kelasnya lebih dulu. Replacement
+        // adalah seorang murid yang menumpang ke kelas yang sudah ada, bukan
+        // jadwal yang berdiri sendiri — kalau ia menggeser kelasnya ke balik
+        // "+N", yang hilang justru jawaban yang dicari admin.
+        eventOrder: function (a, b) {
+            const bobot = { 'Kelas Reguler': 0, 'Holiday Class': 1 };
+            const wa = bobot[(a.extendedProps || {}).type] ?? 2;
+            const wb = bobot[(b.extendedProps || {}).type] ?? 2;
+            if (wa !== wb) return wa - wb;
+            if (a.start && b.start && a.start - b.start !== 0) return a.start - b.start;
+
+            return String(a.title).localeCompare(String(b.title));
+        },
         // "Senin" di atas "7 Sep" — dua baris, bukan satu baris panjang yang
         // membuat kolom sempit ikut melebar. Ditulis sendiri lewat Intl, jadi
         // tidak menunggu bundel locale.
@@ -752,6 +923,8 @@ document.addEventListener('DOMContentLoaded', function () {
         // lihat catatanLuarJam().
         datesSet: function (info) {
             catatanLuarJam(info);
+            // Tautan "+N" digambar setelah kejadian ini, jadi ditunggu satu frame.
+            requestAnimationFrame(aksesTautanLain);
         },
         // "Jam 9 itu siapa gurunya" adalah pertanyaan pertama tentang sebuah
         // petak, jadi jawabannya ditulis di petaknya — bukan disimpan di balik
@@ -760,6 +933,11 @@ document.addEventListener('DOMContentLoaded', function () {
         eventDidMount: function (arg) {
             const p = arg.event.extendedProps || {};
             if (! arg.view.type.startsWith('timeGrid')) return;
+
+            // Warna eventnya diturunkan jadi variabel supaya CSS bisa meramunya
+            // sendiri — jadi satu sumber warna (ScheduleCalendar) tetap dipakai
+            // dua tampilan dengan kadar yang berbeda.
+            arg.el.style.setProperty('--ev', arg.event.backgroundColor || '#0EA5E9');
 
             // Kolom yang dibagi dua jadwal tidak selalu muat memuat nama penuh.
             // Yang terpotong di layar harus tetap bisa dibaca tanpa membuka
@@ -770,6 +948,19 @@ document.addEventListener('DOMContentLoaded', function () {
                 p.tutor && p.tutor !== '-' ? 'Tutor: ' + p.tutor : '',
                 p.occupancy ? 'Terisi ' + p.occupancy : '',
             ].filter(Boolean).join(' · ');
+
+            // Badge ini <a> tanpa href, jadi papan ketik melewatinya begitu saja.
+            // Diberi peran & urutan tab sendiri, lengkap dengan nama yang dibaca
+            // pembaca layar — isinya sama dengan tooltipnya, karena pertanyaan
+            // yang dijawab keduanya juga sama.
+            arg.el.setAttribute('tabindex', '0');
+            arg.el.setAttribute('role', 'button');
+            arg.el.setAttribute('aria-label', arg.el.title);
+            arg.el.addEventListener('keydown', function (e) {
+                if (e.key !== 'Enter' && e.key !== ' ') return;
+                e.preventDefault();
+                arg.el.click();
+            });
 
             // Jam di dalam blok mengulang label baris di kolom kiri — petak yang
             // sudah bernama "10:30" tak perlu menuliskannya lagi di dalam, apalagi
@@ -792,6 +983,18 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (p.type !== 'Kelas Reguler' || ! p.tutor || p.tutor === '-') return;
 
+            // Nama tutor hanya di sesi yang bloknya memang cukup tinggi.
+            //
+            // Sesi 60 menit setinggi ~51px: judul dua baris sudah menghabiskannya.
+            // Memaksa baris tutor masuk ke sana berarti salah satunya terpotong,
+            // dan yang lebih baik dikorbankan adalah tutornya — ia masih bisa
+            // dibaca di tooltip badge dan di daftar saat petaknya diklik,
+            // sedangkan nama kelas tidak punya cadangan semacam itu.
+            const menit = arg.event.end
+                ? (arg.event.end - arg.event.start) / 60000
+                : slotMenit;
+            if (menit < slotMenit) return;
+
             const baris = document.createElement('div');
             baris.className = 'fc-event-tutor';
             baris.textContent = p.tutor;
@@ -804,6 +1007,7 @@ document.addEventListener('DOMContentLoaded', function () {
         },
         eventClick: function (info) {
             info.jsEvent.preventDefault();
+            tandaiTerpilih(info.el);
             const p = info.event.extendedProps || {};
 
             // Kelas reguler langsung ke tingkat kedua: tanggal & jamnya sudah

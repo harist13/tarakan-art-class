@@ -229,5 +229,92 @@ class ScheduleCalendarDrilldownTest extends TestCase
         $this->assertStringContainsString("locale: 'id'", $content);
         $this->assertStringContainsString('locales/id.global.min.js', $content);
         $this->assertStringContainsString('dayHeaderContent:', $content);
+        // Tampilan pekan memakai kadar warnanya sendiri — seulas tipis dengan
+        // bilah di tepi — sementara warna dasarnya tetap satu sumber.
+        $this->assertStringContainsString("setProperty('--ev'", $content);
+        $this->assertStringContainsString('border-left: 4px solid var(--ev', $content);
+        // Paling banyak dua jadwal berdampingan dalam satu kolom hari; lebih
+        // dari itu tak ada kata yang muat. Kelas didahulukan atas replacement.
+        $this->assertStringContainsString('eventMaxStack: 2', $content);
+        $this->assertStringContainsString('eventOrder: function', $content);
+    }
+
+    /**
+     * Badge di tampilan pekan bisa dijangkau papan ketik.
+     *
+     * FullCalendar menggambarnya sebagai <a> tanpa href, jadi tanpa perlakuan
+     * khusus ia dilewati Tab begitu saja — jadwal yang hanya bisa dibuka dengan
+     * tetikus menutup pintu bagi yang tidak memakainya.
+     */
+    public function test_badge_dan_tautan_lain_bisa_dijangkau_papan_ketik(): void
+    {
+        $this->actingAs($this->admin());
+        $this->makeClass();
+
+        $content = $this->get(route('classes.index', ['tab' => 'kalender']))->assertOk()->getContent();
+
+        $this->assertStringContainsString("setAttribute('tabindex', '0')", $content);
+        $this->assertStringContainsString("setAttribute('role', 'button')", $content);
+        $this->assertStringContainsString("setAttribute('aria-label'", $content);
+        $this->assertStringContainsString('function aksesTautanLain(', $content);
+        // Cincin fokus harus ikut ada; tabindex tanpa jejak di layar sama saja
+        // dengan navigasi yang tak bisa diikuti mata.
+        $this->assertStringContainsString(':focus-visible', $content);
+    }
+
+    /**
+     * Warna badge punya arti (biru kelas, hijau replacement disetujui), jadi
+     * hover tidak boleh menggesernya — yang berubah hanya kedalamannya.
+     */
+    public function test_hover_badge_tidak_menggeser_warnanya(): void
+    {
+        $this->actingAs($this->admin());
+        $this->makeClass();
+
+        $content = $this->get(route('classes.index', ['tab' => 'kalender']))->assertOk()->getContent();
+
+        $blokHover = strstr($content, '#calendar .fc-timegrid-event:hover {');
+        $blokHover = substr($blokHover, 0, (int) strpos($blokHover, '}'));
+
+        $this->assertStringContainsString('box-shadow', $blokHover);
+        $this->assertStringContainsString('border-left-color', $blokHover);
+        $this->assertStringNotContainsString('background-color', $blokHover);
+
+        // Badge yang sedang dibuka tetap ditandai setelah modalnya ditutup.
+        $this->assertStringContainsString('.fc-timegrid-event.is-selected', $content);
+        $this->assertStringContainsString('function tandaiTerpilih(', $content);
+    }
+
+    /**
+     * Di sesi pendek nama tutor mengalah, bukan judulnya.
+     *
+     * Blok sesi 60 menit (Preschool 16:00-17:00) hanya setinggi judul dua baris.
+     * Yang dikorbankan tutornya — ia masih terbaca di tooltip & di daftar petak,
+     * sedangkan nama kelas tidak punya cadangan semacam itu.
+     */
+    public function test_nama_tutor_hanya_di_sesi_yang_cukup_panjang(): void
+    {
+        $this->actingAs($this->admin());
+        $this->makeClass();
+
+        $content = $this->get(route('classes.index', ['tab' => 'kalender']))->assertOk()->getContent();
+
+        $this->assertStringContainsString('if (menit < slotMenit) return;', $content);
+        // Grid tetap pendek: 1,6rem per setengah jam.
+        $this->assertStringContainsString('#calendar .fc-timegrid-slot { height: 1.6rem; }', $content);
+    }
+
+    /** Di layar sempit nama tutor turun ke tooltip, bukan dipaksa muat. */
+    public function test_nama_tutor_disembunyikan_di_layar_sempit(): void
+    {
+        $this->actingAs($this->admin());
+        $this->makeClass();
+
+        $content = $this->get(route('classes.index', ['tab' => 'kalender']))->assertOk()->getContent();
+
+        $this->assertStringContainsString('@media (max-width: 767.98px)', $content);
+        $this->assertStringContainsString('#calendar .fc-event-tutor { display: none; }', $content);
+        // Tooltipnya memang memuat tutor, jadi keterangan itu tidak hilang.
+        $this->assertStringContainsString("'Tutor: ' + p.tutor", $content);
     }
 }

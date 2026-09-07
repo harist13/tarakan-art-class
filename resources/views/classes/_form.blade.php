@@ -99,7 +99,6 @@
                 value="{{ old('schedule_time', isset($class) ? \Illuminate\Support\Str::of($class->schedule_time)->substr(0, 5) : \App\Models\ClassRoom::SLOT_START) }}" required>
             @error('schedule_time')<div class="invalid-feedback">{{ $message }}</div>@enderror
         </div>
-        <small class="text-muted d-block mt-1"><i class="bi bi-clock me-1"></i>Sanggar buka {{ \App\Models\ClassRoom::SLOT_START }}–{{ \App\Models\ClassRoom::SLOT_END }} WITA.</small>
     </div>
     <div class="col-md-4">
         <label class="form-label fw-semibold" for="schedule_end_time">Jam selesai <span class="text-danger">*</span></label>

@@ -19,8 +19,8 @@ return [
     // ─── Kontak ────────────────────────────────────────────────────────
     'contact' => [
         // Format internasional tanpa "+" — dipakai untuk tautan wa.me
-        'whatsapp' => env('SITE_WHATSAPP', '6288744947466'),
-        'whatsapp_display' => env('SITE_WHATSAPP_DISPLAY', '+62 887-4494-7466'),
+        'whatsapp' => env('SITE_WHATSAPP', '6285217423987'),
+        'whatsapp_display' => env('SITE_WHATSAPP_DISPLAY', '+62 852-1742-3987'),
         'email' => env('SITE_EMAIL', 'halo@tarakanartclass.com'),
         'instagram' => env('SITE_INSTAGRAM', 'tarakanartclass'),
         'address' => env('SITE_ADDRESS', 'Jl. Yos Sudarso No. 12, Tarakan, Kalimantan Utara'),

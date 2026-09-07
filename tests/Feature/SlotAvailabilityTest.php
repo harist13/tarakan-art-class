@@ -520,9 +520,14 @@ class SlotAvailabilityTest extends TestCase
 
         // Kelas sekali jalan pada Senin yang sudah lewat: masih ada di inventaris,
         // tapi tidak lagi "jalan hari Senin".
+        //
+        // previous(1), bukan subWeek()->next(1): yang kedua berarti "Senin
+        // pertama setelah sepekan lalu", dan itu justru jatuh hari ini atau besok
+        // setiap kali tesnya dijalankan pada Minggu atau Senin — kelasnya lalu
+        // ikut tampil dan tesnya gagal dua hari dalam sepekan.
         $this->makeClass([
             'class_category' => 'Kelas Senin Lampau',
-            'schedule_date' => now()->subWeek()->next(1)->toDateString(),
+            'schedule_date' => now()->previous(1)->toDateString(),
             'is_recurring' => false,
         ]);
 
