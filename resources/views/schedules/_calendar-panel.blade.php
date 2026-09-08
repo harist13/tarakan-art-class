@@ -240,21 +240,6 @@
         text-overflow: ellipsis;
     }
 
-    /* ── Layar sempit ──
-       Kolom hari menyusut jadi sekitar 40px di ponsel; nama tutor di situ tidak
-       akan pernah jadi nama, cuma satu-dua huruf lalu ellipsis. Ia disembunyikan
-       dan tetap terbaca lewat tooltip badge — lihat atribut title di
-       eventDidMount, yang memang memuat tutor & jam lengkap. */
-    @media (max-width: 767.98px) {
-        #calendar .fc-event-tutor { display: none; }
-        #calendar .fc-timegrid-event { padding: 3px 5px; }
-        #calendar .fc-timegrid-event .fc-event-title {
-            font-size: 0.75rem;
-            line-height: 1.35;
-        }
-    }
-
-
     /* ── Keterangan warna ──
        Dulu enam titik kecil berjajar sebagai teks lepas; sekarang tiap warna jadi
        satu pil dengan latar redup sewarna, jadi terbaca sebagai satu kelompok dan
@@ -312,6 +297,94 @@
         text-align: center;
         color: var(--text-muted);
     }
+
+    /* Selebar nama murid terpanjang yang wajar; di layar sempit ia melebar
+       penuh — lihat blok responsif di bawah. */
+    .cal-student-select { width: 200px; }
+
+    /* ══ Layar sempit ══
+       Kalender ini dibuka di meja admin dan di ponsel lewat halaman yang sama.
+       Yang menyesuaikan bukan terutama ukuran huruf, melainkan JUMLAH KOLOM
+       HARI — dan itu diputuskan di JS, bukan di sini: tujuh hari di layar
+       360px berarti 40px per kolom, lebar yang tak memuat satu kata pun dan
+       terlalu sempit untuk disentuh dengan tepat. Lihat tampilanUntukLebar().
+
+       Yang di bawah ini mengurus sisanya: toolbar, kolom jam, keterangan warna,
+       dan baris-baris di dalam modal. */
+
+    /* Tablet ke bawah: tiga kelompok tombol toolbar tidak lagi muat berjajar
+       dengan judul rentang di antaranya. Dibiarkan turun baris dan dirapatkan
+       ke tengah, bukan dibiarkan menghimpit judulnya sampai terpotong. */
+    @media (max-width: 991.98px) {
+        #calendar .fc-header-toolbar {
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-bottom: 0.85rem;
+        }
+        #calendar .fc-toolbar-title { font-size: 1.1rem; }
+    }
+
+    @media (max-width: 767.98px) {
+        /* Nama tutor: kolom hari di sini tidak akan pernah memuatnya jadi nama,
+           cuma satu-dua huruf lalu ellipsis. Ia disembunyikan dan tetap terbaca
+           lewat tooltip badge — lihat atribut title di eventDidMount, yang
+           memang memuat tutor & jam lengkap. */
+        #calendar .fc-event-tutor { display: none; }
+        #calendar .fc-timegrid-event { padding: 3px 5px; }
+        #calendar .fc-timegrid-event .fc-event-title {
+            font-size: 0.75rem;
+            line-height: 1.35;
+        }
+
+        /* Kolom jam selebar 4,5rem memakan seperlima layar ponsel, dan yang
+           ditulisnya cuma "10:30". Sisa lebarnya lebih berguna di petaknya. */
+        #calendar .fc-timegrid-axis { width: 3.25rem; }
+        #calendar .fc-timegrid-slot-label-cushion { font-size: 0.72rem; }
+
+        #calendar .fc-toolbar-title { font-size: 1rem; }
+        #calendar .fc-button { padding: 0.32rem 0.6rem; font-size: 0.82rem; }
+        .cal-dayhead-name { font-size: 0.78rem; }
+        .cal-dayhead-date { font-size: 0.68rem; }
+
+        /* Popover "+N" bawaannya 16rem — lebih lebar dari sebagian ponsel,
+           jadi ia keluar layar alih-alih menampilkan sisa jadwalnya. */
+        #calendar .fc-more-popover { max-width: calc(100vw - 1.5rem); }
+        #calendar .fc-more-popover .fc-popover-body { min-width: 0; }
+
+        /* Baris penelusuran di modal: jam, kelas, tutor, dan jumlah murid tidak
+           muat sebaris. Jamnya naik jadi baris sendiri di atas — di lebar ini
+           ia judul barisnya, bukan kolom pertamanya. */
+        .drill-row { flex-wrap: wrap; gap: 0.4rem 0.6rem; padding: 0.7rem 0.75rem; }
+        .drill-time { min-width: 0; width: 100%; }
+        /* Geser 2px saat disinggahi kursor tidak berarti apa-apa di layar sentuh;
+           yang tersisa cuma baris yang bergoyang saat disentuh. */
+        .drill-row:hover { transform: none; }
+    }
+
+    /* Ponsel. */
+    @media (max-width: 575.98px) {
+        /* Judul rentang tanggal naik ke barisnya sendiri di atas tombol. Diapit
+           dua kelompok tombol, justru judul itu yang menyusut lebih dulu —
+           padahal ia satu-satunya penanda pekan mana yang sedang dilihat. */
+        #calendar .fc-toolbar-chunk:nth-child(2) {
+            order: -1;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+        }
+
+        /* Tampilan bulan di layar ini memberi tiap tanggal petak sekitar 45px;
+           label kejadian harus mengecil atau tak ada yang terbaca sama sekali. */
+        #calendar .fc-daygrid-event { font-size: 0.68rem; }
+
+        .cal-legend .legend-pill { font-size: 0.7rem; padding: 0.2rem 0.55rem; }
+
+        /* Pemilih murid melebar penuh: berdampingan dengan labelnya, yang
+           tersisa untuk namanya tinggal selebar dua-tiga huruf. */
+        .cal-student-picker { width: 100%; }
+        .cal-student-select { width: 100%; }
+    }
 </style>
 <div class="card">
     <div class="card-header">
@@ -338,14 +411,14 @@
         </div>
         <div class="d-flex flex-wrap align-items-center gap-3 small">
             <span class="text-muted"><i class="bi bi-hand-index me-1"></i>Klik petak jam untuk melihat tutor &amp; kelas di jam itu, lalu muridnya.</span>
-            <div class="form-check form-switch ms-auto"
+            <div class="form-check form-switch ms-md-auto"
                  title="Menyembunyikan kelas yang penuh/ditutup, serta Holiday Class yang jadwalnya sudah lewat.">
                 <input class="form-check-input" type="checkbox" id="onlyAvailable" checked>
                 <label class="form-check-label" for="onlyAvailable">Hanya slot available</label>
             </div>
-            <div class="d-flex align-items-center gap-2">
+            <div class="d-flex align-items-center gap-2 flex-wrap cal-student-picker">
                 <label for="replacementStudent" class="text-nowrap mb-0 fw-semibold"><i class="bi bi-search me-1"></i>Cari kelas pengganti</label>
-                <select id="replacementStudent" class="form-select form-select-sm" style="width:200px;">
+                <select id="replacementStudent" class="form-select form-select-sm cal-student-select">
                     <option value="">— Pilih murid —</option>
                     @foreach($students as $student)
                         <option value="{{ $student->id }}" data-name="{{ $student->name }}" data-category="{{ $student->class_type }}">{{ $student->name }} ({{ $student->class_type }})</option>
@@ -371,7 +444,10 @@
      Tingkatnya cuma div yang bergantian tampil, bukan modal bertumpuk — modal di
      atas modal membuat tombol tutup jadi teka-teki: yang mana yang tertutup. --}}
 <div class="modal fade" id="eventModal" tabindex="-1">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    {{-- modal-fullscreen-sm-down: di ponsel daftar murid & tabelnya butuh
+         seluruh layar. Modal mengambang di sana menyisakan kolom sempit
+         yang isinya harus digulir ke dua arah. --}}
+    <div class="modal-dialog modal-lg modal-dialog-scrollable modal-fullscreen-sm-down">
         <div class="modal-content">
             <div class="modal-header">
                 <div>
@@ -896,11 +972,70 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    // ── Lebar layar menentukan berapa hari yang muat ──
+    //
+    // Tujuh kolom hari di layar 360px berarti 40px per hari: tidak ada satu kata
+    // pun yang muat di sana, dan petak sesempit itu meleset terus saat disentuh.
+    // Jadi yang menyesuaikan bukan ukuran hurufnya melainkan jumlah kolomnya —
+    // pekan penuh di layar lebar, tiga hari di tablet, satu hari di ponsel.
+    // Isi tiap kolom tetap sama persis.
+    const BP_PONSEL = 576;
+    const BP_TABLET = 992;
+
+    function tampilanUntukLebar() {
+        const lebar = window.innerWidth;
+        if (lebar < BP_PONSEL) return 'timeGridDay';
+        if (lebar < BP_TABLET) return 'timeGridThreeDay';
+
+        return 'timeGridWeek';
+    }
+
+    // Tombol pemilih tampilan ikut menyusut. Menawarkan "Minggu" di ponsel
+    // berarti menawarkan tampilan yang barusan dihindari; yang tersisa di sana
+    // satu hari, atau Daftar untuk melihat rentang yang lebih panjang.
+    function toolbarUntukLebar() {
+        const lebar = window.innerWidth;
+        if (lebar < BP_PONSEL) {
+            return { left: 'prev,next today', center: 'title', right: 'timeGridDay,listMonth' };
+        }
+        if (lebar < BP_TABLET) {
+            return { left: 'prev,next today', center: 'title', right: 'timeGridThreeDay,dayGridMonth,listMonth' };
+        }
+
+        return { left: 'prev,next today', center: 'title', right: 'timeGridWeek,dayGridMonth,listMonth' };
+    }
+
+    let tampilanTerakhir = tampilanUntukLebar();
+
+    /**
+     * Samakan kalender dengan lebar jendela sekarang.
+     *
+     * Dipanggil tiap jendela berubah ukuran, termasuk saat ponsel diputar, tapi
+     * hanya bekerja ketika lebarnya benar-benar melewati batas — kalau tidak,
+     * tiap piksel penarikan jendela menggambar ulang seluruh kalender.
+     *
+     * Bulan & Daftar adalah pilihan sadar admin, bukan akibat lebar layar, jadi
+     * keduanya tidak pernah direbut: yang diganti hanya kalau ia memang sedang
+     * berada di salah satu tampilan per jam.
+     */
+    function aturTampilanResponsif() {
+        const target = tampilanUntukLebar();
+        if (target === tampilanTerakhir) return;
+        tampilanTerakhir = target;
+
+        calendar.setOption('headerToolbar', toolbarUntukLebar());
+
+        if (calendar.view.type.startsWith('timeGrid') && calendar.view.type !== target) {
+            calendar.changeView(target);
+        }
+    }
+
     const calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
-        // Pekan per jam, bukan bulan: jadwal sanggar adalah petak hari x jam yang
-        // sama tiap pekan, dan itu yang dibaca admin. Tampilan bulan & daftar
-        // tetap tersedia di kanan untuk melihat rentang yang lebih panjang.
-        initialView: 'timeGridWeek',
+        // Per jam, bukan per bulan: jadwal sanggar adalah petak hari x jam yang
+        // sama tiap pekan, dan itu yang dibaca admin. Berapa hari yang tergambar
+        // sekaligus diserahkan ke lebar layar — lihat tampilanUntukLebar().
+        // Tampilan bulan & daftar tetap tersedia di kanan untuk rentang panjang.
+        initialView: tampilanUntukLebar(),
         locale: 'id',
         firstDay: 1,
         height: 'auto',
@@ -954,12 +1089,24 @@ document.addEventListener('DOMContentLoaded', function () {
 
             return { domNodes: [bungkus] };
         },
-        headerToolbar: {
-            left: 'prev,next today',
-            center: 'title',
-            right: 'timeGridWeek,dayGridMonth,listMonth'
+        headerToolbar: toolbarUntukLebar(),
+        buttonText: { today: 'Hari Ini', month: 'Bulan', week: 'Minggu', day: 'Hari', list: 'Daftar' },
+        views: {
+            // Tampilan tablet: tiga hari sekaligus. Satu hari di layar selebar
+            // itu membuang ruang, sedangkan tujuh membuat tiap kolom terlalu
+            // sempit untuk nama kelasnya.
+            timeGridThreeDay: {
+                type: 'timeGrid',
+                duration: { days: 3 },
+                buttonText: '3 Hari',
+            },
+            // Satu kolom hari selebar layar: dua jadwal berdampingan di sana
+            // masih lapang, jadi batas dua yang dipasang demi kolom pekan tidak
+            // perlu berlaku — "+N" di sini menyembunyikan tanpa alasan.
+            timeGridDay: { eventMaxStack: 4 },
         },
-        buttonText: { today: 'Hari Ini', month: 'Bulan', week: 'Minggu', list: 'Daftar' },
+        // Jendela diseret, ponsel diputar — semuanya lewat sini.
+        windowResize: function () { aturTampilanResponsif(); },
         // Sanggar buka 09:00-18:00 WITA dan tiap kelas 1,5 jam, jadi harinya
         // terbagi jadi enam petak yang selalu sama. Sumber angkanya satu:
         // konstanta di ClassRoom.
