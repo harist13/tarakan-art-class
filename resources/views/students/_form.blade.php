@@ -176,7 +176,7 @@
                 <span class="input-group-text bg-light text-muted"><i class="bi bi-calendar-event"></i></span>
                 <input type="date" name="date_of_birth" id="date_of_birth"
                        class="form-control @error('date_of_birth') is-invalid @enderror"
-                       value="{{ old('date_of_birth', isset($student) ? $student->date_of_birth->format('Y-m-d') : '') }}"
+                       value="{{ old('date_of_birth', isset($student) ? $student->date_of_birth?->format('Y-m-d') : '') }}"
                        max="{{ now()->toDateString() }}" required>
                 @error('date_of_birth') <div class="invalid-feedback">{{ $message }}</div> @enderror
             </div>

@@ -12,6 +12,7 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class ClassRoomController extends Controller
 {
@@ -355,12 +356,9 @@ class ClassRoomController extends Controller
     private function validateData(Request $request, ?ClassRoom $class = null): array
     {
         $data = $request->validate([
-            'class_category' => [
-                'required',
-                'string',
-                'max:255',
-                Rule::unique('classes', 'class_category')->ignore($class?->id),
-            ],
+            // Tidak unik sendirian: satu kategori memang punya banyak jadwal. Yang
+            // dicegah adalah slot kembar — lihat clashingClass().
+            'class_category' => ['required', 'string', 'max:255'],
             'tutor_id' => ['required', 'exists:tutors,id'],
             'capacity' => ['required', 'integer', 'min:1'],
             // Jadwal: tanggal + jam. `day_of_week` sengaja tidak divalidasi karena
@@ -377,7 +375,6 @@ class ClassRoomController extends Controller
             // dikosongkan, dan tersimpan sebagai 0.
             'registration_fee' => ['nullable', 'numeric', 'min:0'],
         ], [
-            'class_category.unique' => 'Kelas sudah ada.',
             'schedule_date.required' => 'Tanggal kelas belum diisi.',
             'schedule_end_time.required' => 'Jam selesai belum diisi.',
             'schedule_end_time.after' => 'Jam selesai harus lebih malam dari jam mulai.',
@@ -390,6 +387,54 @@ class ClassRoomController extends Controller
         $data['is_recurring'] = $data['class_type'] !== 'trial';
         $data['registration_fee'] = $data['registration_fee'] ?? 0;
 
+        if ($kembar = $this->clashingClass($data, $class)) {
+            throw ValidationException::withMessages([
+                'class_category' => "Kelas {$kembar->class_category} sudah ada di jadwal "
+                    ."{$kembar->scheduleLabel()} ({$kembar->class_code}).",
+            ]);
+        }
+
         return $data;
+    }
+
+    /**
+     * Kelas lain yang menempati slot yang sama: kategori sama, jam mulai sama, dan
+     * sesinya jatuh di hari yang sama.
+     *
+     * Dulu kategori dibuat unik, sehingga tiap kategori hanya bisa punya satu
+     * jadwal — padahal Basic Mewarnai berjalan di belasan slot sepekan, dan form
+     * murid memang meminta admin memilih jadwal di antara kelas sekategori.
+     *
+     * Hari tidak tersimpan sebagai kolom, jadi pembandingannya di PHP. Kelas
+     * sekali jalan (trial) dibandingkan per tanggal, bukan per hari: dua trial di
+     * Sabtu yang berbeda tidak saling bertabrakan.
+     */
+    private function clashingClass(array $data, ?ClassRoom $class): ?ClassRoom
+    {
+        $calon = new ClassRoom([
+            'class_category' => $data['class_category'],
+            'schedule_date' => $data['schedule_date'],
+            'schedule_time' => $data['schedule_time'],
+            'is_recurring' => $data['is_recurring'],
+        ]);
+
+        return ClassRoom::whereRaw('LOWER(class_category) = ?', [mb_strtolower($data['class_category'])])
+            ->when($class, fn ($q) => $q->whereKeyNot($class->id))
+            ->get()
+            ->first(fn (ClassRoom $lain) => $lain->timeLabel() === $calon->timeLabel()
+                && $this->sharesSession($calon, $lain));
+    }
+
+    private function sharesSession(ClassRoom $a, ClassRoom $b): bool
+    {
+        if ($a->is_recurring && $b->is_recurring) {
+            return $a->day_of_week === $b->day_of_week;
+        }
+
+        // Minimal satu kelas sekali jalan: bentrok hanya bila tanggalnya memang
+        // salah satu sesi kelas yang lain.
+        [$sekali, $lain] = $a->is_recurring ? [$b, $a] : [$a, $b];
+
+        return $lain->occursOn($sekali->schedule_date);
     }
 }
