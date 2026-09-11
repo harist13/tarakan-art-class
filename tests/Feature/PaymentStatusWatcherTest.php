@@ -64,7 +64,7 @@ class PaymentStatusWatcherTest extends TestCase
             'due_date' => '2026-08-08',
             'billing_period' => $period,
             'payment_amount' => 150000,
-            'payment_method' => 'qris',
+            'payment_method' => 'transfer',
             'payment_status' => $status,
         ]);
     }
@@ -152,7 +152,7 @@ class PaymentStatusWatcherTest extends TestCase
             'payment_date' => '2026-08-01',
             'due_date' => '2026-08-08',
             'payment_amount' => 150000,
-            'payment_method' => 'qris',
+            'payment_method' => 'transfer',
             'payment_status' => 'unpaid',
         ]);
 

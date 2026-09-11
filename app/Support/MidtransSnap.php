@@ -335,26 +335,20 @@ class MidtransSnap
     }
 
     /**
-     * Channel Midtrans dipetakan ke empat kosakata payments.payment_method
-     * supaya Laporan Keuangan tidak pecah jadi puluhan kategori tiap kali
-     * Midtrans menambah channel baru. Nama channel aslinya tetap utuh di
-     * kolom gateway_payment_type, jadi tidak ada informasi yang hilang.
+     * Channel Midtrans dipetakan ke kosakata payments.payment_method (cash,
+     * transfer, virtual_account) supaya Laporan Keuangan tidak pecah jadi
+     * puluhan kategori tiap kali Midtrans menambah channel baru. Nama channel
+     * aslinya tetap utuh di kolom gateway_payment_type, jadi tidak ada
+     * informasi yang hilang.
      *
      * Channel yang belum dikenal masuk "transfer" — kategori paling netral
-     * untuk uang yang masuk lewat gateway.
+     * untuk uang yang masuk lewat gateway. Begitu pula QRIS & dompet digital:
+     * tidak lagi punya kategori sendiri, dan popup Snap memang tidak
+     * menawarkannya selama daftar channel di config/midtrans.php terisi.
      */
     public function methodFor(?string $paymentType): string
     {
         return match ($paymentType) {
-            // Seluruh pembayaran dompet digital jadi satu kategori, ditampilkan
-            // sebagai "QRIS / E-Wallet". Memisahkan QRIS dari e-wallet terdengar
-            // rapi tapi tidak bisa ditegakkan: hanya GoPay & ShopeePay yang
-            // punya channel sendiri di Midtrans, sedangkan DANA, OVO, dan
-            // LinkAja membayar lewat QRIS dan dilaporkan sebagai 'qris' tanpa
-            // menyebut dompetnya — jadi kategori "E-Wallet" akan selamanya
-            // kosong dari dompet yang justru paling sering dipakai.
-            'qris', 'other_qris', 'gopay', 'shopeepay', 'dana' => 'qris',
-
             // Virtual Account seluruh bank + Mandiri Bill Payment (echannel).
             'bank_transfer', 'echannel', 'permata', 'bca_va', 'bni_va',
             'bri_va', 'cimb_va', 'mandiri_va', 'other_va' => 'virtual_account',

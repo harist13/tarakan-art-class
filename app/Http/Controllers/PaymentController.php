@@ -353,8 +353,8 @@ class PaymentController extends Controller
 
             return back()->with('error',
                 "Midtrans belum mencatat pembayaran untuk order {$payment->snap_order_id} — \"{$reason}\" ".
-                'Bila transaksinya terlihat di Dashboard Midtrans, berarti pencarian lewat order_id tidak menemukannya '.
-                '(sering terjadi pada channel e-wallet). Pasang Payment Notification URL agar statusnya dikirim otomatis.');
+                'Bila transaksinya terlihat di Dashboard Midtrans, berarti pencarian lewat order_id tidak menemukannya. '.
+                'Pasang Payment Notification URL agar statusnya dikirim otomatis.');
         }
 
         $settled = DB::transaction(fn () => $snap->applyStatus($payment, $status));

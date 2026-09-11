@@ -276,7 +276,7 @@ class BillingPeriodTest extends TestCase
                 'billing_period' => '2026-08',
                 'payment_date' => '2026-08-01',
                 'due_date' => '2026-08-08',
-                'payment_method' => 'qris',
+                'payment_method' => 'transfer',
                 'payment_status' => 'unpaid',
                 'students' => $ids,
                 'amounts' => array_fill_keys($ids, 150000),
@@ -315,7 +315,7 @@ class BillingPeriodTest extends TestCase
         Payment::create($this->invoicePayload($dua));
 
         $this->actingAs($this->admin())
-            ->post(route('payments.store'), $this->formPayload([$satu, $dua], ['payment_method' => 'qris']))
+            ->post(route('payments.store'), $this->formPayload([$satu, $dua], ['payment_method' => 'transfer']))
             ->assertRedirect(route('payments.index'));
 
         $this->assertSame(1, Payment::where('student_id', $satu->id)->count());

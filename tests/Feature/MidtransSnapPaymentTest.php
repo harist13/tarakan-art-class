@@ -95,7 +95,7 @@ class MidtransSnapPaymentTest extends TestCase
             'status_code' => $statusCode,
             'gross_amount' => $gross,
             'transaction_status' => $status,
-            'payment_type' => 'qris',
+            'payment_type' => 'bank_transfer',
             'signature_key' => hash('sha512', $payment->snap_order_id.$statusCode.$gross.self::SERVER_KEY),
         ], $overrides);
     }
@@ -286,7 +286,7 @@ class MidtransSnapPaymentTest extends TestCase
 
         $payment = $this->makePayment([
             'payment_status' => 'paid',
-            'payment_method' => 'qris',
+            'payment_method' => 'virtual_account',
             'paid_at' => now(),
         ]);
 
@@ -299,7 +299,7 @@ class MidtransSnapPaymentTest extends TestCase
         $this->assertStringContainsString($payment->invoice_number, $pesan);
         $this->assertStringContainsString('Budi Santoso', $pesan);
         $this->assertStringContainsString('Rp 250.000', $pesan);
-        $this->assertStringContainsString('QRIS', $pesan);
+        $this->assertStringContainsString('Virtual Account', $pesan);
         $this->assertStringContainsString($payment->payUrl(), $pesan);
     }
 
@@ -332,7 +332,7 @@ class MidtransSnapPaymentTest extends TestCase
 
         $payment->refresh();
         $this->assertSame('paid', $payment->payment_status);
-        $this->assertSame('qris', $payment->payment_method);
+        $this->assertSame('virtual_account', $payment->payment_method);
         $this->assertNotNull($payment->paid_at);
 
         // Sinkron ke Laporan Keuangan lewat PaymentObserver.
@@ -356,7 +356,7 @@ class MidtransSnapPaymentTest extends TestCase
         Http::fake([
             '*/v2/*/status' => Http::response([
                 'transaction_status' => 'settlement',
-                'payment_type' => 'gopay',
+                'payment_type' => 'bank_transfer',
             ]),
         ]);
 
@@ -366,7 +366,7 @@ class MidtransSnapPaymentTest extends TestCase
 
         $payment->refresh();
         $this->assertSame('paid', $payment->payment_status);
-        $this->assertSame('qris', $payment->payment_method);
+        $this->assertSame('virtual_account', $payment->payment_method);
         $this->assertDatabaseCount('transactions', 1);
     }
 
@@ -481,19 +481,18 @@ class MidtransSnapPaymentTest extends TestCase
     }
 
     /**
-     * Channel apa pun harus masuk ke salah satu dari empat kategori laporan,
-     * dan nama channel aslinya tetap tersimpan untuk audit.
+     * Channel apa pun harus masuk ke salah satu dari tiga kategori laporan
+     * (cash, transfer, virtual_account), dan nama channel aslinya tetap
+     * tersimpan untuk audit.
      */
     public function test_channel_midtrans_dipetakan_ke_kategori_laporan(): void
     {
         $snap = app(MidtransSnap::class);
 
-        $this->assertSame('qris', $snap->methodFor('qris'));
-        $this->assertSame('qris', $snap->methodFor('other_qris'));
-        // QRIS & seluruh dompet digital dilaporkan sebagai satu kategori.
-        $this->assertSame('qris', $snap->methodFor('dana'));
-        $this->assertSame('qris', $snap->methodFor('gopay'));
-        $this->assertSame('qris', $snap->methodFor('shopeepay'));
+        // QRIS & dompet digital tidak lagi punya kategori sendiri.
+        foreach (['qris', 'other_qris', 'dana', 'gopay', 'shopeepay'] as $channel) {
+            $this->assertSame('transfer', $snap->methodFor($channel), $channel);
+        }
         $this->assertSame('virtual_account', $snap->methodFor('bank_transfer'));
         $this->assertSame('virtual_account', $snap->methodFor('echannel'));
         $this->assertSame('cash', $snap->methodFor('cstore'));
@@ -502,7 +501,12 @@ class MidtransSnapPaymentTest extends TestCase
         $this->assertSame('transfer', $snap->methodFor('channel_baru_2027'));
     }
 
-    public function test_pembayaran_dana_tercatat_sebagai_qris_dengan_jejak_channel_asli(): void
+    /**
+     * QRIS tidak ditawarkan, tapi bisa muncul lagi bila daftar channel di
+     * config dikosongkan. Pembayarannya tetap harus melunasi invoice — hanya
+     * kategorinya yang jatuh ke Transfer, dengan channel asli tercatat.
+     */
+    public function test_pembayaran_dana_tercatat_sebagai_transfer_dengan_jejak_channel_asli(): void
     {
         $this->fakeSnap();
         $payment = $this->makePayment();
@@ -515,16 +519,15 @@ class MidtransSnapPaymentTest extends TestCase
 
         $payment->refresh();
         $this->assertSame('paid', $payment->payment_status);
-        $this->assertSame('qris', $payment->payment_method);
+        $this->assertSame('transfer', $payment->payment_method);
         $this->assertSame('dana', $payment->gateway_payment_type);
-        // Satu kategori, satu label — di layar & pesan WhatsApp keduanya sama.
-        $this->assertSame('QRIS / E-Wallet', $payment->methodLabel());
+        $this->assertSame('Transfer', $payment->methodLabel());
     }
 
     /**
      * transaction_id dari notifikasi disimpan, lalu dipakai sebagai kunci
-     * pengecekan berikutnya — pencarian lewat order_id tidak selalu menemukan
-     * transaksi e-wallet.
+     * pengecekan berikutnya — kunci yang selalu menunjuk ke satu transaksi,
+     * sedangkan pencarian lewat order_id tidak selalu menemukannya.
      */
     public function test_transaction_id_disimpan_dan_dipakai_untuk_cek_status(): void
     {
@@ -535,7 +538,7 @@ class MidtransSnapPaymentTest extends TestCase
 
         // Notifikasi "pending" sudah membawa transaction_id.
         $this->postJson(route('midtrans.notification'), $this->notification($payment, 'pending', [
-            'payment_type' => 'gopay',
+            'payment_type' => 'bank_transfer',
             'transaction_id' => 'trx-abc-123',
         ]))->assertOk();
 
@@ -544,7 +547,7 @@ class MidtransSnapPaymentTest extends TestCase
         Http::fake([
             '*/v2/*/status' => Http::response([
                 'transaction_status' => 'settlement',
-                'payment_type' => 'gopay',
+                'payment_type' => 'bank_transfer',
             ]),
         ]);
 
@@ -685,7 +688,7 @@ class MidtransSnapPaymentTest extends TestCase
         Http::fake([
             '*/v2/*/status' => Http::response([
                 'transaction_status' => 'settlement',
-                'payment_type' => 'qris',
+                'payment_type' => 'bank_transfer',
             ]),
         ]);
 
@@ -708,7 +711,7 @@ class MidtransSnapPaymentTest extends TestCase
     public function test_konfirmasi_lunas_manual_ditolak_untuk_channel_gateway(): void
     {
         Http::fake();
-        $payment = $this->makePayment(['payment_method' => 'qris']);
+        $payment = $this->makePayment(['payment_method' => 'transfer']);
 
         $this->actingAs($this->makeUser())
             ->patch(route('payments.confirm', $payment))

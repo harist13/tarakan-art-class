@@ -33,8 +33,7 @@
         <em>Payment Notification URL</em> di Dashboard Midtrans.
         <br>
         Sementara ini, pembayaran <strong>VA</strong> masih bisa diselesaikan lewat tombol
-        <i class="bi bi-arrow-repeat"></i> cek status — tapi <strong>e-wallet (DANA/GoPay) tidak bisa</strong>,
-        karena transaksinya hanya dapat ditelusuri lewat notifikasi.
+        <i class="bi bi-arrow-repeat"></i> cek status.
     </div>
 @endif
 

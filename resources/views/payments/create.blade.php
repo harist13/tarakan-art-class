@@ -164,10 +164,10 @@
                     </div>
                     <div class="col-md-3 mb-3">
                         <label class="form-label">Metode / channel</label>
-                        {{-- Bawaannya QRIS: invoice biasanya dikirim lewat WhatsApp
-                             dan dibayar sendiri oleh orang tua, bukan tunai di meja. --}}
+                        {{-- Bawaannya Transfer Bank: invoice biasanya dikirim lewat
+                             WhatsApp dan dibayar sendiri oleh orang tua, bukan tunai di meja. --}}
                         @include('payments._method-select', [
-                            'selected' => old('payment_method', 'qris'),
+                            'selected' => old('payment_method', 'transfer'),
                         ])
                         <small class="text-muted">Catatan awal — orang tua tetap bebas memilih saat membayar.</small>
                     </div>

@@ -221,19 +221,21 @@ class Payment extends Model
     public const METHODS = [
         'cash' => ['form' => 'Cash', 'short' => 'Cash'],
         'transfer' => ['form' => 'Transfer Bank', 'short' => 'Transfer'],
-        'qris' => ['form' => 'QRIS / E-Wallet (GoPay, DANA, OVO, ShopeePay, dll.)', 'short' => 'QRIS / E-Wallet'],
         'virtual_account' => ['form' => 'Virtual Account', 'short' => 'Virtual Account'],
     ];
 
     /**
      * Nilai warisan → metode yang berlaku sekarang.
      *
-     * 'ewallet' sempat dipisah dari 'qris'; migrasi sudah menormalkan datanya.
-     * Peta ini jaring pengaman agar baris yang lolos tidak tampil sebagai
-     * "Ewallet" di layar dan tidak diam-diam berubah jadi Cash saat invoice
-     * lama dibuka lalu disimpan ulang.
+     * QRIS / E-Wallet ('qris', dan 'ewallet' sebelum digabung ke sana) tidak
+     * lagi ditawarkan — popup Midtrans pun tidak menampilkannya, karena
+     * transaksinya tidak bisa dicek ulang lewat order_id (config/midtrans.php).
+     * Migrasi sudah memindahkan datanya ke 'transfer'; channel aslinya tetap di
+     * gateway_payment_type. Peta ini jaring pengaman agar baris yang lolos tidak
+     * tampil sebagai "Qris" di layar dan tidak diam-diam berubah jadi Cash saat
+     * invoice lama dibuka lalu disimpan ulang.
      */
-    public const LEGACY_METHODS = ['ewallet' => 'qris'];
+    public const LEGACY_METHODS = ['qris' => 'transfer', 'ewallet' => 'transfer'];
 
     /** Nilai metode yang sah — dipakai Rule::in di validasi. */
     public static function methodValues(): array

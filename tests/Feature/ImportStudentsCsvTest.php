@@ -4,13 +4,15 @@ namespace Tests\Feature;
 
 use App\Console\Commands\ImportStudentsCsv;
 use App\Models\ClassRoom;
+use App\Models\NumberSequence;
+use App\Models\Payment;
 use App\Models\Student;
 use App\Models\Tutor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Impor murid & jadwal dari CSV spreadsheet sanggar (students:import-csv).
+ * Impor murid, jadwal, & invoice dari CSV spreadsheet sanggar (students:import-csv).
  */
 class ImportStudentsCsvTest extends TestCase
 {
@@ -31,7 +33,7 @@ Graziella,Andrew,Cintya,,0822 4796 9067,"Rp720,000",Belum Bayar,,,Basic Mewarnai
 Jumat, 3-4.30",
 Brian,Dessy,Dessy,,,"Rp400,000",Belum Bayar,,,Pre-school,"Senin, 4-5",
 Celine,Melisa,Melisa,,0821 3295 5660,"Rp360,000",Off,,,Basic Sketch,,
-Dira,,Sri,,0811 5392 388 (0812 9441 8535),"Rp360,000",Belum Bayar,,,Basic Sketch,"Sabtu, 9.30 - 11",
+Dira,,Sri,,0811 5392 388 (0812 9441 8535),"Rp610,000",Belum Bayar,,,Basic Sketch,"Sabtu, 9.30 - 11",
 CSV);
     }
 
@@ -45,8 +47,11 @@ CSV);
     private function import(array $options = []): void
     {
         // 7 September 2026 adalah Senin.
-        $this->artisan('students:import-csv', ['file' => $this->csv, '--mulai' => '2026-09-07'] + $options)
-            ->assertSuccessful();
+        $this->artisan('students:import-csv', [
+            'file' => $this->csv,
+            '--mulai' => '2026-09-07',
+            '--periode' => '2026-09',
+        ] + $options)->assertSuccessful();
     }
 
     public function test_reads_conversational_schedule_times(): void
@@ -106,6 +111,40 @@ CSV);
         $this->assertSame('08115392388', Student::where('name', 'Dira')->sole()->phone_number);
     }
 
+    public function test_issues_unpaid_invoices_with_spreadsheet_amounts(): void
+    {
+        $this->import();
+
+        // Semua "Belum Bayar"; Celine (Off) tidak ditagih.
+        $this->assertSame(5, Payment::count());
+        $this->assertFalse(Student::where('name', 'Celine')->sole()->payments()->exists());
+
+        $graziella = Student::where('name', 'Graziella')->sole()->payments()->sole();
+        $this->assertSame('unpaid', $graziella->payment_status);
+        $this->assertSame('2026-09', $graziella->billing_period);
+        $this->assertEquals(720000, (float) $graziella->payment_amount);
+        $this->assertSame(today()->toDateString(), $graziella->payment_date->toDateString());
+        $this->assertSame(Payment::defaultDueDate(), $graziella->due_date->toDateString());
+        $this->assertSame('transfer', $graziella->payment_method);
+
+        // Nominal spreadsheet dipakai apa adanya, meski berbeda dari iuran kelas.
+        $this->assertEquals(610000, (float) Student::where('name', 'Dira')->sole()->payments()->sole()->payment_amount);
+
+        // Invoice Unpaid tidak menjadi pemasukan & belum menunggak.
+        $this->assertFalse(Student::inArrears()->exists());
+    }
+
+    public function test_issues_invoices_for_students_imported_earlier(): void
+    {
+        $this->import(['--tanpa-tagihan' => true]);
+        $this->assertSame(0, Payment::count());
+
+        $this->import();
+
+        $this->assertSame(6, Student::count());
+        $this->assertSame(5, Payment::count());
+    }
+
     public function test_running_twice_does_not_duplicate(): void
     {
         $this->import();
@@ -114,14 +153,30 @@ CSV);
         $this->assertSame(6, Student::count());
         $this->assertSame(5, ClassRoom::count());
         $this->assertSame(1, Tutor::count());
+        $this->assertSame(5, Payment::count());
     }
 
     public function test_dry_run_saves_nothing(): void
     {
+        $nextInvoice = NumberSequence::where('name', 'invoice')->value('next_number');
+
         $this->import(['--dry-run' => true]);
 
         $this->assertSame(0, Student::count());
         $this->assertSame(0, ClassRoom::count());
         $this->assertSame(0, Tutor::count());
+        $this->assertSame(0, Payment::count());
+        // Nomor invoice tidak ikut terpakai.
+        $this->assertSame($nextInvoice, NumberSequence::where('name', 'invoice')->value('next_number'));
+    }
+
+    public function test_rejects_due_date_in_the_past(): void
+    {
+        $this->artisan('students:import-csv', [
+            'file' => $this->csv,
+            '--jatuh-tempo' => today()->subDay()->toDateString(),
+        ])->assertFailed();
+
+        $this->assertSame(0, Student::count());
     }
 }

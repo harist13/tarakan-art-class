@@ -153,31 +153,74 @@ class PaymentMethodOptionsTest extends TestCase
         }
     }
 
-    // ─── NILAI WARISAN 'ewallet' ───────────────────────────────────
+    // ─── QRIS / E-WALLET SUDAH DIHAPUS ─────────────────────────────
 
-    public function test_legacy_method_still_reads_as_qris(): void
+    public function test_qris_is_no_longer_offered_or_accepted(): void
     {
-        $payment = Payment::create([
-            'student_id' => $this->makeStudent('Murid Lama')->id,
-            'payment_date' => '2026-08-01',
-            'due_date' => '2026-08-08',
-            'payment_amount' => 150000,
-            'payment_method' => 'ewallet',
-            'payment_status' => 'unpaid',
-        ]);
+        $student = $this->makeStudent('Murid A');
 
-        $this->assertSame('QRIS / E-Wallet', $payment->methodLabel());
-        $this->assertSame('qris', Payment::normalizeMethod('ewallet'));
+        $this->assertArrayNotHasKey('qris', Payment::methodFormOptions());
+
+        $this->actingAs($this->admin())
+            ->get(route('payments.create'))
+            ->assertOk()
+            ->assertDontSee('value="qris"', false)
+            ->assertDontSee('QRIS / E-Wallet');
+
+        $this->actingAs($this->admin())
+            ->post(route('payments.store'), [
+                'billing_period' => '2026-08',
+                'payment_date' => '2026-08-01',
+                'due_date' => '2026-08-08',
+                'payment_method' => 'qris',
+                'payment_status' => 'unpaid',
+                'students' => [$student->id],
+                'amounts' => [$student->id => 150000],
+            ])
+            ->assertSessionHasErrors('payment_method');
+
+        $this->assertSame(0, Payment::count());
     }
 
-    public function test_editing_a_legacy_invoice_preselects_qris_not_cash(): void
+    public function test_buat_invoice_defaults_to_transfer(): void
+    {
+        $this->makeStudent('Murid A');
+
+        $html = $this->actingAs($this->admin())
+            ->get(route('payments.create'))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertMatchesRegularExpression('/<option value="transfer"[^>]*\bselected\b/', $html);
+    }
+
+    // ─── NILAI WARISAN 'qris' & 'ewallet' ──────────────────────────
+
+    public function test_legacy_methods_read_as_transfer(): void
+    {
+        foreach (['qris', 'ewallet'] as $legacy) {
+            $payment = Payment::create([
+                'student_id' => $this->makeStudent('Murid Lama')->id,
+                'payment_date' => '2026-08-01',
+                'due_date' => '2026-08-08',
+                'payment_amount' => 150000,
+                'payment_method' => $legacy,
+                'payment_status' => 'unpaid',
+            ]);
+
+            $this->assertSame('Transfer', $payment->methodLabel());
+            $this->assertSame('transfer', Payment::normalizeMethod($legacy));
+        }
+    }
+
+    public function test_editing_a_legacy_invoice_preselects_transfer_not_cash(): void
     {
         $payment = Payment::create([
             'student_id' => $this->makeStudent('Murid Lama')->id,
             'payment_date' => '2026-08-01',
             'due_date' => '2026-08-08',
             'payment_amount' => 150000,
-            'payment_method' => 'ewallet',
+            'payment_method' => 'qris',
             'payment_status' => 'unpaid',
         ]);
 
@@ -188,7 +231,7 @@ class PaymentMethodOptionsTest extends TestCase
 
         // Yang dijaga: membuka lalu menyimpan ulang invoice lama tidak boleh
         // diam-diam mengubah metodenya jadi Cash (opsi pertama).
-        $this->assertMatchesRegularExpression('/<option value="qris"[^>]*\bselected\b/', $html);
+        $this->assertMatchesRegularExpression('/<option value="transfer"[^>]*\bselected\b/', $html);
         $this->assertDoesNotMatchRegularExpression('/<option value="cash"[^>]*\bselected\b/', $html);
     }
 }

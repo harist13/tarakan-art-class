@@ -8,7 +8,7 @@
 
     Wajib dikirim:
       $selected — nilai yang sedang berlaku (boleh nilai warisan seperti
-                  'ewallet'; dinormalkan di sini supaya invoice lama tidak
+                  'qris'; dinormalkan di sini supaya invoice lama tidak
                   diam-diam berubah jadi Cash saat disimpan ulang).
 --}}
 @php $current = \App\Models\Payment::normalizeMethod($selected ?: null); @endphp
