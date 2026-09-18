@@ -95,6 +95,23 @@ class ScheduleCalendarDrilldownTest extends TestCase
     }
 
     /**
+     * Kelas hasil impor CSV diampu tutor titipan "Belum Ditentukan" — baris
+     * tutor sungguhan di basis data, tapi bukan pengajar. Modal kalender harus
+     * membacanya sebagai kelas tanpa tutor, lengkap dengan pintu menunjuknya.
+     */
+    public function test_roster_menandai_kelas_yang_tutornya_belum_ditentukan(): void
+    {
+        $titipan = $this->makeClass('coloring', Tutor::PLACEHOLDER_NAME);
+        $terisi = $this->makeClass('drawing');
+
+        $rosters = app(ScheduleCalendar::class)->rosters();
+
+        $this->assertTrue($rosters[$titipan->id]['needsTutor']);
+        $this->assertStringContainsString('tutor=kosong', $rosters[$titipan->id]['assignTutorUrl']);
+        $this->assertFalse($rosters[$terisi->id]['needsTutor']);
+    }
+
+    /**
      * Murid yang sudah keluar dari kelas tidak boleh ikut terdaftar: tutor akan
      * menyiapkan kursi untuk anak yang tidak lagi datang.
      */

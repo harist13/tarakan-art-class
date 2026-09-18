@@ -660,7 +660,7 @@ document.addEventListener('DOMContentLoaded', function () {
                  <span class="fw-semibold text-capitalize">${escapeHtml(roster.category)}</span>
                  <span class="text-muted small ms-1">${escapeHtml(roster.code)}</span>
                  <br><span class="small text-muted">
-                     <i class="bi bi-person-video3 me-1"></i>${escapeHtml(roster.tutor || 'Tutor kosong')}
+                     <i class="bi bi-person-video3 me-1"></i>${escapeHtml(roster.needsTutor ? 'Tutor kosong' : roster.tutor)}
                      ${keterangan ? ' · ' + escapeHtml(keterangan) : ''}
                  </span>
              </span>
@@ -796,13 +796,28 @@ document.addEventListener('DOMContentLoaded', function () {
         subJudul.textContent = roster.code + ' · ' + (konteks.tanggal ? tanggalPanjang(konteks.tanggal) : roster.schedule);
 
         const titipan = konteks.guests || [];
+
+        // Kelas tanpa tutor — termasuk yang masih diampu tutor titipan "Belum
+        // Ditentukan" — tidak cuma diberi tahu, tapi diberi pintunya: ikon ubah
+        // di sebelah keterangannya membuka form kelas dengan isian tutor yang
+        // sudah ditandai, jadi admin tidak perlu mencarinya sendiri di sana.
+        const isiTutor = roster.needsTutor
+            ? `<div class="d-flex align-items-center gap-2">
+                   <span class="fw-semibold text-muted">Belum ditentukan</span>
+                   <a href="${escapeHtml(roster.assignTutorUrl)}" class="btn btn-sm btn-outline-primary py-0 px-2"
+                      title="Tentukan tutor kelas ini" aria-label="Tentukan tutor kelas ini">
+                       <i class="bi bi-pencil-square"></i>
+                   </a>
+               </div>`
+            : `<div class="fw-semibold">${escapeHtml(roster.tutor)}</div>
+               ${roster.tutorPhone ? `<div class="small text-muted">${escapeHtml(roster.tutorPhone)}</div>` : ''}`;
+
         let html =
             `<div class="row g-3 mb-3">
                 <div class="col-sm-6">
                     <div class="border rounded p-2 h-100">
                         <div class="small text-muted">Tutor</div>
-                        <div class="fw-semibold">${escapeHtml(roster.tutor || 'Belum ada tutor')}</div>
-                        ${roster.tutorPhone ? `<div class="small text-muted">${escapeHtml(roster.tutorPhone)}</div>` : ''}
+                        ${isiTutor}
                     </div>
                 </div>
                 <div class="col-sm-3">

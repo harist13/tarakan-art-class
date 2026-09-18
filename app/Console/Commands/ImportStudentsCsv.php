@@ -34,15 +34,15 @@ use Illuminate\Support\Facades\DB;
  * tagihan murid yang sudah diimpor sebelumnya.
  *
  * Yang tidak ada di spreadsheet dibiarkan kosong alih-alih ditebak: tanggal
- * lahir & usia, serta tutor — kelas diampu tutor "Belum Ditentukan" sampai admin
- * menggantinya (atau pakai --tutor).
+ * lahir & usia, serta tutor — kelas dibuat tanpa tutor sampai admin menunjuknya
+ * lewat form kelas (atau pakai --tutor saat mengimpor).
  */
 class ImportStudentsCsv extends Command
 {
     protected $signature = 'students:import-csv
         {file=storage/app/informasi.csv : Lokasi berkas CSV}
         {--mulai= : Tanggal (Y-m-d) bergabung murid & patokan sesi pertama kelas; bawaan hari ini}
-        {--tutor= : ID atau nama tutor untuk kelas baru; bawaan tutor "Belum Ditentukan"}
+        {--tutor= : ID atau nama tutor untuk kelas baru; bawaan kelas dibuat tanpa tutor}
         {--kapasitas=10 : Kapasitas kelas baru, dinaikkan otomatis bila muridnya lebih banyak}
         {--periode= : Periode tagihan (Y-m) invoice yang diterbitkan; bawaan bulan ini}
         {--jatuh-tempo= : Jatuh tempo invoice (Y-m-d); bawaan hari ini + academic.payment.due_days}
@@ -51,8 +51,6 @@ class ImportStudentsCsv extends Command
         {--dry-run : Tampilkan rencana tanpa menyimpan}';
 
     protected $description = 'Impor murid, jadwal kelas reguler, dan invoice dari CSV spreadsheet sanggar';
-
-    public const PLACEHOLDER_TUTOR = 'Belum Ditentukan';
 
     /** Status pembayaran di spreadsheet yang berarti murid tidak lanjut les. */
     private const INACTIVE_STATUSES = ['off', 'belum konfir lanjut'];
@@ -115,11 +113,19 @@ class ImportStudentsCsv extends Command
         DB::beginTransaction();
 
         try {
-            $tutor = $this->resolveTutor();
-            if (! $tutor) {
-                DB::rollBack();
+            // Tanpa --tutor, kelas baru dibuat tanpa tutor: siapa yang mengajar
+            // tidak ada di spreadsheet, dan menebaknya berarti menulis nama yang
+            // belum tentu benar ke jadwal yang dibaca orang tua.
+            $tutor = null;
 
-                return self::FAILURE;
+            if (filled($this->option('tutor'))) {
+                $tutor = $this->resolveTutor();
+
+                if (! $tutor) {
+                    DB::rollBack();
+
+                    return self::FAILURE;
+                }
             }
 
             [$created, $skipped] = $this->import($records, $fees, $tutor, $mulai, $capacity);
@@ -144,7 +150,8 @@ class ImportStudentsCsv extends Command
         }
 
         $this->info(($dryRun ? 'Rencana: ' : '')
-            ."{$created} murid & ".count($classRows).' kelas reguler (diampu '.$tutor->name.')'
+            ."{$created} murid & ".count($classRows).' kelas reguler ('
+            .($tutor ? 'diampu '.$tutor->name : 'tutor belum ditentukan').')'
             .($dryRun ? ' akan diimpor.' : ' diimpor.'));
 
         if ($invoices) {
@@ -368,16 +375,10 @@ class ImportStudentsCsv extends Command
         }, $perCourse);
     }
 
+    /** Tutor pilihan --tutor; null berarti tidak ditemukan — impor dibatalkan. */
     private function resolveTutor(): ?Tutor
     {
         $choice = $this->option('tutor');
-
-        if (blank($choice)) {
-            return Tutor::firstOrCreate(
-                ['name' => self::PLACEHOLDER_TUTOR],
-                ['status' => Tutor::STATUS_PART_TIME]
-            );
-        }
 
         $tutor = ctype_digit((string) $choice) ? Tutor::find($choice) : Tutor::where('name', $choice)->first();
 
@@ -389,7 +390,7 @@ class ImportStudentsCsv extends Command
     }
 
     /** @return array{0: int, 1: list<string>} jumlah murid dibuat & nama yang sudah ada */
-    private function import(array $records, array $fees, Tutor $tutor, Carbon $mulai, int $capacity): array
+    private function import(array $records, array $fees, ?Tutor $tutor, Carbon $mulai, int $capacity): array
     {
         $created = 0;
         $skipped = [];
@@ -449,7 +450,7 @@ class ImportStudentsCsv extends Command
     }
 
     /** Kelas reguler untuk course + jadwal ini: yang sudah ada dipakai ulang. */
-    private function classFor(string $course, array $slot, int $fee, Tutor $tutor, Carbon $mulai, int $capacity): ClassRoom
+    private function classFor(string $course, array $slot, int $fee, ?Tutor $tutor, Carbon $mulai, int $capacity): ClassRoom
     {
         $key = mb_strtolower($course)."|{$slot['day']}|{$slot['start']}|{$slot['end']}";
 
@@ -464,7 +465,7 @@ class ImportStudentsCsv extends Command
                 'class_category' => $course,
                 'class_type' => 'regular',
                 'is_recurring' => true,
-                'tutor_id' => $tutor->id,
+                'tutor_id' => $tutor?->id,
                 'capacity' => $capacity,
                 // Sesi pertama: hari kelas yang pertama pada/setelah tanggal mulai.
                 'schedule_date' => $mulai->copy()->addDays(($slot['day'] - $mulai->dayOfWeek + 7) % 7)->toDateString(),

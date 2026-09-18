@@ -70,13 +70,17 @@ class ClassRoomController extends Controller
             // Status ketersediaan — mengikuti prioritas badge: ditutup > tutor kosong > penuh > tersedia.
             // Tidak ada lagi status "sudah lewat": slot mingguan tidak kedaluwarsa.
             ->when($status === 'ditutup', fn ($q) => $q->where('classes.status', 'closed'))
+            // "Tutor kosong" ikut menjaring kelas yang masih diampu tutor titipan
+            // "Belum Ditentukan" — lihat ClassRoom::needsTutor(). Tanpa itu,
+            // kelas hasil impor CSV luput dari filter yang justru dibuka admin
+            // untuk mencarinya.
             ->when($status === 'tanpa-tutor', fn ($q) => $q->where('classes.status', '!=', 'closed')
-                ->whereDoesntHave('tutor'))
+                ->needsTutor())
             ->when($status === 'penuh', fn ($q) => $q->where('classes.status', '!=', 'closed')
-                ->whereHas('tutor')
+                ->hasAssignedTutor()
                 ->whereRaw("{$enrolledSql} >= classes.capacity", ['active']))
             ->when($status === 'tersedia', fn ($q) => $q->where('classes.status', '!=', 'closed')
-                ->whereHas('tutor')
+                ->hasAssignedTutor()
                 ->whereRaw("{$enrolledSql} < classes.capacity", ['active']))
             // Kelas yang baru dibuat tampil paling atas; id menurun jadi pemecah
             // kalau ada beberapa kelas yang dibuat pada detik yang sama.
@@ -359,7 +363,10 @@ class ClassRoomController extends Controller
             // Tidak unik sendirian: satu kategori memang punya banyak jadwal. Yang
             // dicegah adalah slot kembar — lihat clashingClass().
             'class_category' => ['required', 'string', 'max:255'],
-            'tutor_id' => ['required', 'exists:tutors,id'],
+            // Boleh kosong: kelas sering sudah berjalan sebelum admin menunjuk
+            // pengajarnya. Kelas tanpa tutor ditandai badge "Tutor kosong" dan
+            // bisa dicari lewat filter dengan nama yang sama.
+            'tutor_id' => ['nullable', 'exists:tutors,id'],
             'capacity' => ['required', 'integer', 'min:1'],
             // Jadwal: tanggal + jam. `day_of_week` sengaja tidak divalidasi karena
             // bukan isian admin — ClassRoom menurunkannya dari schedule_date.

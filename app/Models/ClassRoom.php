@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -260,6 +261,42 @@ class ClassRoom extends Model
     public function hasTutor(): bool
     {
         return $this->tutor !== null;
+    }
+
+    /**
+     * Kelas ini masih menunggu tutor sungguhan ditunjuk.
+     *
+     * Berbeda dari ! hasTutor(): kelas hasil impor CSV memang punya baris tutor,
+     * tapi namanya "Belum Ditentukan" — titipan, bukan pengajar. Keduanya sama
+     * saja bagi admin yang membaca jadwal, jadi layar menanyakannya lewat sini.
+     *
+     * Tidak dipakai isAvailable(): kelas berisi murid yang tutornya belum
+     * ditunjuk tetap berjalan — yang kurang catatannya, bukan kelasnya.
+     */
+    public function needsTutor(): bool
+    {
+        return $this->tutor === null || $this->tutor->isPlaceholder();
+    }
+
+    /**
+     * Padanan needsTutor() di SQL — dipakai filter "Tutor kosong" di daftar kelas.
+     *
+     * LIKE tanpa wildcard, bukan '=': pembandingan LIKE mengabaikan besar-kecil
+     * huruf di MySQL maupun SQLite, jadi satu ekspresi ini berlaku di keduanya —
+     * sama seperti isPlaceholder() yang memakai strcasecmp(). TRIM menutup
+     * spasi tepi yang bisa tertinggal dari penyuntingan nama tutor.
+     */
+    public function scopeNeedsTutor(Builder $query): Builder
+    {
+        return $query->where(fn (Builder $sub) => $sub
+            ->whereDoesntHave('tutor')
+            ->orWhereHas('tutor', fn (Builder $t) => $t->whereRaw('TRIM(name) LIKE ?', [Tutor::PLACEHOLDER_NAME])));
+    }
+
+    /** Kebalikannya: tutornya orang sungguhan, bukan titipan. */
+    public function scopeHasAssignedTutor(Builder $query): Builder
+    {
+        return $query->whereHas('tutor', fn (Builder $t) => $t->whereRaw('TRIM(name) NOT LIKE ?', [Tutor::PLACEHOLDER_NAME]));
     }
 
     /**
@@ -613,7 +650,12 @@ class ClassRoom extends Model
 
             return ['text' => $text, 'color' => 'secondary', 'bg' => '#475569'];
         }
-        if (! $this->hasTutor()) {
+        // Tutor titipan "Belum Ditentukan" dihitung sama dengan tidak ada tutor:
+        // badge ini menjawab "kelas ini sudah punya pengajar?", dan nama titipan
+        // menjawabnya "sudah" padahal belum. Tetap di urutan ini — sebelum
+        // "Penuh" — supaya filter SQL di ClassRoomController bisa mencerminkannya
+        // tanpa harus ikut menghitung kursi.
+        if ($this->needsTutor()) {
             return ['text' => 'Tutor kosong', 'color' => 'warning', 'bg' => 'rgba(245, 136, 12, 1)'];
         }
         if ($this->isFull()) {

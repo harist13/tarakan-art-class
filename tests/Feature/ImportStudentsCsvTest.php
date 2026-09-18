@@ -79,7 +79,11 @@ CSV);
         $this->assertSame('2026-09-12', $sabtu->schedule_date->toDateString());
         $this->assertEquals(360000, (float) $sabtu->class_fee);
         $this->assertSame(2, $sabtu->enrolledCount());
-        $this->assertSame(ImportStudentsCsv::PLACEHOLDER_TUTOR, $sabtu->tutor->name);
+        // Tanpa --tutor, kelas diimpor tanpa tutor: siapa yang mengajar tidak ada
+        // di spreadsheet. Admin menunjuknya lewat form kelas.
+        $this->assertNull($sabtu->tutor_id);
+        $this->assertTrue($sabtu->needsTutor());
+        $this->assertSame(0, Tutor::count());
 
         $preschool = ClassRoom::where('class_category', 'Pre-school')->sole();
         $this->assertSame('16:00–17:00', $preschool->timeRangeLabel());
@@ -152,7 +156,8 @@ CSV);
 
         $this->assertSame(6, Student::count());
         $this->assertSame(5, ClassRoom::count());
-        $this->assertSame(1, Tutor::count());
+        // Impor tidak membuat tutor sama sekali — kelasnya menunggu admin.
+        $this->assertSame(0, Tutor::count());
         $this->assertSame(5, Payment::count());
     }
 

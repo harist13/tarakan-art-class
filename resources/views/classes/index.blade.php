@@ -176,12 +176,18 @@
                                     <i class="bi bi-{{ $class->is_recurring ? 'arrow-repeat' : 'calendar-x' }} text-muted small"></i>
                                 </div>
                                 <div class="cell-sub">
-                                    @if($class->tutor)
-                                        <i class="bi bi-person me-1"></i>{{ $class->tutor->name }}
-                                    @else
-                                        {{-- Tanpa warna khusus: kolom Ketersediaan sudah menandai
-                                             keadaan ini dengan badge "Tutor kosong". --}}
+                                    @if($class->needsTutor())
+                                        {{-- Termasuk kelas yang masih diampu tutor titipan "Belum
+                                             Ditentukan": namanya tidak ditulis di sini supaya tidak
+                                             terbaca sebagai nama pengajar. Tanpa warna khusus —
+                                             kolom Ketersediaan sudah menandainya dengan badge
+                                             "Tutor kosong". --}}
                                         <i class="bi bi-person-dash me-1"></i>Tutor belum ditentukan
+                                        <a href="{{ route('classes.edit', [$class, 'tutor' => 'kosong']) }}"
+                                            class="ms-1 text-decoration-none" title="Tentukan tutor kelas ini"
+                                            aria-label="Tentukan tutor kelas ini"><i class="bi bi-pencil-square"></i></a>
+                                    @else
+                                        <i class="bi bi-person me-1"></i>{{ $class->tutor->name }}
                                     @endif
                                 </div>
                             </td>

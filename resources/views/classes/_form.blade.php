@@ -10,18 +10,46 @@
             @error('class_category')<div class="invalid-feedback">{{ $message }}</div>@enderror
         </div>
     </div>
+    {{-- Datang dari ikon "tentukan tutor" di kalender atau daftar kelas
+         (?tutor=kosong): isiannya dibuka dalam keadaan ditandai — pesan merah &
+         fokus — supaya admin tahu isian mana yang membuatnya sampai ke halaman
+         ini. Tanda, bukan penghalang: kelas boleh tetap disimpan tanpa tutor.
+
+         Pilihan tutor sekalian dilepas. Untuk kelas tanpa tutor itu tak ada
+         bedanya, tapi basis data yang belum dimigrasikan masih memakai tutor
+         titipan "Belum Ditentukan" — dan membiarkannya terpilih berarti Simpan
+         lolos tanpa satu pun tutor sungguhan ditunjuk.
+
+         Hanya berlaku saat form dibuka bersih. Setelah submit yang ditolak,
+         @error yang bicara & old() yang menentukan pilihannya. --}}
+    @php
+        $perluTutor = request('tutor') === 'kosong' && ! $errors->any();
+        $tutorTerpilih = old('tutor_id', $perluTutor ? '' : ($class->tutor_id ?? ''));
+    @endphp
     <div class="col-md-6">
-        <label class="form-label fw-semibold">Tutor <span class="text-danger">*</span></label>
+        {{-- Tanpa tanda wajib: kelas boleh berjalan sebelum tutornya ditunjuk,
+             dan memaksa isian ini hanya akan membuat admin memilih nama asal
+             supaya form bisa disimpan. --}}
+        <label class="form-label fw-semibold" for="tutor_id">Tutor</label>
         <div class="input-group">
             <span class="input-group-text bg-light text-muted"><i class="bi bi-person-video3"></i></span>
-            <select name="tutor_id" class="form-select @error('tutor_id') is-invalid @enderror" required>
-                <option value="">— Pilih tutor —</option>
+            <select name="tutor_id" id="tutor_id" class="form-select @error('tutor_id') is-invalid @enderror @if($perluTutor) is-invalid @endif"
+                @if($perluTutor) data-perlu-tutor @endif>
+                <option value="">— Belum ditentukan —</option>
                 @foreach($tutors as $tutor)
-                    <option value="{{ $tutor->id }}" @selected(old('tutor_id', $class->tutor_id ?? '') == $tutor->id)>{{ $tutor->name }}</option>
+                    <option value="{{ $tutor->id }}" @selected((string) $tutorTerpilih === (string) $tutor->id)>{{ $tutor->name }}</option>
                 @endforeach
             </select>
             @error('tutor_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
         </div>
+        {{-- d-block, bukan .invalid-feedback biasa: Tom Select menyisipkan
+             pembungkusnya sendiri di antara select & pesan ini, jadi pemicu
+             ".is-invalid ~ .invalid-feedback" bawaan Bootstrap tidak kena. --}}
+        @if($perluTutor)
+            <div class="invalid-feedback d-block" id="tutorHint">
+                <i class="bi bi-exclamation-circle me-1"></i>Silakan tentukan tutor.
+            </div>
+        @endif
     </div>
     <div class="col-md-6">
         {{-- Tipe kelas menggantikan saklar pengulangan: trial hanya sekali pertemuan,
@@ -163,6 +191,33 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    // ── Isian tutor yang ditandai dari kalender ──
+    //
+    // Halaman ini panjang: tanpa digulirkan & difokuskan, pesan merahnya bisa
+    // berada di luar layar saat form terbuka. Tandanya dilepas begitu tutor
+    // dipilih — pesan yang bertahan setelah dipatuhi berubah jadi kebisingan.
+    (function () {
+        const tutor = document.querySelector('select[data-perlu-tutor]');
+        if (!tutor) return;
+
+        const hint = document.getElementById('tutorHint');
+        // Tom Select menyembunyikan select aslinya & menyalin kelasnya ke
+        // pembungkus — yang terlihat merah (dan yang bisa difokuskan) adalah
+        // pembungkus itu, bukan select-nya.
+        const ts = tutor.tomselect;
+        const kontrol = ts ? ts.wrapper : tutor;
+
+        kontrol.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        if (ts) { ts.focus(); } else { tutor.focus(); }
+
+        tutor.addEventListener('change', function () {
+            if (!tutor.value) return;
+            tutor.classList.remove('is-invalid');
+            kontrol.classList.remove('is-invalid');
+            if (hint) hint.remove();
+        });
+    })();
+
     const startTime = document.getElementById('schedule_time');
     const endTime = document.getElementById('schedule_end_time');
     const durationHint = document.getElementById('durationHint');

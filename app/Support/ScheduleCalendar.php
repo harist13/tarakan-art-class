@@ -68,6 +68,11 @@ class ScheduleCalendar
                 'category' => $class->class_category,
                 'tutor' => $class->tutor->name ?? null,
                 'tutorPhone' => $class->tutor->phone_number ?? null,
+                // Tutor titipan ("Belum Ditentukan") dianggap sama dengan kosong:
+                // modal kalender menawarkan pintu untuk menunjuk tutornya, bukan
+                // menampilkan nama titipan itu seolah kelas sudah punya pengajar.
+                'needsTutor' => $class->needsTutor(),
+                'assignTutorUrl' => route('classes.edit', [$class, 'tutor' => 'kosong']),
                 'dayName' => $class->dayName(),
                 'time' => $class->timeRangeLabel(),
                 'schedule' => $class->scheduleLabel(),
@@ -163,7 +168,10 @@ class ScheduleCalendar
                     'color' => $available ? '#0EA5E9' : '#94A3B8',
                     'extendedProps' => [
                         'type' => 'Kelas Reguler',
-                        'tutor' => $class->tutor->name ?? '-',
+                        // '-' berarti "tak ada nama yang perlu ditulis di petak":
+                        // tutor titipan ikut ke sana, dan judul petaknya sudah
+                        // menyebut "(Tutor kosong)" lewat $label.
+                        'tutor' => $class->needsTutor() ? '-' : $class->tutor->name,
                         'category' => $class->class_category,
                         'cat' => $class->class_category, // nilai mentah untuk pencocokan level murid
                         'classId' => $class->id,

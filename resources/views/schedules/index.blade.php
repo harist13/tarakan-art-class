@@ -457,7 +457,7 @@
                                             <span class="fw-semibold">{{ $slot->class_code }}</span>
                                             <span class="badge rounded-pill ms-1 bg-{{ $av['color'] }}">{{ $av['text'] }}</span>
                                             <br><span class="small text-muted">
-                                                <i class="bi bi-person-video3 me-1"></i>{{ $slot->tutor->name ?? 'Tutor kosong' }}
+                                                <i class="bi bi-person-video3 me-1"></i>{{ $slot->needsTutor() ? 'Tutor kosong' : $slot->tutor->name }}
                                                 @if($slot->is_recurring)
                                                     &middot; {{ $nextSession ? 'Sesi berikutnya '.$nextSession->format('d M Y') : 'Belum ada sesi mendatang' }}
                                                 @endif

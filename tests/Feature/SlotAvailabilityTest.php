@@ -163,6 +163,41 @@ class SlotAvailabilityTest extends TestCase
         $this->assertSame('Tutor kosong', $class->availability()['text']);
     }
 
+    /**
+     * Tutor titipan "Belum Ditentukan" — baris tutor yang dibuat impor CSV —
+     * dibaca sama dengan tutor kosong oleh badge ketersediaan.
+     *
+     * Bukan oleh isAvailable(): kelas hasil impor sudah berisi murid dan tetap
+     * berjalan. Yang kurang catatan tutornya, bukan kelasnya.
+     */
+    public function test_tutor_titipan_dibaca_sebagai_tutor_kosong(): void
+    {
+        $class = $this->makeClass([], 'full-time');
+        $class->tutor->update(['name' => Tutor::PLACEHOLDER_NAME]);
+        $class->load('tutor');
+
+        $this->assertTrue($class->needsTutor());
+        $this->assertSame('Tutor kosong', $class->availability()['text']);
+        $this->assertTrue($class->isAvailable());
+    }
+
+    /** Filter "Tutor kosong" di daftar kelas ikut menjaring kelas titipan itu. */
+    public function test_filter_tutor_kosong_menjaring_kelas_bertutor_titipan(): void
+    {
+        $this->actingAs($this->makeUser());
+
+        $titipan = $this->makeClass(['class_category' => 'Kelas Titipan']);
+        $titipan->tutor->update(['name' => Tutor::PLACEHOLDER_NAME]);
+        $this->makeClass(['class_category' => 'Kelas Bertutor', 'schedule_time' => '11:00']);
+
+        $kosong = $this->get(route('classes.index', ['tab' => 'kelas', 'status' => 'tanpa-tutor']))->assertOk();
+        $this->assertSame(['Kelas Titipan'], $kosong->viewData('classes')->pluck('class_category')->all());
+
+        // Dan tidak ikut terhitung "tersedia" — filter & badge harus sependapat.
+        $tersedia = $this->get(route('classes.index', ['tab' => 'kelas', 'status' => 'tersedia']))->assertOk();
+        $this->assertSame(['Kelas Bertutor'], $tersedia->viewData('classes')->pluck('class_category')->all());
+    }
+
     public function test_form_kelas_memakai_input_tanggal_dan_dropdown_tipe_kelas(): void
     {
         $this->actingAs($this->makeUser());

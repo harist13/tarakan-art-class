@@ -12,6 +12,21 @@ class Tutor extends Model
     public const STATUS_FULL_TIME = 'full-time';
     public const STATUS_PART_TIME = 'part-time';
 
+    /**
+     * Nama tutor titipan — peninggalan, bukan cara kerja yang berlaku.
+     *
+     * Dulu kelas wajib punya tutor, jadi impor CSV membuatkan baris bernama
+     * "Belum Ditentukan" untuk memegang kursinya. Sejak `classes.tutor_id` boleh
+     * kosong, kekosongan itu dinyatakan sebagai NULL dan baris titipannya
+     * dihapus oleh migrasi 2026_09_18_100000.
+     *
+     * Namanya tetap dikenali di sini supaya basis data yang belum dimigrasikan —
+     * atau baris yang diketik ulang admin dengan nama itu — tidak terbaca
+     * sebagai kelas yang sudah punya pengajar. Lihat isPlaceholder() dan
+     * ClassRoom::needsTutor().
+     */
+    public const PLACEHOLDER_NAME = 'Belum Ditentukan';
+
     public const STATUSES = [
         self::STATUS_FULL_TIME => 'Full-Time',
         self::STATUS_PART_TIME => 'Part-Time',
@@ -22,6 +37,17 @@ class Tutor extends Model
         'phone_number',
         'status',
     ];
+
+    /**
+     * Tutor titipan, bukan orang sungguhan.
+     *
+     * Dicocokkan tanpa memedulikan besar-kecil huruf & spasi tepi: baris ini
+     * bisa saja pernah disunting admin lewat form tutor.
+     */
+    public function isPlaceholder(): bool
+    {
+        return strcasecmp(trim((string) $this->name), self::PLACEHOLDER_NAME) === 0;
+    }
 
     public function statusLabel(): string
     {

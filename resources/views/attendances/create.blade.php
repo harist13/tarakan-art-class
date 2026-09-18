@@ -65,7 +65,7 @@
                 <i class="bi bi-clock text-muted"></i>
                 <span class="fw-semibold">{{ $kelas->timeRangeLabel() }}</span>
                 <span class="fw-bold">{{ $kelas->class_category }}</span>
-                <span class="text-muted small">{{ $kelas->class_code }} · {{ $kelas->tutor->name ?? 'tanpa tutor' }}</span>
+                <span class="text-muted small">{{ $kelas->class_code }} · {{ $kelas->needsTutor() ? 'tanpa tutor' : $kelas->tutor->name }}</span>
             </span>
             @if($sudahTercatat)
                 <span class="badge bg-success-subtle text-success-emphasis">{{ $sudahHadir }} dari {{ $sesi['rows']->count() }} hadir</span>
