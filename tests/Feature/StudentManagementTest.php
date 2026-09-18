@@ -114,6 +114,26 @@ class StudentManagementTest extends TestCase
         $this->assertSame([$kosong->id], $student->classes->pluck('id')->all());
     }
 
+    /**
+     * Kelas yang tutornya belum ditunjuk tetap menerima murid.
+     *
+     * Kelas hasil impor spreadsheet berjalan lebih dulu, tutornya dicatat
+     * belakangan. Kalau pendaftarannya ikut terkunci, admin tidak bisa menambah
+     * satu pun murid ke 45 kelas yang ada sampai semuanya diberi tutor.
+     */
+    public function test_murid_tetap_bisa_didaftarkan_ke_kelas_tanpa_tutor(): void
+    {
+        $kelas = $this->makeClass('drawing');
+        $kelas->update(['tutor_id' => null]);
+
+        $this->actingAs($this->makeUser('admin'))
+            ->post(route('students.store'), $this->validPayload(['class_id' => $kelas->id]))
+            ->assertRedirect(route('students.index'))
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(1, $kelas->students()->count());
+    }
+
     public function test_jadwal_yang_penuh_ditolak(): void
     {
         $penuh = $this->makeClass('drawing', capacity: 1);

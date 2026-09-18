@@ -178,11 +178,12 @@ class StudentController extends Controller
                         return;
                     }
 
-                    // Alasannya diambil dari availability(), bukan disimpulkan ulang
-                    // dari isClosed()/isFull(). Dua sebab lain — tutor kosong dan
-                    // sesinya sudah lewat — tidak terwakili oleh keduanya, dan
-                    // dulu keduanya dilaporkan sebagai "penuh".
-                    $alasan = $classes->map(fn (ClassRoom $c) => $c->availability()['text'])->unique();
+                    // Alasannya diambil dari unavailableReason(), bukan disimpulkan
+                    // ulang dari isClosed()/isFull(): sebab ketiga — sesinya sudah
+                    // lewat — tidak terwakili keduanya, dan dulu dilaporkan sebagai
+                    // "penuh". Bukan availability(): badge itu mendahulukan "Tutor
+                    // kosong", padahal tutor kosong tidak menghalangi pendaftaran.
+                    $alasan = $classes->map(fn (ClassRoom $c) => $c->unavailableReason())->filter()->unique();
                     $sebab = $alasan->count() === 1 ? $alasan->first() : 'tidak ada slot yang bisa diisi';
 
                     $fail("Kelas untuk kategori {$value} tidak bisa dipilih: {$sebab}.");
@@ -209,7 +210,7 @@ class StudentController extends Controller
                     }
 
                     if (! $class->isAvailable()) {
-                        $fail("Jadwal {$class->scheduleLabel()} tidak bisa dipilih: {$class->availability()['text']}.");
+                        $fail("Jadwal {$class->scheduleLabel()} tidak bisa dipilih: {$class->unavailableReason()}.");
                     }
                 },
             ],

@@ -363,10 +363,19 @@ class ClassRoomController extends Controller
             // Tidak unik sendirian: satu kategori memang punya banyak jadwal. Yang
             // dicegah adalah slot kembar — lihat clashingClass().
             'class_category' => ['required', 'string', 'max:255'],
-            // Boleh kosong: kelas sering sudah berjalan sebelum admin menunjuk
-            // pengajarnya. Kelas tanpa tutor ditandai badge "Tutor kosong" dan
-            // bisa dicari lewat filter dengan nama yang sama.
-            'tutor_id' => ['nullable', 'exists:tutors,id'],
+            // Wajib di form, walau kolomnya sendiri boleh NULL. Keduanya tidak
+            // bertentangan, melainkan menjawab dua pertanyaan berbeda:
+            //
+            //   kolom nullable — "mungkinkah ada kelas tanpa tutor?" Ya: kelas
+            //     hasil impor spreadsheet berjalan sebelum pengajarnya ditunjuk,
+            //     dan memaksanya terisi berarti menyimpan nama yang tidak benar.
+            //   required di sini — "boleh kah admin membiarkannya kosong saat
+            //     menyentuh form kelas?" Tidak: kalau ia sudah membuka kelas ini,
+            //     sekalian tentukan tutornya.
+            //
+            // Jalur yang melewati form — impor CSV — tidak melewati aturan ini,
+            // jadi impor tetap bisa masuk dengan tutor kosong.
+            'tutor_id' => ['required', 'exists:tutors,id'],
             'capacity' => ['required', 'integer', 'min:1'],
             // Jadwal: tanggal + jam. `day_of_week` sengaja tidak divalidasi karena
             // bukan isian admin — ClassRoom menurunkannya dari schedule_date.
@@ -382,10 +391,30 @@ class ClassRoomController extends Controller
             // dikosongkan, dan tersimpan sebagai 0.
             'registration_fee' => ['nullable', 'numeric', 'min:0'],
         ], [
-            'schedule_date.required' => 'Tanggal kelas belum diisi.',
-            'schedule_end_time.required' => 'Jam selesai belum diisi.',
+            // Tiap isian wajib punya pesannya sendiri, menyebut nama isiannya.
+            // Form-nya `novalidate`, jadi inilah satu-satunya yang memberi tahu
+            // admin isian mana yang kurang — pesan bawaan Laravel berbahasa
+            // Inggris dan menyebut nama kolom ("The class category field is
+            // required"), bukan nama yang tertulis di layar.
+            'class_category.required' => 'Kategori kelas wajib diisi.',
+            // Pesan yang sama dengan yang muncul saat form dibuka lewat ikon
+            // "tentukan tutor" — lihat classes/_form.blade.php.
+            'tutor_id.required' => 'Silakan tentukan tutor.',
+            'tutor_id.exists' => 'Tutor yang dipilih tidak ditemukan.',
+            'capacity.required' => 'Kapasitas kelas wajib diisi.',
+            'capacity.integer' => 'Kapasitas harus berupa angka.',
+            'capacity.min' => 'Kapasitas minimal 1 murid.',
+            'schedule_date.required' => 'Tanggal kelas wajib diisi.',
+            'schedule_date.date' => 'Tanggal kelas tidak terbaca.',
+            'schedule_time.required' => 'Jam mulai wajib diisi.',
+            'schedule_end_time.required' => 'Jam selesai wajib diisi.',
             'schedule_end_time.after' => 'Jam selesai harus lebih malam dari jam mulai.',
-            'class_type.required' => 'Tipe kelas belum dipilih.',
+            'class_type.required' => 'Tipe kelas wajib dipilih.',
+            'class_fee.required' => 'Biaya kelas wajib diisi.',
+            'class_fee.numeric' => 'Biaya kelas harus berupa angka.',
+            'class_fee.min' => 'Biaya kelas tidak boleh negatif.',
+            'registration_fee.numeric' => 'Uang pendaftaran harus berupa angka.',
+            'registration_fee.min' => 'Uang pendaftaran tidak boleh negatif.',
         ]);
 
         // Pengulangan bukan lagi isian tersendiri: trial class hanya berjalan sekali,

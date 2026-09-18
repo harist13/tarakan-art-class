@@ -7,7 +7,12 @@
 </div>
 <div class="card">
     <div class="card-body">
-        <form action="{{ route('classes.update', $class) }}" method="POST">
+        {{-- novalidate: isian wajib yang kosong dibiarkan sampai ke server, supaya
+             yang muncul adalah pesan kita sendiri di bawah isiannya — dalam bahasa
+             Indonesia & menyebut nama isiannya — bukan gelembung bawaan peramban
+             yang berbahasa Inggris, hilang saat diklik, dan hanya menunjuk satu
+             isian pertama. Aturannya tetap ditegakkan ClassRoomController. --}}
+        <form action="{{ route('classes.update', $class) }}" method="POST" novalidate>
             @csrf @method('PUT')
             @include('classes._form', ['class' => $class])
             {{-- Diberi jarak & garis pemisah: tombolnya menempel pada kotak harga

@@ -56,10 +56,12 @@
                                 $remaining = $slotSiap->sum(fn ($c) => $c->remainingSeats());
                                 $statusText = " — Tersedia ({$remaining} kursi)";
                             } else {
-                                // Alasannya diambil dari availability() — sumber yang sama
-                                // dengan badge di Manajemen kelas, jadi keduanya tak pernah
-                                // berbeda pendapat soal kenapa sebuah slot tak bisa diisi.
-                                $alasan = $catClasses->map(fn ($c) => $c->availability()['text'])->unique();
+                                // Alasannya diambil dari unavailableReason() — sumber yang
+                                // sama dengan pesan penolakan di StudentController, jadi
+                                // keduanya tak pernah berbeda pendapat soal kenapa sebuah
+                                // slot tak bisa diisi. Tutor kosong tidak muncul di sini:
+                                // itu keadaan, bukan penghalang.
+                                $alasan = $catClasses->map(fn ($c) => $c->unavailableReason())->filter()->unique();
                                 $statusText = ' — '.($alasan->count() === 1 ? $alasan->first() : 'Tidak ada slot tersedia');
                                 $statusKey = 'unavailable';
                             }

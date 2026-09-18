@@ -154,13 +154,38 @@ class SlotAvailabilityTest extends TestCase
         }
     }
 
-    public function test_slot_tanpa_tutor_tidak_available(): void
+    /**
+     * Kelas tanpa tutor tetap bisa diisi — yang kurang catatannya, bukan
+     * kelasnya. Kalau ia ikut mengunci slot, seluruh kelas hasil impor
+     * spreadsheet menolak murid baru sampai tutornya ditunjuk satu per satu.
+     */
+    public function test_slot_tanpa_tutor_tetap_bisa_diisi_tapi_ditandai(): void
     {
-        $class = $this->makeClass();
-        // Simulasikan kondisi tanpa tutor (relasi tutor kosong/null).
-        $class->setRelation('tutor', null);
-        $this->assertFalse($class->isAvailable());
+        $class = $this->makeClass(['tutor_id' => null]);
+
+        $this->assertTrue($class->isAvailable());
+        $this->assertNull($class->unavailableReason());
         $this->assertSame('Tutor kosong', $class->availability()['text']);
+    }
+
+    /**
+     * Penghalang sungguhan tetap menolak, dan pesannya menyebut penghalang itu —
+     * bukan "Tutor kosong" yang kebetulan didahulukan badge.
+     */
+    public function test_alasan_slot_tak_bisa_diisi_menyebut_penghalangnya(): void
+    {
+        $penuh = $this->makeClass(['tutor_id' => null, 'capacity' => 1]);
+        $penuh->students()->attach(
+            $this->makeStudent()->id,
+            ['status' => 'active', 'enrolled_at' => now()->toDateString()]
+        );
+
+        $this->assertFalse($penuh->fresh()->isAvailable());
+        $this->assertSame('Penuh', $penuh->fresh()->unavailableReason());
+        $this->assertSame('Tutor kosong', $penuh->fresh()->availability()['text']);
+
+        $ditutup = $this->makeClass(['schedule_time' => '11:00', 'status' => 'closed']);
+        $this->assertSame('Ditutup', $ditutup->unavailableReason());
     }
 
     /**
@@ -299,7 +324,7 @@ class SlotAvailabilityTest extends TestCase
 
         $this->from(route('classes.create'))
             ->post(route('classes.store'), $payload)
-            ->assertSessionHasErrors(['schedule_end_time' => 'Jam selesai belum diisi.']);
+            ->assertSessionHasErrors(['schedule_end_time' => 'Jam selesai wajib diisi.']);
 
         $this->assertDatabaseMissing('classes', ['class_category' => 'Drawing Terbalik']);
     }

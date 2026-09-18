@@ -8,9 +8,14 @@
 <div class="card">
     <div class="card-body">
         @if($tutors->isEmpty())
-            <div class="alert alert-warning">Belum ada tutor. Tambahkan tutor terlebih dahulu dari halaman Manajemen kelas.</div>
+            <div class="alert alert-warning">
+                Belum ada tutor.
+                <a href="{{ route('classes.index', ['tab' => 'tutor']) }}" class="alert-link">Silakan buat tutor terlebih dahulu</a>
+                di panel Manajemen tutor.
+            </div>
         @endif
-        <form action="{{ route('classes.store') }}" method="POST">
+        {{-- novalidate — alasannya sama dengan di form edit kelas. --}}
+        <form action="{{ route('classes.store') }}" method="POST" novalidate>
             @csrf
             @include('classes._form', ['class' => null])
             {{-- Diberi jarak & garis pemisah: tombolnya menempel pada kotak harga

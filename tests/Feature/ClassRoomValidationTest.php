@@ -167,24 +167,55 @@ class ClassRoomValidationTest extends TestCase
     }
 
     /**
-     * Kelas boleh disimpan tanpa tutor: di sanggar, jadwal & muridnya sering
-     * lebih dulu ada daripada keputusan siapa yang mengajar.
+     * Isian wajib yang kosong dijawab pesan berbahasa Indonesia di bawah
+     * isiannya, bukan gelembung bawaan peramban.
+     *
+     * Form-nya `novalidate` justru supaya submit-nya sampai ke server: hanya
+     * server yang bisa menyebut seluruh isian yang kurang sekaligus, dengan
+     * nama yang sama seperti yang tertulis di layar.
      */
-    public function test_kelas_boleh_disimpan_tanpa_tutor(): void
+    public function test_isian_wajib_yang_kosong_dijawab_pesan_di_bawah_isiannya(): void
+    {
+        $class = $this->makeClass('Coloring', '09:00');
+
+        $response = $this->actingAs($this->admin)
+            ->from(route('classes.edit', $class))
+            ->put(route('classes.update', $class), $this->payload([
+                'class_category' => '',
+                'capacity' => '',
+                'class_fee' => '',
+            ]));
+
+        // Catatan: pesan galat hanya diperiksa lewat halaman yang dirender, bukan
+        // juga lewat assertSessionHasErrors() — memanggil yang kedua lebih dulu
+        // menghabiskan flash-nya, sehingga halaman yang menyusul justru bersih.
+        $followed = $this->followRedirects($response);
+        $followed->assertOk();
+        $followed->assertSee('Kategori kelas wajib diisi.');
+        $followed->assertSee('Kapasitas kelas wajib diisi.');
+        $followed->assertSee('Biaya kelas wajib diisi.');
+        // Isiannya sendiri ikut ditandai merah, bukan cuma pesannya yang muncul.
+        $followed->assertSee('is-invalid');
+    }
+
+    /**
+     * Form kelas menolak tutor kosong, walau kolomnya sendiri boleh NULL.
+     *
+     * Kolom nullable menjawab "mungkinkah ada kelas tanpa tutor" (ya — lihat
+     * ImportStudentsCsvTest), aturan ini menjawab "boleh kah admin meninggalkan
+     * isiannya kosong saat menyentuh form" (tidak).
+     */
+    public function test_form_kelas_menolak_tutor_kosong(): void
     {
         $this->actingAs($this->admin)
             ->post(route('classes.store'), $this->payload(['tutor_id' => null]))
-            ->assertSessionHasNoErrors();
+            ->assertSessionHasErrors(['tutor_id' => 'Silakan tentukan tutor.']);
 
-        $class = ClassRoom::where('class_category', 'Coloring')->sole();
-
-        $this->assertNull($class->tutor_id);
-        $this->assertTrue($class->needsTutor());
-        $this->assertSame('Tutor kosong', $class->availability()['text']);
+        $this->assertSame(0, ClassRoom::where('class_category', 'Coloring')->count());
     }
 
-    /** Tutor yang sudah ditunjuk boleh dilepas lagi lewat form yang sama. */
-    public function test_tutor_boleh_dilepas_dari_kelas_yang_sudah_ada(): void
+    /** Berlaku juga saat menyunting: tutor yang sudah ada tidak boleh dikosongkan. */
+    public function test_tutor_tidak_boleh_dikosongkan_lewat_form(): void
     {
         $class = $this->makeClass('Coloring', '09:00');
 
@@ -193,9 +224,27 @@ class ClassRoomValidationTest extends TestCase
                 'tutor_id' => null,
                 'schedule_time' => '09:00',
             ]))
+            ->assertSessionHasErrors('tutor_id');
+
+        $this->assertSame($this->tutor->id, $class->fresh()->tutor_id);
+    }
+
+    /**
+     * Kelas tanpa tutor yang sudah telanjur ada — hasil impor — tetap bisa
+     * disunting, asalkan tutornya sekalian ditentukan saat itu.
+     */
+    public function test_kelas_hasil_impor_bisa_disunting_sambil_menentukan_tutor(): void
+    {
+        $class = $this->makeClass('Coloring', '09:00', ['tutor_id' => null]);
+
+        $this->actingAs($this->admin)
+            ->put(route('classes.update', $class), $this->payload([
+                'tutor_id' => $this->tutor->id,
+                'schedule_time' => '09:00',
+            ]))
             ->assertSessionHasNoErrors();
 
-        $this->assertNull($class->fresh()->tutor_id);
+        $this->assertSame($this->tutor->id, $class->fresh()->tutor_id);
     }
 
     /** Filter "Tutor kosong" juga menjaring kelas yang tutor_id-nya memang NULL. */
@@ -209,6 +258,25 @@ class ClassRoomValidationTest extends TestCase
 
         $response->assertOk();
         $this->assertSame([$tanpa->id], $response->viewData('classes')->pluck('id')->all());
+    }
+
+    /**
+     * Saat belum ada tutor sama sekali, form menawarkan jalan keluarnya.
+     *
+     * "Silakan tentukan tutor" tidak berguna di dropdown yang kosong — yang
+     * dibutuhkan admin adalah pintu ke panel Manajemen tutor.
+     */
+    public function test_form_menawarkan_membuat_tutor_saat_daftar_tutor_kosong(): void
+    {
+        $class = $this->makeClass('Coloring', '09:00');
+        Tutor::query()->delete();
+
+        $response = $this->actingAs($this->admin)->get(route('classes.edit', $class));
+
+        $response->assertOk();
+        $response->assertSee('buat tutor terlebih dahulu');
+        $response->assertSee(route('classes.index', ['tab' => 'tutor']), false);
+        $response->assertDontSee('Silakan tentukan tutor.');
     }
 
     /**

@@ -4,7 +4,7 @@
 <div class="row g-3">
     <div class="col-md-6">
         <label class="form-label fw-semibold">Kategori <span class="text-danger">*</span></label>
-        <div class="input-group">
+        <div class="input-group has-validation">
             <span class="input-group-text bg-light text-muted"><i class="bi bi-palette"></i></span>
             <input type="text" name="class_category" class="form-control @error('class_category') is-invalid @enderror" value="{{ old('class_category', $class->class_category ?? '') }}" placeholder="Contoh: Preschool, Coloring, Drawing" required>
             @error('class_category')<div class="invalid-feedback">{{ $message }}</div>@enderror
@@ -13,7 +13,7 @@
     {{-- Datang dari ikon "tentukan tutor" di kalender atau daftar kelas
          (?tutor=kosong): isiannya dibuka dalam keadaan ditandai — pesan merah &
          fokus — supaya admin tahu isian mana yang membuatnya sampai ke halaman
-         ini. Tanda, bukan penghalang: kelas boleh tetap disimpan tanpa tutor.
+         ini, tanpa perlu menekan Simpan dulu untuk diberi tahu.
 
          Pilihan tutor sekalian dilepas. Untuk kelas tanpa tutor itu tak ada
          bedanya, tapi basis data yang belum dimigrasikan masih memakai tutor
@@ -27,25 +27,33 @@
         $tutorTerpilih = old('tutor_id', $perluTutor ? '' : ($class->tutor_id ?? ''));
     @endphp
     <div class="col-md-6">
-        {{-- Tanpa tanda wajib: kelas boleh berjalan sebelum tutornya ditunjuk,
-             dan memaksa isian ini hanya akan membuat admin memilih nama asal
-             supaya form bisa disimpan. --}}
-        <label class="form-label fw-semibold" for="tutor_id">Tutor</label>
-        <div class="input-group">
+        {{-- Wajib di form meski kolomnya boleh NULL: kelas boleh masuk sistem
+             tanpa tutor lewat impor, tapi begitu admin membuka form ini, tutornya
+             sekalian ditentukan. Lihat ClassRoomController::validateData(). --}}
+        <label class="form-label fw-semibold" for="tutor_id">Tutor <span class="text-danger">*</span></label>
+        <div class="input-group has-validation">
             <span class="input-group-text bg-light text-muted"><i class="bi bi-person-video3"></i></span>
-            <select name="tutor_id" id="tutor_id" class="form-select @error('tutor_id') is-invalid @enderror @if($perluTutor) is-invalid @endif"
+            <select name="tutor_id" id="tutor_id" class="form-select @error('tutor_id') is-invalid @enderror @if($perluTutor) is-invalid @endif" required
                 @if($perluTutor) data-perlu-tutor @endif>
-                <option value="">— Belum ditentukan —</option>
+                <option value="">— Pilih tutor —</option>
                 @foreach($tutors as $tutor)
                     <option value="{{ $tutor->id }}" @selected((string) $tutorTerpilih === (string) $tutor->id)>{{ $tutor->name }}</option>
                 @endforeach
             </select>
             @error('tutor_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
         </div>
+        {{-- Daftar tutornya memang masih kosong: menyuruh admin "pilih tutor"
+             di dropdown yang tak berisi apa-apa hanya membuatnya berputar. Yang
+             ditawarkan langsung jalan keluarnya — tautan ke panel Manajemen
+             tutor, tempat tutor pertama dibuat. --}}
+        @if($tutors->isEmpty())
+            <a href="{{ route('classes.index', ['tab' => 'tutor']) }}" class="d-inline-block small mt-1 text-decoration-none link-danger">
+                <i class="bi bi-exclamation-circle me-1"></i>Belum ada tutor — silakan buat tutor terlebih dahulu.
+            </a>
         {{-- d-block, bukan .invalid-feedback biasa: Tom Select menyisipkan
              pembungkusnya sendiri di antara select & pesan ini, jadi pemicu
              ".is-invalid ~ .invalid-feedback" bawaan Bootstrap tidak kena. --}}
-        @if($perluTutor)
+        @elseif($perluTutor)
             <div class="invalid-feedback d-block" id="tutorHint">
                 <i class="bi bi-exclamation-circle me-1"></i>Silakan tentukan tutor.
             </div>
@@ -55,7 +63,7 @@
         {{-- Tipe kelas menggantikan saklar pengulangan: trial hanya sekali pertemuan,
              reguler berjalan tiap pekan. Controller yang menurunkan is_recurring. --}}
         <label class="form-label fw-semibold">Tipe kelas <span class="text-danger">*</span></label>
-        <div class="input-group">
+        <div class="input-group has-validation">
             <span class="input-group-text bg-light text-muted"><i class="bi bi-bookmark"></i></span>
             <select name="class_type" id="class_type" class="form-select @error('class_type') is-invalid @enderror" data-no-search required>
                 @foreach(\App\Models\ClassRoom::TYPE_LABELS as $value => $label)
@@ -67,7 +75,7 @@
     </div>
     <div class="col-md-6">
         <label class="form-label fw-semibold">Kapasitas <span class="text-danger">*</span></label>
-        <div class="input-group">
+        <div class="input-group has-validation">
             <span class="input-group-text bg-light text-muted"><i class="bi bi-people"></i></span>
             <input type="number" name="capacity" min="1" class="form-control @error('capacity') is-invalid @enderror" value="{{ old('capacity', $class->capacity ?? '') }}" placeholder="0" required>
             <span class="input-group-text">murid</span>
@@ -88,7 +96,7 @@
 <div class="row g-3">
     <div class="col-md-4">
         <label class="form-label fw-semibold">Tanggal kelas <span class="text-danger">*</span></label>
-        <div class="input-group">
+        <div class="input-group has-validation">
             <span class="input-group-text bg-light text-muted"><i class="bi bi-calendar-event"></i></span>
             <input type="date" name="schedule_date" id="schedule_date" class="form-control @error('schedule_date') is-invalid @enderror"
                 value="{{ old('schedule_date', isset($class) ? $class->schedule_date->format('Y-m-d') : now()->toDateString()) }}" required>
@@ -110,7 +118,7 @@
          jam mulainya sendiri diubah. --}}
     <div class="col-md-4">
         <label class="form-label fw-semibold" for="schedule_time">Jam mulai <span class="text-danger">*</span></label>
-        <div class="input-group">
+        <div class="input-group has-validation">
             <span class="input-group-text bg-light text-muted"><i class="bi bi-clock"></i></span>
             <input type="time" name="schedule_time" id="schedule_time" class="form-control @error('schedule_time') is-invalid @enderror"
                 value="{{ old('schedule_time', isset($class) ? \Illuminate\Support\Str::of($class->schedule_time)->substr(0, 5) : \App\Models\ClassRoom::SLOT_START) }}" required>
@@ -119,7 +127,7 @@
     </div>
     <div class="col-md-4">
         <label class="form-label fw-semibold" for="schedule_end_time">Jam selesai <span class="text-danger">*</span></label>
-        <div class="input-group">
+        <div class="input-group has-validation">
             <span class="input-group-text bg-light text-muted"><i class="bi bi-clock-history"></i></span>
             <input type="time" name="schedule_end_time" id="schedule_end_time" class="form-control @error('schedule_end_time') is-invalid @enderror"
                 value="{{ old('schedule_end_time', isset($class) ? \Illuminate\Support\Str::of($class->schedule_end_time)->substr(0, 5) : '') }}" required>
@@ -137,7 +145,7 @@
 <div class="row g-3">
     <div class="col-md-4">
         <label class="form-label fw-semibold">Biaya kelas <span class="text-danger">*</span></label>
-        <div class="input-group">
+        <div class="input-group has-validation">
             <span class="input-group-text bg-light text-muted">Rp</span>
             <input type="number" step="1000" min="0" name="class_fee" id="class_fee" class="form-control @error('class_fee') is-invalid @enderror" value="{{ old('class_fee', isset($class) ? (int) $class->class_fee : '') }}" placeholder="0" required>
             @error('class_fee')<div class="invalid-feedback">{{ $message }}</div>@enderror
@@ -146,7 +154,7 @@
     </div>
     <div class="col-md-4">
         <label class="form-label fw-semibold">Uang pendaftaran <span class="badge bg-body-secondary text-body-secondary border fw-semibold ms-1">Opsional</span></label>
-        <div class="input-group">
+        <div class="input-group has-validation">
             <span class="input-group-text bg-light text-muted">Rp</span>
             <input type="number" step="1000" min="0" name="registration_fee" id="registration_fee" class="form-control @error('registration_fee') is-invalid @enderror" value="{{ old('registration_fee', isset($class) ? (int) $class->registration_fee : '') }}" placeholder="0">
             @error('registration_fee')<div class="invalid-feedback">{{ $message }}</div>@enderror
@@ -191,24 +199,49 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+@if($errors->any())
+    // ── Isian pertama yang ditolak server ──
+    //
+    // Form ini panjang: pesan merahnya bisa berada jauh di luar layar saat
+    // halaman kembali dari penolakan, sehingga tombol Simpan tampak tidak
+    // melakukan apa-apa. Yang pertama salah dibawa ke tengah layar & difokuskan.
+    //
+    // Yang dicari isiannya (input/select), bukan sembarang .is-invalid: Tom
+    // Select menyalin kelas itu ke pembungkusnya juga, dan pembungkus bukan
+    // sesuatu yang bisa difokuskan.
+    (function () {
+        const salah = document.querySelector('.card-body input.is-invalid, .card-body select.is-invalid');
+        if (!salah) return;
+
+        const kontrol = salah.tomselect ? salah.tomselect.wrapper : salah;
+        kontrol.scrollIntoView({ block: 'center', behavior: 'smooth' });
+
+        // Dropdown sengaja tidak difokuskan: Tom Select membuka daftar pilihannya
+        // begitu menerima fokus, dan daftar yang terbuka sendiri justru menutupi
+        // pesan merah yang baru saja hendak dibaca admin. Isian teks tidak punya
+        // masalah itu, jadi kursornya boleh langsung ditaruh di sana.
+        if (! salah.tomselect) salah.focus({ preventScroll: true });
+    })();
+@endif
+
     // ── Isian tutor yang ditandai dari kalender ──
     //
-    // Halaman ini panjang: tanpa digulirkan & difokuskan, pesan merahnya bisa
-    // berada di luar layar saat form terbuka. Tandanya dilepas begitu tutor
-    // dipilih — pesan yang bertahan setelah dipatuhi berubah jadi kebisingan.
+    // Halaman ini panjang: tanpa digulirkan, pesan merahnya bisa berada di luar
+    // layar saat form terbuka. Tandanya dilepas begitu tutor dipilih — pesan
+    // yang bertahan setelah dipatuhi berubah jadi kebisingan.
     (function () {
         const tutor = document.querySelector('select[data-perlu-tutor]');
         if (!tutor) return;
 
         const hint = document.getElementById('tutorHint');
         // Tom Select menyembunyikan select aslinya & menyalin kelasnya ke
-        // pembungkus — yang terlihat merah (dan yang bisa difokuskan) adalah
-        // pembungkus itu, bukan select-nya.
+        // pembungkus — yang terlihat merah adalah pembungkus itu, bukan
+        // select-nya.
         const ts = tutor.tomselect;
         const kontrol = ts ? ts.wrapper : tutor;
 
+        // Digulirkan ke layar, tidak difokuskan — lihat alasannya di blok atas.
         kontrol.scrollIntoView({ block: 'center', behavior: 'smooth' });
-        if (ts) { ts.focus(); } else { tutor.focus(); }
 
         tutor.addEventListener('change', function () {
             if (!tutor.value) return;

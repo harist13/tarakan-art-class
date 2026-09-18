@@ -254,24 +254,15 @@ class ClassRoom extends Model
     }
 
     /**
-     * Tutor tersedia untuk slot ini (ada & terdaftar).
+     * Kelas ini masih menunggu tutor ditunjuk.
      *
-     * Baik full-time maupun part-time dianggap tersedia.
-     */
-    public function hasTutor(): bool
-    {
-        return $this->tutor !== null;
-    }
-
-    /**
-     * Kelas ini masih menunggu tutor sungguhan ditunjuk.
+     * Bukan sekadar `tutor === null`: basis data yang belum dimigrasikan masih
+     * memakai baris tutor bernama "Belum Ditentukan" — titipan, bukan pengajar.
+     * Keduanya sama saja bagi admin yang membaca jadwal.
      *
-     * Berbeda dari ! hasTutor(): kelas hasil impor CSV memang punya baris tutor,
-     * tapi namanya "Belum Ditentukan" — titipan, bukan pengajar. Keduanya sama
-     * saja bagi admin yang membaca jadwal, jadi layar menanyakannya lewat sini.
-     *
-     * Tidak dipakai isAvailable(): kelas berisi murid yang tutornya belum
-     * ditunjuk tetap berjalan — yang kurang catatannya, bukan kelasnya.
+     * Bukan syarat ketersediaan: kelas yang tutornya belum ditunjuk tetap
+     * berjalan dan tetap menerima murid — yang kurang catatannya, bukan
+     * kelasnya. Lihat isAvailable() & unavailableReason().
      */
     public function needsTutor(): bool
     {
@@ -317,20 +308,40 @@ class ClassRoom extends Model
     }
 
     /**
-     * Slot bisa diisi (mis. untuk replacement) bila: dibuka manual, masih ada kursi,
-     * tutornya tersedia, dan masih punya sesi mendatang. Ini satu-satunya syarat
-     * untuk replacement — kecocokan tipe kelas dinilai terpisah lewat
+     * Slot bisa diisi (mis. untuk replacement) bila: dibuka manual, masih ada
+     * kursi, dan masih punya sesi mendatang. Ini satu-satunya syarat untuk
+     * replacement — kecocokan tipe kelas dinilai terpisah lewat
      * isAvailableFor(), sekadar penanda.
+     *
+     * Tutor sengaja tidak termasuk. Kelas di sanggar ini sering berjalan dan
+     * berisi murid sebelum admin menunjuk pengajarnya; menutup pendaftarannya
+     * berarti menghukum anak atas catatan yang belum diisi. Kekosongan itu
+     * diberitahukan lewat badge "Tutor kosong", bukan dengan mengunci kelasnya.
      *
      * Perhatikan tidak ada cek "sudah lewat": slot mingguan tidak kedaluwarsa.
      * Yang bisa lewat adalah sesi tertentu, dan itu dinilai per tanggal.
      */
     public function isAvailable(): bool
     {
-        return ! $this->isClosed()
-            && ! $this->isFull()
-            && $this->hasTutor()
-            && $this->nextOccurrence() !== null;
+        return $this->unavailableReason() === null;
+    }
+
+    /**
+     * Kenapa slot ini tidak bisa diisi — null berarti bisa.
+     *
+     * Terpisah dari availability(): yang ini menyebut penghalangnya, sedangkan
+     * availability() menjawab "bagaimana keadaan slot ini" dan mendahulukan
+     * "Tutor kosong" walau tutor bukan penghalang. Pesan penolakan memakai yang
+     * ini supaya tidak pernah menyalahkan hal yang bukan sebabnya.
+     */
+    public function unavailableReason(): ?string
+    {
+        return match (true) {
+            $this->isClosed() => $this->closed_reason ? 'Ditutup — '.$this->closed_reason : 'Ditutup',
+            $this->isFull() => 'Penuh',
+            $this->nextOccurrence() === null => 'Sudah lewat',
+            default => null,
+        };
     }
 
     /**

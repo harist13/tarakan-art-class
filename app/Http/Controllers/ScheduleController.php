@@ -285,10 +285,11 @@ class ScheduleController extends Controller
                     }
 
                     if (! $class->isAvailable()) {
-                        // Alasan spesifik sesuai kondisi slot.
+                        // Alasan spesifik sesuai kondisi slot. Tutor kosong tidak
+                        // termasuk: kelas yang tutornya belum ditunjuk tetap boleh
+                        // menerima murid pengganti — lihat ClassRoom::isAvailable().
                         $reason = match (true) {
                             $class->isClosed() => 'sudah ditutup admin',
-                            ! $class->hasTutor() => 'belum ada tutor',
                             $class->isFull() => 'sudah penuh',
                             default => 'tidak punya sesi mendatang',
                         };
