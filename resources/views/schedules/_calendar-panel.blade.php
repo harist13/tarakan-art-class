@@ -51,15 +51,51 @@
     #calendar .fc-daygrid-day { cursor: pointer; }
     #calendar .fc-daygrid-day:hover { background-color: var(--surface-2); }
     #calendar .fc-timegrid-col-frame { cursor: pointer; }
-    /* Barisnya setengah jam. 1,6rem berarti sesi 60 menit setinggi ~51px, dan itu
-       memuat judul 13px dua baris (36px) beserta paddingnya — tapi tidak beserta
-       nama tutor. Maka nama tutor yang mengalah, bukan judulnya: lihat batas
-       durasi di eventDidMount. Sesi 90 menit (~77px) tetap memuat keduanya. */
-    #calendar .fc-timegrid-slot { height: 1.6rem; }
+    /* Barisnya setengah jam. 1,75rem berarti sesi 60 menit setinggi ~56px, dan
+       itu memuat judul 13px dua baris (36px) beserta paddingnya — tapi tidak
+       beserta nama tutor. Maka nama tutor yang mengalah, bukan judulnya: lihat
+       batas durasi di eventDidMount. Sesi 90 menit (~84px) memuat keduanya
+       dengan sisa ruang, bukan pas-pasan seperti pada 1,6rem sebelumnya.
+       Seluruh hari kerja 09:00-18:00 tetap ~504px: masih satu layar. */
+    #calendar .fc-timegrid-slot { height: 1.75rem; }
 
     /* Garis setengah jam ada untuk menempatkan kelas, bukan untuk dibaca.
-       Dibuat samar supaya yang terbaca tetap enam pita berlabel. */
-    #calendar .fc-timegrid-slot-minor { border-top-style: dotted; opacity: 0.55; }
+       Dibuat samar supaya yang terbaca tetap enam pita berlabel — makin samar
+       garis tengahnya, makin tegas pitanya. */
+    #calendar .fc-timegrid-slot-minor { border-top-style: dotted; opacity: 0.4; }
+
+    /* Sudut kiri atas petak pekan: satu-satunya sel kepala yang kosong, padahal
+       kolom di bawahnya punya isi yang perlu disebut. Ditulis lewat CSS, bukan
+       lewat opsi kalender, supaya tampilan bulan & daftar — yang tidak punya
+       kolom jam — tidak ikut kebagian.
+
+       .fc-timegrid-axis-frame hanya ada di dua tempat: sel kepala ini dan baris
+       "all-day", dan baris itu dimatikan (allDaySlot: false). Jadi tak perlu
+       dipersempit lagi dengan nama kelas yang belum tentu dipakai versi
+       FullCalendar berikutnya. */
+    #calendar .fc-timegrid-axis .fc-timegrid-axis-frame {
+        justify-content: center;
+    }
+    #calendar .fc-timegrid-axis .fc-timegrid-axis-frame::after {
+        content: 'Jam';
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+
+    /* Penanda "sekarang". Bawaannya merah tipis yang tenggelam di antara garis
+       setengah jam; di sini ia garis penuh dengan mata panah sewarna, karena
+       justru itu yang dicari mata pertama kali saat petak pekan dibuka. */
+    #calendar .fc-timegrid-now-indicator-line {
+        border-top-width: 2px;
+        border-color: #EF4444;
+    }
+    #calendar .fc-timegrid-now-indicator-arrow {
+        border-color: #EF4444;
+        color: #EF4444;
+    }
 
     /* ── Kepala kolom hari ──
        Bawaannya sebuah <a>, jadi ia mewarisi warna & garis bawah tautan seluruh
@@ -209,6 +245,11 @@
         display: inline-flex;
         align-items: center;
         white-space: nowrap;
+        /* Kolom hari yang dibagi dua bisa lebih sempit dari tautannya. Yang
+           melebihi lebar itu dipotong di dalam petaknya, bukan dibiarkan
+           menjorok ke kolom hari sebelahnya. */
+        max-width: 100%;
+        overflow: hidden;
         transition: border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease;
     }
     #calendar .fc-timegrid-more-link:hover {
@@ -410,7 +451,10 @@
             </div>
         </div>
         <div class="d-flex flex-wrap align-items-center gap-3 small">
-            <span class="text-muted"><i class="bi bi-hand-index me-1"></i>Klik petak jam untuk melihat tutor &amp; kelas di jam itu, lalu muridnya.</span>
+            {{-- Yang terbuka pertama tampilan bulan, jadi perbuatan yang disebut
+                 lebih dulu juga yang berlaku di sana: klik tanggal. Petak jam
+                 baru ada setelah admin pindah ke tampilan Minggu / Hari. --}}
+            <span class="text-muted"><i class="bi bi-hand-index me-1"></i>Klik tanggal &mdash; atau petak jam di tampilan Minggu &mdash; untuk melihat tutor &amp; kelas, lalu muridnya.</span>
             <div class="form-check form-switch ms-md-auto"
                  title="Menyembunyikan kelas yang penuh/ditutup, serta Holiday Class yang jadwalnya sudah lewat.">
                 <input class="form-check-input" type="checkbox" id="onlyAvailable" checked>
@@ -963,7 +1007,11 @@ document.addEventListener('DOMContentLoaded', function () {
             el.dataset.siap = '1';
             el.setAttribute('tabindex', '0');
             el.setAttribute('role', 'button');
-            el.setAttribute('aria-label', el.textContent.trim() + ' di jam ini');
+            // Tulisannya disingkat demi lebar kolom (lihat moreLinkContent),
+            // tapi yang dibacakan pembaca layar tidak ikut disingkat: angkanya
+            // diambil dari teksnya, kalimatnya ditulis utuh di sini.
+            const jumlah = (el.textContent.match(/\d+/) || ['Beberapa'])[0];
+            el.setAttribute('aria-label', jumlah + ' jadwal lagi di jam ini');
             el.addEventListener('keydown', function (e) {
                 if (e.key !== 'Enter' && e.key !== ' ') return;
                 e.preventDefault();
@@ -993,16 +1041,20 @@ document.addEventListener('DOMContentLoaded', function () {
     // Tombol pemilih tampilan ikut menyusut. Menawarkan "Minggu" di ponsel
     // berarti menawarkan tampilan yang barusan dihindari; yang tersisa di sana
     // satu hari, atau Daftar untuk melihat rentang yang lebih panjang.
+    //
+    // Bulan ada di semua lebar, dan berdiri paling kiri: ia tampilan pembuka,
+    // jadi tombolnya harus ada di tempat yang sama untuk kembali ke sana —
+    // termasuk di ponsel, yang dulu tidak punya jalan pulang sama sekali.
     function toolbarUntukLebar() {
         const lebar = window.innerWidth;
         if (lebar < BP_PONSEL) {
-            return { left: 'prev,next today', center: 'title', right: 'timeGridDay,listMonth' };
+            return { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridDay,listMonth' };
         }
         if (lebar < BP_TABLET) {
-            return { left: 'prev,next today', center: 'title', right: 'timeGridThreeDay,dayGridMonth,listMonth' };
+            return { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridThreeDay,listMonth' };
         }
 
-        return { left: 'prev,next today', center: 'title', right: 'timeGridWeek,dayGridMonth,listMonth' };
+        return { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,listMonth' };
     }
 
     let tampilanTerakhir = tampilanUntukLebar();
@@ -1014,9 +1066,10 @@ document.addEventListener('DOMContentLoaded', function () {
      * hanya bekerja ketika lebarnya benar-benar melewati batas — kalau tidak,
      * tiap piksel penarikan jendela menggambar ulang seluruh kalender.
      *
-     * Bulan & Daftar adalah pilihan sadar admin, bukan akibat lebar layar, jadi
-     * keduanya tidak pernah direbut: yang diganti hanya kalau ia memang sedang
-     * berada di salah satu tampilan per jam.
+     * Bulan & Daftar tidak pernah direbut: bulan adalah tampilan pembuka, dan
+     * keduanya dipilih karena rentangnya — bukan karena lebar layar. Yang
+     * diganti hanya kalau ia memang sedang berada di salah satu tampilan per
+     * jam, yaitu tampilan yang jumlah kolomnya memang bergantung pada lebar.
      */
     function aturTampilanResponsif() {
         const target = tampilanUntukLebar();
@@ -1031,11 +1084,14 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     const calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
-        // Per jam, bukan per bulan: jadwal sanggar adalah petak hari x jam yang
-        // sama tiap pekan, dan itu yang dibaca admin. Berapa hari yang tergambar
-        // sekaligus diserahkan ke lebar layar — lihat tampilanUntukLebar().
-        // Tampilan bulan & daftar tetap tersedia di kanan untuk rentang panjang.
-        initialView: tampilanUntukLebar(),
+        // Yang terbuka pertama adalah bulan. Layar ini dimasuki lewat menu
+        // Manajemen kelas, dan pertanyaan yang dibawa admin ke sana bersifat
+        // sebulan — "libur tanggal berapa", "Holiday Class-nya kapan" — bukan
+        // "jam berapa kelas hari Rabu". Petak per jam menjawab yang kedua, dan
+        // untuk itu ia tinggal sekali klik: Minggu di layar lebar, 3 Hari di
+        // tablet, Hari di ponsel (lihat tampilanUntukLebar()). Sekali dipilih,
+        // tampilan itu tidak pernah direbut balik — lihat aturTampilanResponsif().
+        initialView: 'dayGridMonth',
         locale: 'id',
         firstDay: 1,
         height: 'auto',
@@ -1054,7 +1110,13 @@ document.addEventListener('DOMContentLoaded', function () {
         // penuh beserta ikonnya supaya terbaca sebagai "ada satu lagi, klik
         // untuk melihat" — bukan sebagai potongan angka yang tercecer.
         moreLinkContent: function (arg) {
-            return { html: '<i class="bi bi-chevron-down me-1"></i>' + arg.num + ' jadwal lagi' };
+            // Di petak pekan tautan ini hanya kebagian sebagian lebar kolom hari,
+            // dan "3 jadwal lagi" tidak pernah muat utuh di sana — yang tampil
+            // cuma potongannya. Jadi di tampilan per jam ia disingkat; tampilan
+            // bulan, yang selnya selebar tanggal penuh, tetap menyebutnya utuh.
+            const sempit = arg.view.type.startsWith('timeGrid');
+
+            return { html: '<i class="bi bi-chevron-down me-1"></i>' + arg.num + (sempit ? ' lagi' : ' jadwal lagi') };
         },
         moreLinkClick: 'popover',
         // Yang berhak atas dua tempat itu kelasnya lebih dulu. Replacement

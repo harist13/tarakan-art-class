@@ -203,10 +203,13 @@ class ScheduleCalendarDrilldownTest extends TestCase
     }
 
     /**
-     * Kalender digambar sebagai petak hari x jam mengikuti jam buka sanggar,
-     * bukan tampilan bulan. Angkanya harus datang dari ClassRoom — grid yang
-     * pelan-pelan menyimpang dari slot yang bisa dipilih di form kelas akan
-     * menggambar kelas di luar petaknya.
+     * Petak hari x jam mengikuti jam buka sanggar. Angkanya harus datang dari
+     * ClassRoom — grid yang pelan-pelan menyimpang dari slot yang bisa dipilih
+     * di form kelas akan menggambar kelas di luar petaknya.
+     *
+     * Yang terbuka pertama bukan petak ini melainkan tampilan bulan (lihat
+     * test_kalender_terbuka_di_tampilan_bulan); petaknya tetap ada, sekali klik
+     * dari toolbar, dan definisinya di sini yang dijaga.
      */
     public function test_kalender_digambar_sebagai_petak_hari_kali_jam(): void
     {
@@ -215,7 +218,6 @@ class ScheduleCalendarDrilldownTest extends TestCase
 
         $content = $this->get(route('classes.index', ['tab' => 'kalender']))->assertOk()->getContent();
 
-        $this->assertStringContainsString("initialView: 'timeGridWeek'", $content);
         $this->assertStringContainsString('"'.ClassRoom::SLOT_START.':00"', $content);
         $this->assertStringContainsString('"'.ClassRoom::SLOT_END.':00"', $content);
         // Digambar tiap 30 menit supaya kelas di luar irama 1,5 jam (Preschool
@@ -237,6 +239,32 @@ class ScheduleCalendarDrilldownTest extends TestCase
         // dari itu tak ada kata yang muat. Kelas didahulukan atas replacement.
         $this->assertStringContainsString('eventMaxStack: 2', $content);
         $this->assertStringContainsString('eventOrder: function', $content);
+    }
+
+    /**
+     * Yang terbuka pertama adalah tampilan bulan.
+     *
+     * Layar ini dimasuki lewat menu Manajemen kelas, dan pertanyaan yang dibawa
+     * ke sana bersifat sebulan. Petak per jam menjawab pertanyaan yang lain, dan
+     * untuk itu ia tinggal sekali klik — tombolnya wajib ada di semua lebar
+     * layar, termasuk ponsel, kalau tidak tampilan pembukanya tak punya jalan
+     * pulang setelah admin berpindah.
+     */
+    public function test_kalender_terbuka_di_tampilan_bulan(): void
+    {
+        $this->actingAs($this->admin());
+        $this->makeClass();
+
+        $content = $this->get(route('classes.index', ['tab' => 'kalender']))->assertOk()->getContent();
+
+        $this->assertStringContainsString("initialView: 'dayGridMonth'", $content);
+        // Tiga lebar layar, tiga susunan toolbar — bulan berdiri di ketiganya.
+        $this->assertStringContainsString("right: 'dayGridMonth,timeGridDay,listMonth'", $content);
+        $this->assertStringContainsString("right: 'dayGridMonth,timeGridThreeDay,listMonth'", $content);
+        $this->assertStringContainsString("right: 'dayGridMonth,timeGridWeek,listMonth'", $content);
+        // Lebar layar hanya menukar tampilan per jam; bulan & daftar adalah
+        // pilihan admin dan tidak pernah direbut olehnya.
+        $this->assertStringContainsString("calendar.view.type.startsWith('timeGrid')", $content);
     }
 
     /**
@@ -300,8 +328,10 @@ class ScheduleCalendarDrilldownTest extends TestCase
         $content = $this->get(route('classes.index', ['tab' => 'kalender']))->assertOk()->getContent();
 
         $this->assertStringContainsString('if (menit < slotMenit) return;', $content);
-        // Grid tetap pendek: 1,6rem per setengah jam.
-        $this->assertStringContainsString('#calendar .fc-timegrid-slot { height: 1.6rem; }', $content);
+        // Grid tetap muat satu layar: 1,75rem per setengah jam berarti seluruh
+        // hari kerja 09:00-18:00 setinggi ~504px, dan sesi 60 menit tetap ~56px
+        // — cukup untuk judul dua baris, belum cukup untuk baris tutor.
+        $this->assertStringContainsString('#calendar .fc-timegrid-slot { height: 1.75rem; }', $content);
     }
 
     /** Di layar sempit nama tutor turun ke tooltip, bukan dipaksa muat. */
