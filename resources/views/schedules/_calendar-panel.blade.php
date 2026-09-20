@@ -511,7 +511,7 @@
                 {{-- Tingkat 3: detail Holiday Class atau satu pengajuan replacement --}}
                 <div id="levelDetail" class="d-none"></div>
             </div>
-            <div class="modal-footer">
+            <div class="modal-footer" id="eventModalFooter">
                 <a href="#" id="eventModalLink" class="btn btn-primary d-none"><i class="bi bi-pencil me-1"></i> Kelola Replacement</a>
                 {{-- Hapus kelas — hanya muncul saat modal sedang menampilkan satu
                      kelas (tingkat 2), supaya tak pernah tersedia di daftar jam
@@ -521,7 +521,6 @@
                     @csrf @method('DELETE')
                     <button type="submit" class="btn btn-outline-danger"><i class="bi bi-trash me-1"></i> Hapus kelas</button>
                 </form>
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Tutup</button>
             </div>
         </div>
     </div>
@@ -564,6 +563,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const labelKembali = document.getElementById('drillBackLabel');
     const link = document.getElementById('eventModalLink');
     const hapus = document.getElementById('eventModalDelete');
+    const footer = document.getElementById('eventModalFooter');
 
     const escapeHtml = (teks) => String(teks ?? '').replace(/[&<>"']/g, (c) => ({
         '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
@@ -629,6 +629,12 @@ document.addEventListener('DOMContentLoaded', function () {
         // Tombol hapus melekat pada satu kelas, jadi ikut tingkat kelas saja —
         // dipasang di sini agar tak ada jalan masuk yang lupa menyembunyikannya.
         hapus.classList.toggle('d-none', aktif !== levelKelas);
+
+        // Modal ditutup lewat tanda silang di kepalanya — tombol "Tutup" di kaki
+        // hanya mengulang jalan yang sudah ada, tepat di sebelah tombol merah
+        // Hapus kelas. Tanpa ia, kaki modal bisa kosong sama sekali (mis. daftar
+        // jam), dan bilah abu-abu tanpa isi hanya menambah tinggi modal.
+        footer.classList.toggle('d-none', link.classList.contains('d-none') && hapus.classList.contains('d-none'));
 
         if (opsiKembali) {
             labelKembali.textContent = opsiKembali.label;
