@@ -15,6 +15,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 /**
  * Website publik (marketing & informasi) — terpisah dari sistem admin.
@@ -41,6 +42,9 @@ class PublicSiteController extends Controller
      * Carbon supaya tampilan sistem admin (locale bawaan) tidak ikut berubah.
      */
     private const DAY_NAMES = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+
+    /** Dipakai di kartu program, yang kolom jadwalnya sempit. */
+    private const SHORT_DAY_NAMES = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
 
     private const MONTH_NAMES = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 
@@ -136,30 +140,61 @@ class PublicSiteController extends Controller
     }
 
     /**
-     * Rentang usia tiap program beserta tipe kelas yang disarankan, untuk mengisi
-     * otomatis dropdown "Tipe kelas" begitu orang tua mengisi tanggal lahir.
+     * Rentang usia tiap kategori kelas beserta nilainya untuk dropdown "Tipe
+     * kelas", supaya pilihannya terisi otomatis begitu orang tua mengisi tanggal
+     * lahir.
      *
-     * Diturunkan dari `age` di config supaya saran usianya selalu sama dengan yang
-     * tertulis di brosur program — dulu batasnya ditulis ulang di JavaScript dan
-     * sempat melenceng dari config. Program tanpa kategori (mis. Holiday Class) tidak
-     * ikut disarankan: sesi liburan terbuka untuk segala usia.
+     * Kategori diambil dari tabel `classes` (nilainya harus sama persis dengan
+     * isi dropdown), sedangkan batas usianya dari keterangan statis di config —
+     * tidak ada kolom usia di tabel `classes`. Kategori yang belum ditulis
+     * keterangannya tidak ikut disarankan: usia bawaan berlaku untuk semua
+     * kategori, jadi menyarankannya sama saja dengan menebak. Begitu pula
+     * kategori ber-`suggest_by_age` false, yang penentunya bukan umur.
      *
      * @return list<array{max: int, value: string}> urut menaik menurut usia minimum
      */
     private function ageSuggestions(): array
     {
-        return collect(config('site.programs', []))
-            ->filter(fn (array $program) => filled($program['category'] ?? null))
-            ->map(function (array $program) {
-                // "3 – 5 tahun" → [3, 5]. Program dengan satu angka saja dianggap
+        $copy = collect(config('site.program_copy', []))
+            ->keyBy(fn (array $text, string $category) => $this->copyKey($category));
+
+        $ranges = ClassRoom::query()
+            ->distinct()
+            ->pluck('class_category')
+            ->filter(fn (?string $category) => filled($category))
+            ->unique(fn (string $category) => $this->copyKey($category))
+            ->map(function (string $category) use ($copy) {
+                $text = $copy[$this->copyKey($category)] ?? [];
+
+                return ($text['suggest_by_age'] ?? true) === false
+                    ? null
+                    : ['age' => $text['age'] ?? null, 'value' => $category];
+            })
+            ->filter();
+
+        // Database masih kosong: brosur di config yang jadi acuannya. Program
+        // tanpa kategori (Holiday Class) tidak ikut — sesi liburan terbuka untuk
+        // segala usia.
+        if ($ranges->isEmpty()) {
+            $ranges = collect(config('site.programs', []))
+                ->filter(fn (array $program) => filled($program['category'] ?? null))
+                ->map(fn (array $program) => [
+                    'age' => $program['age'] ?? null,
+                    'value' => $program['category'],
+                ]);
+        }
+
+        return $ranges
+            ->map(function (array $range) {
+                // "3 – 5 tahun" → [3, 5]. Kategori dengan satu angka saja dianggap
                 // batas bawah sekaligus batas atasnya.
-                preg_match_all('/\d+/', (string) ($program['age'] ?? ''), $angka);
+                preg_match_all('/\d+/', (string) $range['age'], $angka);
                 $bounds = array_map('intval', $angka[0]);
 
                 return $bounds === [] ? null : [
                     'min' => $bounds[0],
                     'max' => end($bounds),
-                    'value' => $program['category'],
+                    'value' => $range['value'],
                 ];
             })
             ->filter()
@@ -252,43 +287,244 @@ class PublicSiteController extends Controller
     }
 
     /**
-     * Program dari config, dilengkapi jadwal terdekat & sisa kursi dari database
-     * bila kategorinya ada di Class Management.
+     * Kartu program untuk halaman depan & halaman Program.
+     *
+     * Isinya kategori kelas yang benar-benar ada di Class Management, ditutup
+     * kartu Holiday Class dari modulnya sendiri. Brosur di config baru dipakai
+     * bila tabel `classes` masih kosong — lihat programsFromClasses().
      *
      * @return Collection<int, array<string, mixed>>
      */
     private function programsWithLiveData(): Collection
     {
-        $programs = collect(config('site.programs', []));
+        $programs = $this->programsFromClasses($this->openClasses());
 
-        $categories = $programs->pluck('category')->filter()->unique()->all();
+        if ($programs->isEmpty()) {
+            $programs = $this->fallbackPrograms();
+        }
 
-        // Satu query untuk semua kategori: slot terdekat yang masih dibuka.
-        $upcoming = $categories === [] ? collect() : ClassRoom::with('tutor')
+        return $programs->concat($this->holidayPrograms())->values();
+    }
+
+    /**
+     * Slot kelas yang sedang dibuka, lengkap dengan jumlah murid aktifnya.
+     *
+     * @return Collection<int, ClassRoom>
+     */
+    private function openClasses(): Collection
+    {
+        return ClassRoom::with('tutor')
             ->withCount(['students as enrolled_count' => fn ($q) => $q->where('student_class.status', 'active')])
-            ->whereIn('class_category', $categories)
             ->where('status', 'open')
-            ->get()
-            // Slot mingguan tidak punya "tanggal jadwal" tunggal, jadi urutan
-            // terdekat dihitung dari sesi berikutnya masing-masing slot.
-            ->sortBy(fn (ClassRoom $c) => $c->nextOccurrence()?->timestamp ?? PHP_INT_MAX)
-            ->groupBy('class_category');
+            ->get();
+    }
 
-        $nextHoliday = $this->usesHolidaySessions($programs)
-            ? HolidayClass::upcoming()->first()
-            : null;
+    /**
+     * Susun kartu program dari kategori kelas di tabel `classes`.
+     *
+     * Satu kartu mewakili satu kategori, bukan satu baris kelas: sanggar bisa
+     * punya belasan slot "Basic Mewarnai" pada hari & jam berbeda, dan yang
+     * dicari orang tua adalah kelasnya, bukan daftar slotnya. Karena itu angka
+     * yang berbeda antarslot dirangkum jadi rentang ("6 – 10 anak per kelas")
+     * alih-alih diam-diam memilih salah satu.
+     *
+     * Yang datang dari database: durasi, kapasitas, biaya, jadwal, dan tipe
+     * kelas. Yang tetap dari config: usia, warna, ikon, ringkasan, poin materi —
+     * tidak ada kolomnya di tabel `classes`, dan memang kalimat brosur.
+     *
+     * Kategori diperbandingkan tanpa peduli ejaan ("Pre-school" = "preschool")
+     * karena `class_category` diketik bebas oleh admin; ejaan yang ditampilkan
+     * tetap ejaan admin.
+     *
+     * @param  Collection<int, ClassRoom>  $classes  slot yang sedang dibuka
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function programsFromClasses(Collection $classes): Collection
+    {
+        $copy = collect(config('site.program_copy', []))
+            ->keyBy(fn (array $text, string $category) => $this->copyKey($category));
 
-        return $programs->map(function (array $program) use ($upcoming, $nextHoliday) {
-            if (($program['source'] ?? null) === 'holiday_classes') {
-                return $this->withHolidaySession($program, $nextHoliday);
-            }
+        // Kategori yang keterangannya sudah ditulis tampil lebih dulu, dengan
+        // urutan seperti di config; sisanya menyusul menurut abjad.
+        $order = $copy->keys()->flip();
 
-            $next = $program['category']
-                ? ($upcoming[$program['category']] ?? collect())->first()
-                : null;
+        return $classes
+            ->filter(fn (ClassRoom $class) => filled($class->class_category))
+            ->groupBy(fn (ClassRoom $class) => $this->copyKey($class->class_category))
+            ->sortBy(fn (Collection $group, string $key) => sprintf('%03d-%s', $order[$key] ?? 999, $key))
+            ->map(function (Collection $group, string $key) use ($copy) {
+                // Kelas trial dijual per kedatangan, jadi tarifnya tidak boleh
+                // ikut terhitung sebagai iuran bulanan. Jadwal & kapasitasnya
+                // pun sekali jalan — kalau ada slot reguler, itu yang mewakili.
+                $regular = $group->reject->isTrial();
+                $trial = $group->filter->isTrial();
+                $main = $regular->isNotEmpty() ? $regular : $group;
 
-            return $program + ['next_class' => $next, 'next_holiday' => null];
-        });
+                $name = trim((string) $group->first()->class_category);
+                $text = ($copy[$key] ?? []) + config('site.program_default', []);
+
+                return $text + [
+                    // Untuk anchor "#basic-mewarnai" di halaman Program.
+                    'slug' => Str::slug($name) ?: $key,
+                    // Nilai yang dikirim ke form kontak — sama persis dengan isi
+                    // dropdown "Kelas yang diminati", yang juga dari kolom ini.
+                    'category' => $name,
+                    'name' => $name,
+                    'duration' => $this->durationLabel($main),
+                    'capacity' => $this->capacityLabel($main),
+                    'price' => $this->feeLabel($regular, '/ bulan'),
+                    'visit_price' => $this->feeLabel($trial, '/ visit'),
+                    'schedule_hint' => $this->compactScheduleLabel($main),
+                    'schedule' => $this->weeklyScheduleLabel($main),
+                    'is_live' => true,
+                    // Slot mingguan tidak punya "tanggal jadwal" tunggal, jadi yang
+                    // terdekat dihitung dari sesi berikutnya masing-masing slot.
+                    'next_class' => $main->sortBy(fn (ClassRoom $c) => $c->nextOccurrence()?->timestamp ?? PHP_INT_MAX)->first(),
+                    'next_holiday' => null,
+                ];
+            })
+            ->values();
+    }
+
+    /**
+     * Kunci pencocokan keterangan statis: huruf & angka saja, huruf kecil.
+     *
+     * `classes.class_category` diketik bebas, jadi "Pre-school", "pre school",
+     * dan "Preschool" harus mengenai entri config yang sama — kalau tidak,
+     * kartunya diam-diam jatuh ke keterangan umum hanya karena satu tanda hubung.
+     */
+    private function copyKey(string $category): string
+    {
+        return preg_replace('/[^a-z0-9]+/', '', mb_strtolower(trim($category))) ?: mb_strtolower(trim($category));
+    }
+
+    /**
+     * Brosur cadangan dari config, tanpa Holiday Class (diurus terpisah).
+     *
+     * Dipakai saat belum ada satu pun kelas di database — instalasi baru tidak
+     * seharusnya menampilkan halaman Program yang kosong melompong.
+     *
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function fallbackPrograms(): Collection
+    {
+        return collect(config('site.programs', []))
+            ->reject(fn (array $program) => ($program['source'] ?? null) === 'holiday_classes')
+            ->map(fn (array $program) => $program + [
+                'schedule' => $program['schedule_hint'] ?? null,
+                'is_live' => false,
+                'next_class' => null,
+                'next_holiday' => null,
+            ])
+            ->values();
+    }
+
+    /**
+     * Kartu Holiday Class — nol atau satu, tergantung ada tidaknya program
+     * semacam itu di config.
+     *
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function holidayPrograms(): Collection
+    {
+        $program = $this->holidayProgram();
+
+        return $program
+            ? collect([$this->withHolidaySession($program, HolidayClass::upcoming()->first())])
+            : collect();
+    }
+
+    /** "90 menit / pertemuan", atau rentangnya bila antarslot berbeda-beda. */
+    private function durationLabel(Collection $slots): string
+    {
+        $menit = $slots->map(fn (ClassRoom $class) => $class->durationMinutes())
+            ->filter()->unique()->sort()->values();
+
+        return match (true) {
+            // Slot lama yang jam selesainya belum diisi: lebih baik mengaku
+            // tidak tahu daripada mengarang durasi.
+            $menit->isEmpty() => 'Tanyakan admin',
+            $menit->count() === 1 => $menit->first().' menit / pertemuan',
+            default => $menit->first().' – '.$menit->last().' menit / pertemuan',
+        };
+    }
+
+    /** "10 anak per kelas", atau rentangnya bila antarslot berbeda-beda. */
+    private function capacityLabel(Collection $slots): string
+    {
+        $kursi = $slots->map(fn (ClassRoom $class) => (int) $class->capacity)
+            ->filter()->unique()->sort()->values();
+
+        return match (true) {
+            $kursi->isEmpty() => 'Tanyakan admin',
+            $kursi->count() === 1 => $kursi->first().' anak per kelas',
+            default => $kursi->first().' – '.$kursi->last().' anak per kelas',
+        };
+    }
+
+    /**
+     * "Rp360.000 / bulan", atau "Mulai Rp300.000 / bulan" bila tarif antarslot
+     * berbeda. Null bila tidak ada slotnya sama sekali — kartu lalu menyebut
+     * paket itu belum tersedia, bukan menampilkan harga Rp0.
+     */
+    private function feeLabel(Collection $slots, string $satuan): ?string
+    {
+        $tarif = $slots->map(fn (ClassRoom $class) => (float) $class->class_fee)
+            ->unique()->sort()->values();
+
+        if ($tarif->isEmpty()) {
+            return null;
+        }
+
+        $rupiah = fn (float $nilai) => 'Rp'.number_format($nilai, 0, ',', '.');
+
+        return ($tarif->count() === 1 ? $rupiah($tarif->first()) : 'Mulai '.$rupiah($tarif->first()))
+            .' '.$satuan;
+    }
+
+    /**
+     * Jadwal padat untuk kartu program: "Sel, Kam, Sab · 13 slot".
+     *
+     * Kategori populer bisa punya belasan slot; menuliskan semua hari + jamnya
+     * di kartu justru membuat baris "Jadwal" tak terbaca. Rincian per jam ada
+     * di halaman Jadwal — lihat weeklyScheduleLabel().
+     */
+    private function compactScheduleLabel(Collection $slots): string
+    {
+        $hari = $slots->map(fn (ClassRoom $class) => (int) $class->day_of_week)
+            ->unique()->sort()->values();
+
+        if ($hari->isEmpty()) {
+            return 'Tanyakan admin';
+        }
+
+        $label = $hari->map(fn (int $dow) => self::SHORT_DAY_NAMES[$dow])->implode(', ');
+        $jam = $slots->map(fn (ClassRoom $class) => $class->timeLabel())->unique();
+
+        return $jam->count() === 1
+            ? $label.', '.str_replace(':', '.', $jam->first()).' WITA'
+            : $label.' · '.$slots->count().' slot';
+    }
+
+    /**
+     * Jadwal lengkap untuk tabel halaman Jadwal: hari-hari yang berbagi jam
+     * yang sama digabung — "Selasa & Kamis, 15.00 WITA · Sabtu, 09.30 WITA".
+     */
+    private function weeklyScheduleLabel(Collection $slots): string
+    {
+        return $slots
+            ->groupBy(fn (ClassRoom $class) => $class->timeLabel())
+            ->sortKeys()
+            ->map(function (Collection $group, string $jam) {
+                $hari = $group
+                    ->map(fn (ClassRoom $class) => (int) $class->day_of_week)
+                    ->unique()->sort()
+                    ->map(fn (int $dow) => self::DAY_NAMES[$dow])
+                    ->implode(' & ');
+
+                return $hari.', '.str_replace(':', '.', $jam).' WITA';
+            })
+            ->implode(' · ');
     }
 
     /**
@@ -315,17 +551,6 @@ class PublicSiteController extends Controller
         ]);
     }
 
-    /**
-     * Adakah program yang datanya berasal dari modul Holiday Class? Dipakai supaya
-     * query sesi liburan dilewati saat config tidak memuat program semacam itu.
-     *
-     * @param  Collection<int, array<string, mixed>>  $programs
-     */
-    private function usesHolidaySessions(Collection $programs): bool
-    {
-        return $programs->contains(fn (array $program) => ($program['source'] ?? null) === 'holiday_classes');
-    }
-
     /** mis. "Sabtu, 5 Jul 2026, 09.00 WITA" */
     private function formatSession(Carbon $when): string
     {
@@ -343,11 +568,11 @@ class PublicSiteController extends Controller
     /**
      * Baris tabel "Jadwal umum per program" pada halaman Jadwal.
      *
-     * Kolom jadwal & durasi disusun dari slot yang benar-benar ada di Class
-     * Management, bukan teks statis: hari + jam yang berulang dikelompokkan
-     * menjadi satu baris per program. Program yang belum punya slot dalam
-     * rentang tampilan jatuh kembali ke `schedule_hint` di config, dan usia
-     * tetap dari config karena tidak ada kolomnya di tabel `classes`.
+     * Program & jadwalnya sama-sama disusun dari slot yang benar-benar ada di
+     * Class Management: satu baris per kategori kelas, dengan hari + jam yang
+     * berulang dikelompokkan jadi satu kalimat. Saat database masih kosong,
+     * yang tampil adalah brosur cadangan di config, ditandai `is_live` false
+     * supaya tabelnya mengaku "perkiraan".
      *
      * Holiday Class tidak berulang mingguan, jadi barisnya diisi tanggal sesi
      * mendatang dari modul Holiday Class, bukan pola hari + jam.
@@ -359,42 +584,26 @@ class PublicSiteController extends Controller
     private function programsWithWeeklySchedule(Collection $classes, Collection $holidayClasses): Collection
     {
         // Kelas yang ditutup tidak ikut diiklankan sebagai jadwal rutin.
-        $byCategory = $classes->where('status', 'open')->groupBy('class_category');
+        $programs = $this->programsFromClasses($classes->where('status', 'open'));
 
-        return collect(config('site.programs', []))->map(function (array $program) use ($byCategory, $holidayClasses) {
-            if (($program['source'] ?? null) === 'holiday_classes') {
-                $sessions = $holidayClasses
-                    ->map(fn (HolidayClass $session) => $this->formatSession($session->schedule))
-                    ->implode(' · ');
+        if ($programs->isEmpty()) {
+            $programs = $this->fallbackPrograms();
+        }
 
-                return $program + [
-                    'schedule' => $sessions ?: $program['schedule_hint'],
-                    'is_live' => $sessions !== '',
-                ];
-            }
+        $holiday = $this->holidayProgram();
 
-            $slots = $program['category'] ? ($byCategory[$program['category']] ?? collect()) : collect();
-
-            // Dikelompokkan per jam supaya hasilnya sepadat config: "Selasa & Kamis, 15.00 WITA".
-            $schedule = $slots
-                ->groupBy(fn (ClassRoom $c) => substr($c->schedule_time, 0, 5))
-                ->sortKeys()
-                ->map(function (Collection $group, string $time) {
-                    $days = $group
-                        ->map(fn (ClassRoom $c) => (int) $c->day_of_week)
-                        ->unique()->sort()
-                        ->map(fn (int $dow) => self::DAY_NAMES[$dow])
-                        ->implode(' & ');
-
-                    return $days.', '.str_replace(':', '.', $time).' WITA';
-                })
+        if ($holiday) {
+            $sessions = $holidayClasses
+                ->map(fn (HolidayClass $session) => $this->formatSession($session->schedule))
                 ->implode(' · ');
 
-            return $program + [
-                'schedule' => $schedule ?: $program['schedule_hint'],
-                'is_live' => $schedule !== '',
-            ];
-        });
+            $programs = $programs->push($holiday + [
+                'schedule' => $sessions ?: $holiday['schedule_hint'],
+                'is_live' => $sessions !== '',
+            ]);
+        }
+
+        return $programs->values();
     }
 
     /**

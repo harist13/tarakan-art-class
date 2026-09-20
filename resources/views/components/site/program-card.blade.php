@@ -27,12 +27,20 @@
     // diisi dari sesi ini, yang tersisa hanyalah temanya (tidak ada di config).
     $nextHoliday = $program['next_holiday'] ?? null;
 
-    $visitPrices = [
-        'preschool' => 'Rp115.000 / visit',
-        'coloring' => 'Rp105.000 / visit',
-        'drawing' => 'Rp105.000 / visit',
-    ];
-    $visitPrice = $program['visit_price'] ?? ($visitPrices[$program['slug'] ?? ''] ?? null);
+    // Nilai ?kelas= untuk form kontak: kategori kelas (sama persis dengan isi
+    // dropdown "Kelas yang diminati"), dengan slug sebagai cadangan untuk
+    // Holiday Class yang memang tidak punya kategori di tabel `classes`.
+    $kelasParam = ($program['category'] ?? null) ?: ($program['slug'] ?? '');
+
+    // Holiday Class dijual per sesi, jadi tidak ada pilihan bulanan vs visit.
+    $isHoliday = ($program['source'] ?? null) === 'holiday_classes';
+
+    // Harga bulanan & visit diambil dari kelas di Class Management. Yang belum
+    // ada slotnya ditulis apa adanya, bukan diisi angka perkiraan.
+    $askAdmin = 'Tanyakan admin';
+    $regularPrice = $program['price'] ?: $askAdmin;
+    $visitPrice = ($program['visit_price'] ?? null) ?: $askAdmin;
+
     $selectId = 'select-type-' . ($program['slug'] ?? 'pkg') . '-' . ($detailed ? 'detailed' : 'brief') . '-' . substr(md5($program['name'] ?? 'program'), 0, 6);
 @endphp
 
@@ -77,12 +85,15 @@
             </div>
             <div class="d-flex justify-content-between gap-3 align-items-center">
                 <dt class="fw-normal tac-muted-soft">Biaya</dt>
-                <dd class="mb-0 text-end tac-display fw-bolder fs-6 tac-program-price" style="color: var(--tac-ink);">{{ $program['price'] }}</dd>
+                <dd class="mb-0 text-end tac-display fw-bolder fs-6 tac-program-price" style="color: var(--tac-ink);">{{ $regularPrice }}</dd>
             </div>
         </dl>
 
-        {{-- Dropdown Tipe kelas (Reguler / Kelas Visit) --}}
-        @if($visitPrice)
+        {{-- Pilihan paket. Selalu ditawarkan untuk kelas reguler, termasuk saat
+             sanggar belum memasang tarif visit-nya — orang tua tetap perlu tahu
+             kelas ini bisa diikuti sekali datang, dan admin yang menyebut
+             harganya. Holiday Class dikecualikan: sudah per sesi sejak awal. --}}
+        @unless($isHoliday)
             <div class="mt-3 pt-3 tac-dashed-top">
                 <label for="{{ $selectId }}" class="form-label small fw-bold tac-text-ink mb-1 d-flex justify-content-between align-items-center">
                     <span>Tipe kelas</span>
@@ -90,12 +101,12 @@
                 </label>
                 <select id="{{ $selectId }}"
                         class="form-select form-select-sm tac-input tac-program-type-select"
-                        data-regular-price="{{ $program['price'] }}"
+                        data-regular-price="{{ $regularPrice }}"
                         data-visit-price="{{ $visitPrice }}"
                         data-regular-btn="Daftar kelas ini"
                         data-visit-btn="Daftar Visit Ini"
-                        data-regular-url="{{ route('public.contact', ['kelas' => $program['slug']]) }}"
-                        data-visit-url="{{ route('public.contact', ['kelas' => $program['slug'], 'tipe' => 'visit']) }}"
+                        data-regular-url="{{ route('public.contact', ['kelas' => $kelasParam]) }}"
+                        data-visit-url="{{ route('public.contact', ['kelas' => $kelasParam, 'tipe' => 'visit']) }}"
                         onchange="
                             var card = this.closest('article');
                             if (!card) return;
@@ -116,7 +127,7 @@
                     <option value="visit">Kelas Visit (sekali datang)</option>
                 </select>
             </div>
-        @endif
+        @endunless
 
         {{-- Data live dari sistem: slot terdekat yang masih dibuka. --}}
         @if($next)
@@ -143,7 +154,7 @@
         @endif
 
         <div class="mt-auto pt-4">
-            <x-site.btn :href="route('public.contact', ['kelas' => $program['slug']])" size="sm" class="w-100 tac-program-btn">
+            <x-site.btn :href="route('public.contact', ['kelas' => $kelasParam])" size="sm" class="w-100 tac-program-btn">
                 Daftar kelas ini
             </x-site.btn>
         </div>

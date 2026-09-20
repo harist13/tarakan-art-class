@@ -59,13 +59,112 @@ class PublicSiteTest extends TestCase
         $this->actingAs($user)->get('/dashboard')->assertOk();
     }
 
-    public function test_halaman_program_menampilkan_kelas_dari_config(): void
+    public function test_halaman_program_jatuh_ke_brosur_config_saat_belum_ada_kelas(): void
     {
+        // Instalasi baru: tabel `classes` kosong, jadi yang tampil brosur config.
         $this->get(route('public.programs'))
             ->assertOk()
             ->assertSee('Coloring Class')
             ->assertSee('Holiday Class')
             ->assertSee('Daftar kelas ini');
+    }
+
+    public function test_kartu_program_disusun_dari_kategori_kelas_di_database(): void
+    {
+        $this->makeClass(Carbon::today()->addDay(), category: 'Basic Mewarnai', fee: 360000,
+            capacity: 10, time: '13:30:00', endTime: '15:00:00');
+        $this->makeClass(Carbon::today()->addDays(2), category: 'Basic Mewarnai', fee: 360000,
+            capacity: 10, time: '13:30:00', endTime: '15:00:00');
+
+        $this->get(route('public.programs'))
+            ->assertOk()
+            // Nama, biaya, kapasitas, durasi & jadwal dari tabel `classes`…
+            ->assertSee('Basic Mewarnai')
+            ->assertSee('Rp360.000 / bulan')
+            ->assertSee('10 anak per kelas')
+            ->assertSee('90 menit / pertemuan')
+            // …usia & ringkasan tetap dari keterangan statis di config.
+            ->assertSee('5 – 8 tahun', false)
+            ->assertSee('Gradasi &amp; pencampuran warna', false)
+            // Brosur config tidak lagi ikut tampil begitu database terisi.
+            ->assertDontSee('Coloring Class');
+    }
+
+    public function test_angka_yang_berbeda_antarslot_dirangkum_jadi_rentang(): void
+    {
+        $this->makeClass(Carbon::today()->addDay(), category: 'Basic Sketch', fee: 360000,
+            capacity: 6, time: '09:00:00', endTime: '10:00:00');
+        $this->makeClass(Carbon::today()->addDays(2), category: 'Basic Sketch', fee: 400000,
+            capacity: 10, time: '13:30:00', endTime: '15:00:00');
+
+        $this->get(route('public.programs'))
+            ->assertOk()
+            ->assertSee('6 – 10 anak per kelas', false)
+            ->assertSee('60 – 90 menit / pertemuan', false)
+            // Tarif yang berbeda disebut sebagai batas bawah, bukan dipilih diam-diam.
+            ->assertSee('Mulai Rp360.000 / bulan');
+    }
+
+    public function test_kategori_tanpa_keterangan_memakai_teks_bawaan(): void
+    {
+        $this->makeClass(Carbon::today()->addDay(), category: 'Eksperimen Clay');
+
+        $this->get(route('public.programs'))
+            ->assertOk()
+            ->assertSee('Eksperimen Clay')
+            ->assertSee(config('site.program_default.summary'));
+    }
+
+    public function test_pilihan_bulanan_dan_visit_tetap_ditawarkan_pada_kelas_reguler(): void
+    {
+        // Hanya ada kelas reguler — pilihan visit tetap harus muncul, dengan
+        // harganya diserahkan ke admin karena belum ada kelas trial-nya.
+        $this->makeClass(Carbon::today()->addDay(), category: 'Basic Mewarnai');
+
+        $this->get(route('public.programs'))
+            ->assertOk()
+            ->assertSee('Tipe kelas')
+            ->assertSee('Reguler (bulanan)')
+            ->assertSee('Kelas Visit (sekali datang)')
+            ->assertSee('data-visit-price="Tanyakan admin"', false);
+    }
+
+    public function test_tarif_visit_diambil_dari_kelas_trial_pada_kategori_yang_sama(): void
+    {
+        $this->makeClass(Carbon::today()->addDay(), category: 'Basic Mewarnai', fee: 360000);
+        $this->makeClass(Carbon::today()->addDays(2), category: 'Basic Mewarnai', fee: 120000, type: 'trial');
+
+        $this->get(route('public.programs'))
+            ->assertOk()
+            ->assertSee('data-regular-price="Rp360.000 / bulan"', false)
+            ->assertSee('data-visit-price="Rp120.000 / visit"', false);
+    }
+
+    public function test_tombol_daftar_kartu_program_membawa_kategori_kelasnya(): void
+    {
+        $this->makeClass(Carbon::today()->addDay(), category: 'Basic Mewarnai');
+
+        $this->get(route('public.programs'))
+            ->assertOk()
+            ->assertSee(route('public.contact', ['kelas' => 'Basic Mewarnai']), false);
+
+        // …dan tautan itu memang mempra-pilih kelasnya di form kontak.
+        $this->get(route('public.contact', ['kelas' => 'Basic Mewarnai']))
+            ->assertOk()
+            ->assertSee('value="Basic Mewarnai" selected', false);
+    }
+
+    public function test_tabel_jadwal_umum_menyebut_hari_dan_jam_dari_database(): void
+    {
+        // Dua slot berbeda hari pada jam yang sama digabung jadi satu kalimat.
+        $senin = Carbon::today()->next(Carbon::MONDAY);
+
+        $this->makeClass($senin, category: 'Basic Mewarnai', time: '15:00:00', endTime: '16:30:00');
+        $this->makeClass($senin->copy()->addDays(3), category: 'Basic Mewarnai', time: '15:00:00', endTime: '16:30:00');
+
+        $this->get(route('public.schedule'))
+            ->assertOk()
+            ->assertSee('Senin &amp; Kamis, 15.00 WITA', false);
     }
 
     public function test_halaman_jadwal_menampilkan_slot_kelas_mendatang(): void
@@ -481,19 +580,29 @@ class PublicSiteTest extends TestCase
             ->assertSee('Pengumuman & agenda terkini', false);
     }
 
-    private function makeClass(Carbon $date, int $capacity = 8): ClassRoom
-    {
-        $tutor = Tutor::create(['name' => 'Kak Ayu', 'status' => 'full-time']);
+    private function makeClass(
+        Carbon $date,
+        int $capacity = 8,
+        string $category = 'coloring',
+        float $fee = 275000,
+        string $type = 'regular',
+        string $time = '15:00:00',
+        ?string $endTime = null,
+    ): ClassRoom {
+        $tutor = Tutor::firstOrCreate(['name' => 'Kak Ayu'], ['status' => 'full-time']);
 
         return ClassRoom::create([
-            'class_category' => 'coloring',
+            'class_category' => $category,
             'tutor_id' => $tutor->id,
             'capacity' => $capacity,
             // Kelas mingguan yang sesi pertamanya jatuh pada $date — penelepon
             // memakainya sebagai "kelas pada tanggal ini".
             'schedule_date' => $date,
-            'schedule_time' => '15:00:00',
-            'class_fee' => 275000,
+            'schedule_time' => $time,
+            'schedule_end_time' => $endTime,
+            'class_type' => $type,
+            'is_recurring' => $type === 'regular',
+            'class_fee' => $fee,
             'status' => 'open',
         ]);
     }

@@ -1,7 +1,10 @@
 @extends('layouts.public')
 
 @section('title', 'Program & kelas')
-@section('description', 'Preschool Art, Coloring Class, Drawing Class, dan Holiday Class di Tarakan. Lihat rentang usia, durasi, kapasitas, dan biaya tiap kelas.')
+{{-- Sengaja tidak menyebut nama kelas satu per satu: daftarnya kini mengikuti
+     kategori kelas yang dibuat admin, jadi nama yang ditulis di sini pasti
+     ketinggalan zaman cepat atau lambat. --}}
+@section('description', 'Kelas seni anak di Tarakan: rentang usia, durasi, kapasitas, biaya, dan jadwal tiap kelas — termasuk Holiday Class saat libur sekolah.')
 
 @push('head')
     @include('partials.site-schema-programs')

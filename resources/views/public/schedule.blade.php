@@ -11,8 +11,6 @@
     $hari = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
     $bulan = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
     $tanggalID = fn ($date) => $hari[(int) $date->format('w')].', '.$date->format('j').' '.$bulan[(int) $date->format('n')].' '.$date->format('Y');
-
-    $categoryLabels = collect(config('site.programs'))->pluck('name', 'category');
 @endphp
 
 <x-site.section tone="paper-2" :paint="true">
@@ -92,7 +90,11 @@
                                 <span class="flex-grow-1" style="min-width: 0;">
                                     <span class="d-block fw-semibold text-truncate">{{ $class->class_category }}</span>
                                     <span class="d-block tac-muted-soft" style="font-size: 0.75rem;">
-                                        {{ $categoryLabels[$class->class_category] ?? $class->class_category }}
+                                        {{-- Dulu baris ini mengulang nama program dari config. Sejak
+                                             kategori kelas diketik sendiri oleh admin, nama itu sudah
+                                             tampil utuh di atas — yang belum diketahui pengunjung
+                                             justru tipe kelas & siapa tutornya. --}}
+                                        {{ $class->typeLabel() }}
                                         @if(! $class->needsTutor()) &middot; {{ $class->tutor->name }} @endif
                                     </span>
                                 </span>
