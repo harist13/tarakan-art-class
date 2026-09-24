@@ -9,111 +9,6 @@
 | tetap diambil live dari database sistem admin.
 */
 
-/*
-| Keterangan statis tiap kategori kelas.
-|
-| Kuncinya adalah `classes.class_category` — dicocokkan tanpa memedulikan besar
-| kecil huruf maupun tanda baca, jadi "Pre-school", "pre school", dan "preschool"
-| sama-sama mengenai entri 'Pre-school' di bawah.
-|
-| Yang boleh ada di sini hanya kalimat: usia, warna, ikon, ringkasan, dan poin
-| materi. Angka operasional — durasi, kapasitas, biaya, jadwal, dan tipe kelas —
-| sengaja tidak ditulis karena ditarik langsung dari tabel `classes`; menulisnya
-| dua kali hanya akan membuat brosur mengiklankan harga yang sudah tidak berlaku.
-|
-| Kategori yang belum terdaftar di sini tetap tampil, memakai 'program_default'.
-*/
-$programCopy = [
-    'Pre-school' => [
-        'age' => '3 – 5 tahun',
-        'color' => 'sun',
-        'icon' => 'sparkle',
-        'summary' => 'Pengenalan warna, bentuk, dan tekstur lewat kegiatan bermain. '
-            .'Fokus pada motorik halus dan keberanian berekspresi.',
-        'highlights' => [
-            'Finger painting & kolase',
-            'Mengenal warna primer',
-            'Melatih genggaman pensil',
-        ],
-    ],
-    'Basic Mewarnai' => [
-        'age' => '5 – 8 tahun',
-        'color' => 'coral',
-        'icon' => 'palette',
-        'summary' => 'Teknik mewarnai rapi dengan crayon, pensil warna, dan cat air. '
-            .'Anak belajar gradasi, komposisi, dan kesabaran.',
-        'highlights' => [
-            'Gradasi & pencampuran warna',
-            'Crayon, pensil warna, cat air',
-            'Persiapan lomba mewarnai',
-        ],
-    ],
-    'Basic Sketch' => [
-        'age' => '8 – 12 tahun',
-        'color' => 'sky',
-        'icon' => 'pencil',
-        'summary' => 'Dasar menggambar: proporsi, garis, dan shading. '
-            .'Anak mulai membangun gaya menggambarnya sendiri.',
-        'highlights' => [
-            'Sketsa & proporsi',
-            'Arsir & gelap terang',
-            'Latihan mengamati objek',
-        ],
-    ],
-    'Basic Perspective' => [
-        'age' => '9 – 12 tahun',
-        'color' => 'grape',
-        'icon' => 'pencil',
-        'summary' => 'Menggambar ruang dan kedalaman: titik hilang, garis horizon, '
-            .'dan cara benda menyusut saat menjauh.',
-        'highlights' => [
-            'Perspektif satu & dua titik',
-            'Menggambar ruangan & bangunan',
-            'Komposisi latar gambar',
-        ],
-    ],
-    'Character' => [
-        'age' => '9 – 12 tahun',
-        'color' => 'leaf',
-        'icon' => 'pencil',
-        'summary' => 'Merancang tokoh sendiri: ekspresi wajah, pose, dan gaya '
-            .'ilustrasi yang khas milik anak.',
-        'highlights' => [
-            'Anatomi sederhana & pose',
-            'Ekspresi wajah',
-            'Mewarnai ilustrasi karakter',
-        ],
-    ],
-    'ABK' => [
-        'age' => '5 – 12 tahun',
-        // Penentunya kebutuhan anak, bukan umurnya — rentang usianya menindih
-        // semua kelas lain, jadi tanpa ini form kontak akan menyarankan ABK
-        // kepada setiap anak 5–12 tahun yang mengisi tanggal lahir.
-        'suggest_by_age' => false,
-        'color' => 'leaf',
-        'icon' => 'sparkle',
-        'summary' => 'Kelas seni untuk anak berkebutuhan khusus. Materi & tempo '
-            .'menyesuaikan tiap anak, dengan pendampingan tutor yang lebih dekat.',
-        'highlights' => [
-            'Tempo belajar menyesuaikan anak',
-            'Pendampingan tutor lebih dekat',
-            'Konsultasi dulu dengan admin',
-        ],
-    ],
-    'Sketching' => [
-        'age' => '10 – 12 tahun',
-        'color' => 'sky',
-        'icon' => 'pencil',
-        'summary' => 'Lanjutan Basic Sketch untuk anak yang sudah lancar menggambar: '
-            .'objek nyata, tekstur, dan sketsa cepat.',
-        'highlights' => [
-            'Sketsa cepat dari objek nyata',
-            'Tekstur & detail',
-            'Menyusun portofolio karya',
-        ],
-    ],
-];
-
 return [
 
     'name' => 'Tarakan Art Class',
@@ -185,77 +80,97 @@ return [
         'area_served' => ['Tarakan', 'Kalimantan Utara'],
     ],
 
-    // ─── Keterangan program ────────────────────────────────────────────
-    // Kalimat pengiring tiap kategori kelas; angka-angkanya dari tabel `classes`.
-    // Lihat catatan lengkapnya di atas definisi $programCopy.
-    'program_copy' => $programCopy,
-
-    // Dipakai kategori yang belum punya entri di 'program_copy' — kartunya tetap
-    // tampil rapi begitu admin membuat kelas dengan nama kategori baru, tanpa
-    // menunggu berkas ini diperbarui.
-    'program_default' => [
-        'age' => '5 – 12 tahun',
-        'color' => 'coral',
-        'icon' => 'palette',
-        'summary' => 'Kelas seni rutin dengan materi bertingkat. '
-            .'Tanyakan detail materinya ke admin sebelum mendaftar.',
-        'highlights' => [
-            'Kelas kecil & pendampingan tutor',
-            'Alat & bahan disediakan',
-            'Raport perkembangan tiap semester',
-        ],
-    ],
-
     // ─── Program & Kelas ───────────────────────────────────────────────
-    // Brosur cadangan: dipakai hanya saat tabel `classes` masih kosong (mis.
-    // instalasi baru). Begitu ada satu kelas pun, kartu program disusun dari
-    // kategori di database — lihat PublicSiteController::programsFromClasses().
+    // Empat program tetap yang diiklankan di website & ditawarkan di form
+    // pendaftaran. Setiap program bisa diikuti Reguler (bulanan) atau Visit
+    // (sekali datang).
     //
-    // Holiday Class tetap di sini selamanya: sesi liburan tidak punya baris di
-    // tabel `classes`, datanya dari modul Holiday Class.
+    // `categories` = nilai `classes.class_category` yang dihitung sebagai program
+    // itu (dicocokkan tanpa peduli besar-kecil huruf & tanda baca, jadi
+    // "Pre-school" = "preschool"). Durasi, kapasitas, biaya, dan jadwal kartu
+    // ditarik live dari slot-slot kategori tersebut; angka di bawah hanya
+    // cadangan selama belum ada slot yang dibuka. Kategori yang tidak disebut di
+    // mana pun (mis. ABK) tidak tampil di website.
+    //
+    // Holiday Class tidak punya baris di tabel `classes` — datanya dari modul
+    // Holiday Class.
     'programs' => [
         [
             'slug' => 'preschool',
-            'category' => 'preschool',
-            'name' => 'Preschool Art',
+            'name' => 'Preschool',
+            'categories' => ['Preschool', 'Pre-school'],
+            'age' => '3 – 5 tahun',
             'duration' => '60 menit / pertemuan',
             'capacity' => '6 anak per kelas',
             'price' => 'Rp250.000 / bulan',
             'visit_price' => 'Rp115.000 / visit',
             'schedule_hint' => 'Selasa & Kamis, 15.00 WITA',
-        ] + $programCopy['Pre-school'],
+            'color' => 'sun',
+            'icon' => 'sparkle',
+            'summary' => 'Pengenalan warna, bentuk, dan tekstur lewat kegiatan bermain. '
+                .'Fokus pada motorik halus dan keberanian berekspresi.',
+            'highlights' => [
+                'Finger painting & kolase',
+                'Mengenal warna primer',
+                'Melatih genggaman pensil',
+            ],
+        ],
         [
-            'slug' => 'coloring',
-            'category' => 'coloring',
-            'name' => 'Coloring Class',
-            'duration' => '75 menit / pertemuan',
-            'capacity' => '8 anak per kelas',
-            'price' => 'Rp275.000 / bulan',
-            'visit_price' => 'Rp105.000 / visit',
-            'schedule_hint' => 'Rabu & Sabtu, 14.00 WITA',
-        ] + $programCopy['Basic Mewarnai'],
-        [
-            'slug' => 'drawing',
-            'category' => 'drawing',
-            'name' => 'Drawing Class',
+            'slug' => 'sketching',
+            'name' => 'Sketching',
+            'categories' => ['Sketching', 'Basic Sketch', 'Basic Perspective', 'Character', 'Drawing'],
+            'age' => '8 – 12 tahun',
             'duration' => '90 menit / pertemuan',
             'capacity' => '8 anak per kelas',
             'price' => 'Rp300.000 / bulan',
             'visit_price' => 'Rp105.000 / visit',
             'schedule_hint' => 'Jumat & Sabtu, 16.00 WITA',
-        ] + $programCopy['Basic Sketch'],
+            'color' => 'sky',
+            'icon' => 'pencil',
+            'summary' => 'Dasar menggambar: proporsi, garis, perspektif, dan shading. '
+                .'Anak mulai membangun gaya menggambarnya sendiri.',
+            'highlights' => [
+                'Sketsa & proporsi',
+                'Arsir, gelap terang & perspektif',
+                'Merancang karakter sendiri',
+            ],
+        ],
+        [
+            'slug' => 'coloring',
+            'name' => 'Coloring',
+            'categories' => ['Coloring', 'Basic Mewarnai', 'Mewarnai'],
+            'age' => '5 – 8 tahun',
+            'duration' => '75 menit / pertemuan',
+            'capacity' => '8 anak per kelas',
+            'price' => 'Rp275.000 / bulan',
+            'visit_price' => 'Rp105.000 / visit',
+            'schedule_hint' => 'Rabu & Sabtu, 14.00 WITA',
+            'color' => 'coral',
+            'icon' => 'palette',
+            'summary' => 'Teknik mewarnai rapi dengan crayon, pensil warna, dan cat air. '
+                .'Anak belajar gradasi, komposisi, dan kesabaran.',
+            'highlights' => [
+                'Gradasi & pencampuran warna',
+                'Crayon, pensil warna, cat air',
+                'Persiapan lomba mewarnai',
+            ],
+        ],
         [
             'slug' => 'holiday',
-            'category' => null,
-            // Data live-nya bukan dari tabel `classes` (tidak punya kategori), melainkan
-            // dari modul Holiday Class. Nilai di bawah cuma cadangan saat belum ada
-            // sesi yang dijadwalkan admin — lihat PublicSiteController::withHolidaySession().
+            // Data live-nya dari modul Holiday Class. Nilai di bawah cuma cadangan
+            // saat belum ada sesi yang dijadwalkan admin — lihat
+            // PublicSiteController::withHolidaySession().
+            //
+            // Tidak ada pilihan Reguler/Visit dan tidak ikut form pendaftaran:
+            // harganya berbeda tiap sesi, jadi kartunya langsung mengarahkan ke
+            // chat WhatsApp admin.
             'source' => 'holiday_classes',
             'name' => 'Holiday Class',
+            'categories' => [],
             'age' => '4 – 12 tahun',
             'duration' => '2 jam / sesi',
             'capacity' => '12 anak per sesi',
-            'price' => 'Rp150.000 / sesi',
+            'price' => null,
             'schedule_hint' => 'Musiman — libur sekolah',
             'color' => 'leaf',
             'icon' => 'sun',
@@ -263,7 +178,7 @@ return [
                 .'melukis tote bag, clay, mural mini, dan lainnya.',
             'highlights' => [
                 'Tema berganti tiap sesi',
-                'Tanpa komitmen bulanan',
+                'Info harga & jadwal langsung dari admin',
                 'Semua bahan disediakan',
             ],
         ],
@@ -318,19 +233,19 @@ return [
     'testimonials' => [
         [
             'name' => 'Bu Rina',
-            'role' => 'Orang tua murid Coloring Class',
+            'role' => 'Orang tua murid Coloring',
             'quote' => 'Anak saya yang tadinya malu-malu sekarang minta sendiri berangkat kelas. '
                 .'Hasil gambarnya juga jauh lebih rapi dari sebelumnya.',
         ],
         [
             'name' => 'Pak Hendra',
-            'role' => 'Orang tua murid Drawing Class',
+            'role' => 'Orang tua murid Sketching',
             'quote' => 'Tutornya sabar dan komunikatif. Tiap semester kami dapat raport, '
                 .'jadi tahu persis perkembangan anak.',
         ],
         [
             'name' => 'Bu Sari',
-            'role' => 'Orang tua murid Preschool Art',
+            'role' => 'Orang tua murid Preschool',
             'quote' => 'Studionya bersih dan aman untuk anak kecil. Kelasnya kecil, '
                 .'jadi anak saya benar-benar didampingi.',
         ],
@@ -344,8 +259,8 @@ return [
     ],
 
     'gallery_categories' => [
-        'preschool' => 'Preschool Art',
-        'coloring' => 'Coloring Class',
+        'preschool' => 'Preschool',
+        'coloring' => 'Coloring',
         'drawing' => 'Drawing Class',
         'holiday' => 'Holiday Class',
         'kegiatan' => 'Kegiatan & Pameran',

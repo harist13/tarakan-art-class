@@ -208,13 +208,30 @@
                                 <div class="text-danger small mt-1">{{ $message }}</div>
                             @enderror
                         </div>
-                        <div class="col-12">
+                        <div class="col-md-6">
+                            <label for="program" class="tac-label">
+                                Program <span class="tac-text-coral" aria-hidden="true">*</span>
+                            </label>
+                            <select id="program" name="program" required
+                                    @class(['tac-input', 'is-invalid border-danger' => $errors->has('program')])>
+                                <option value="">— Pilih program —</option>
+                                @foreach($programOptions as $value => $label)
+                                    <option value="{{ $value }}" @selected(old('program', $selectedProgram) === $value)>
+                                        {{ $label }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('program')
+                                <div class="text-danger small mt-1">{{ $message }}</div>
+                            @enderror
+                        </div>
+                        <div class="col-md-6">
                             <label for="class_type" class="tac-label">
                                 Tipe kelas <span class="tac-text-coral" aria-hidden="true">*</span>
                             </label>
                             <select id="class_type" name="class_type" required
                                     @class(['tac-input', 'is-invalid border-danger' => $errors->has('class_type')])>
-                                <option value="">— Pilih tipe kelas —</option>
+                                <option value="">— Reguler atau visit —</option>
                                 @foreach(\App\Models\Lead::classTypeOptions() as $value => $label)
                                     <option value="{{ $value }}" @selected(old('class_type', $selectedType) === $value)>
                                         {{ $label }}
@@ -298,16 +315,14 @@
         return select.options[select.selectedIndex].text.trim();
     }
 
-    var typeSelect = form.elements['class_type'];
+    var programSelect = form.elements['program'];
 
-    // Usia → tipe kelas yang disarankan. Rentangnya diambil dari daftar program di
-    // config, bukan ditulis ulang di sini: nilai tipe kelas sekarang berupa kategori
-    // yang diketik admin, jadi slug yang dipatok di JS akan langsung basi begitu
-    // kategorinya berganti nama. Urut menaik menurut usia minimum.
+    // Usia → program yang disarankan. Rentangnya diambil dari daftar program di
+    // config, bukan ditulis ulang di sini. Urut menaik menurut usia minimum.
     var ageRanges = @json($ageSuggestions);
 
     function applyAgeFilter(age) {
-        if (!typeSelect || !ageRanges.length) return;
+        if (!programSelect || !ageRanges.length) return;
 
         // Rentang pertama yang menampung usia ini; di atas rentang terakhir dipakai
         // program tertua, di bawah rentang pertama dipakai program termuda — sama
@@ -318,13 +333,7 @@
         }
         if (!match) match = ageRanges[ageRanges.length - 1];
 
-        // Kategori yang disarankan belum tentu ada di dropdown (mis. admin belum
-        // membuat kelasnya). Menyetel value yang tak ada justru mengosongkan pilihan,
-        // jadi pilihan orang tua dibiarkan apa adanya.
-        var exists = Array.prototype.some.call(typeSelect.options, function (opt) {
-            return opt.value === match.value;
-        });
-        if (exists) typeSelect.value = match.value;
+        programSelect.value = match.value;
     }
 
     // Tanggal lahir → usia, supaya orang tua tidak perlu menghitung sendiri.
@@ -376,6 +385,7 @@
             ['Nama orang tua / wali', value('parent_name')],
             ['Nomor WhatsApp', value('parent_phone')],
             ['Email', value('parent_email')],
+            ['Program', selectedLabel('program')],
             ['Tipe kelas', selectedLabel('class_type')],
             ['Alamat', value('address')],
             ['Pesan', value('message')]

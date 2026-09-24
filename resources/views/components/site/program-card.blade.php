@@ -27,13 +27,15 @@
     // diisi dari sesi ini, yang tersisa hanyalah temanya (tidak ada di config).
     $nextHoliday = $program['next_holiday'] ?? null;
 
-    // Nilai ?kelas= untuk form kontak: kategori kelas (sama persis dengan isi
-    // dropdown "Kelas yang diminati"), dengan slug sebagai cadangan untuk
-    // Holiday Class yang memang tidak punya kategori di tabel `classes`.
-    $kelasParam = ($program['category'] ?? null) ?: ($program['slug'] ?? '');
+    // Nilai ?kelas= untuk form kontak: slug program, sama persis dengan isi
+    // dropdown "Program".
+    $kelasParam = $program['slug'] ?? '';
 
-    // Holiday Class dijual per sesi, jadi tidak ada pilihan bulanan vs visit.
+    // Holiday Class tidak punya pilihan Reguler/Visit dan tidak lewat form:
+    // harganya berbeda tiap sesi, jadi tombolnya langsung membuka chat admin.
     $isHoliday = ($program['source'] ?? null) === 'holiday_classes';
+    $adminChatUrl = 'https://wa.me/'.config('site.contact.whatsapp').'?text='
+        .rawurlencode('Halo '.config('site.name').', saya ingin menanyakan '.$program['name'].'.');
 
     // Harga bulanan & visit diambil dari kelas di Class Management. Yang belum
     // ada slotnya ditulis apa adanya, bukan diisi angka perkiraan.
@@ -89,44 +91,41 @@
             </div>
         </dl>
 
-        {{-- Pilihan paket. Selalu ditawarkan untuk kelas reguler, termasuk saat
-             sanggar belum memasang tarif visit-nya — orang tua tetap perlu tahu
-             kelas ini bisa diikuti sekali datang, dan admin yang menyebut
-             harganya. Holiday Class dikecualikan: sudah per sesi sejak awal. --}}
+        {{-- Pilihan paket: setiap program reguler bisa diikuti Reguler atau Visit. --}}
         @unless($isHoliday)
-            <div class="mt-3 pt-3 tac-dashed-top">
-                <label for="{{ $selectId }}" class="form-label small fw-bold tac-text-ink mb-1 d-flex justify-content-between align-items-center">
-                    <span>Tipe kelas</span>
-                    <span class="tac-badge tac-badge-outline" style="font-size: 0.6875rem; background-color: var(--tac-paper-light); color: var(--tac-ink-soft);">Pilih paket</span>
-                </label>
-                <select id="{{ $selectId }}"
-                        class="form-select form-select-sm tac-input tac-program-type-select"
-                        data-regular-price="{{ $regularPrice }}"
-                        data-visit-price="{{ $visitPrice }}"
-                        data-regular-btn="Daftar kelas ini"
-                        data-visit-btn="Daftar Visit Ini"
-                        data-regular-url="{{ route('public.contact', ['kelas' => $kelasParam]) }}"
-                        data-visit-url="{{ route('public.contact', ['kelas' => $kelasParam, 'tipe' => 'visit']) }}"
-                        onchange="
-                            var card = this.closest('article');
-                            if (!card) return;
-                            var isVisit = this.value === 'visit';
-                            var priceEl = card.querySelector('.tac-program-price');
-                            var btnEl = card.querySelector('.tac-program-btn');
-                            if (priceEl) {
-                                priceEl.textContent = isVisit ? this.dataset.visitPrice : this.dataset.regularPrice;
-                            }
-                            if (btnEl) {
-                                btnEl.textContent = isVisit ? this.dataset.visitBtn : this.dataset.regularBtn;
-                                btnEl.href = isVisit ? this.dataset.visitUrl : this.dataset.regularUrl;
-                            }
-                        "
-                        aria-label="Pilih tipe kelas untuk {{ $program['name'] }}"
-                        style="background-color: #ffffff; color: var(--tac-ink); border: 1.5px solid var(--tac-line-strong); border-radius: 0.75rem; font-size: 0.84rem; font-weight: 600; padding: 0.45rem 0.75rem; cursor: pointer;">
-                    <option value="regular" selected>Reguler (bulanan)</option>
-                    <option value="visit">Kelas Visit (sekali datang)</option>
-                </select>
-            </div>
+        <div class="mt-3 pt-3 tac-dashed-top">
+            <label for="{{ $selectId }}" class="form-label small fw-bold tac-text-ink mb-1 d-flex justify-content-between align-items-center">
+                <span>Tipe kelas</span>
+                <span class="tac-badge tac-badge-outline" style="font-size: 0.6875rem; background-color: var(--tac-paper-light); color: var(--tac-ink-soft);">Pilih paket</span>
+            </label>
+            <select id="{{ $selectId }}"
+                    class="form-select form-select-sm tac-input tac-program-type-select"
+                    data-regular-price="{{ $regularPrice }}"
+                    data-visit-price="{{ $visitPrice }}"
+                    data-regular-btn="Daftar kelas ini"
+                    data-visit-btn="Daftar Visit Ini"
+                    data-regular-url="{{ route('public.contact', ['kelas' => $kelasParam, 'tipe' => 'regular']) }}"
+                    data-visit-url="{{ route('public.contact', ['kelas' => $kelasParam, 'tipe' => 'visit']) }}"
+                    onchange="
+                        var card = this.closest('article');
+                        if (!card) return;
+                        var isVisit = this.value === 'visit';
+                        var priceEl = card.querySelector('.tac-program-price');
+                        var btnEl = card.querySelector('.tac-program-btn');
+                        if (priceEl) {
+                            priceEl.textContent = isVisit ? this.dataset.visitPrice : this.dataset.regularPrice;
+                        }
+                        if (btnEl) {
+                            btnEl.textContent = isVisit ? this.dataset.visitBtn : this.dataset.regularBtn;
+                            btnEl.href = isVisit ? this.dataset.visitUrl : this.dataset.regularUrl;
+                        }
+                    "
+                    aria-label="Pilih tipe kelas untuk {{ $program['name'] }}"
+                    style="background-color: #ffffff; color: var(--tac-ink); border: 1.5px solid var(--tac-line-strong); border-radius: 0.75rem; font-size: 0.84rem; font-weight: 600; padding: 0.45rem 0.75rem; cursor: pointer;">
+                <option value="regular" selected>Reguler (bulanan)</option>
+                <option value="visit">Kelas Visit (sekali datang)</option>
+            </select>
+        </div>
         @endunless
 
         {{-- Data live dari sistem: slot terdekat yang masih dibuka. --}}
@@ -154,9 +153,15 @@
         @endif
 
         <div class="mt-auto pt-4">
-            <x-site.btn :href="route('public.contact', ['kelas' => $kelasParam])" size="sm" class="w-100 tac-program-btn">
-                Daftar kelas ini
-            </x-site.btn>
+            @if($isHoliday)
+                <x-site.btn :href="$adminChatUrl" target="_blank" rel="noopener" size="sm" class="w-100">
+                    Chat admin
+                </x-site.btn>
+            @else
+                <x-site.btn :href="route('public.contact', ['kelas' => $kelasParam, 'tipe' => 'regular'])" size="sm" class="w-100 tac-program-btn">
+                    Daftar kelas ini
+                </x-site.btn>
+            @endif
         </div>
     </div>
 </article>

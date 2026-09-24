@@ -168,15 +168,15 @@ class HolidayClassTest extends TestCase
 
         $this->get(route('public.programs'))
             ->assertOk()
-            // Jadwal, kapasitas, & biaya diambil dari sesi di database…
+            // Jadwal & kapasitas diambil dari sesi di database…
             ->assertSee('22 Agu 2026')
             ->assertSee('09.00 WITA')
             ->assertSee('20 anak per sesi')
-            ->assertSee('Rp175.000 / sesi')
             ->assertSee('Melukis Tote Bag')
             // …bukan lagi teks perkiraan di config.
             ->assertDontSee('Musiman — libur sekolah')
-            ->assertDontSee('Rp150.000 / sesi');
+            // Harga beda-beda tiap sesi: tidak dicantumkan, diserahkan ke admin.
+            ->assertDontSee('Rp175.000 / sesi');
     }
 
     public function test_website_kembali_ke_teks_config_bila_sesi_sudah_lewat(): void
@@ -186,7 +186,6 @@ class HolidayClassTest extends TestCase
         $this->get(route('public.programs'))
             ->assertOk()
             ->assertSee('Musiman — libur sekolah')
-            ->assertSee('Rp150.000 / sesi')
             ->assertDontSee('Melukis Tote Bag');
     }
 
@@ -282,98 +281,52 @@ class HolidayClassTest extends TestCase
         ]);
     }
 
-    public function test_holiday_class_jadi_pilihan_kelas_saat_ada_sesi(): void
-    {
-        $this->regularClass();
-        $this->holidaySession();
-
-        $this->get(route('public.contact'))
-            ->assertOk()
-            ->assertSee('Holiday Class');
-    }
-
-    public function test_holiday_class_tidak_ditawarkan_saat_belum_ada_sesi(): void
-    {
-        $this->regularClass();
-
-        $this->get(route('public.contact'))
-            ->assertOk();
-    }
-
-    public function test_tombol_daftar_kelas_ini_mempra_pilih_holiday_class(): void
+    public function test_holiday_class_tidak_ditawarkan_di_form_pendaftaran(): void
     {
         $this->regularClass();
         $this->holidaySession();
 
         $response = $this->get(route('public.contact', ['kelas' => 'holiday']));
 
-        $response->assertOk();
-        $this->assertSame('holiday', $response->viewData('selected'));
-        $this->assertSame('holiday', $response->viewData('selectedType'));
+        $response->assertOk()->assertDontSee('value="holiday"', false);
+        $this->assertNull($response->viewData('selectedProgram'));
     }
 
-    public function test_tipe_kelas_tetap_dipra_pilih_walau_sesi_belum_dijadwalkan(): void
+    public function test_kartu_holiday_class_langsung_mengarah_ke_chat_admin(): void
     {
         $this->regularClass();
+        $this->holidaySession();
 
-        $response = $this->get(route('public.contact', ['kelas' => 'holiday']));
+        $html = $this->get(route('public.programs'))->assertOk()->getContent();
 
-        $response->assertOk();
-        // Tidak ada sesi untuk dipilih, tapi niat orang tua tidak hilang: tipe
-        // kelasnya tetap terisi sehingga form menampilkan petunjuk "belum ada jadwal".
-        $this->assertNull($response->viewData('selected'));
-        $this->assertSame('holiday', $response->viewData('selectedType'));
+        // Kartu Holiday Class: tombol chat WhatsApp admin, tanpa pilihan Reguler/Visit.
+        $card = substr($html, strpos($html, 'Holiday Class</h3>'));
+        $card = substr($card, 0, strpos($card, '</article>'));
+
+        $this->assertStringContainsString('https://wa.me/'.config('site.contact.whatsapp'), $card);
+        $this->assertStringContainsString('Chat admin', $card);
+        $this->assertStringNotContainsString('tac-program-type-select', $card);
+        $this->assertStringNotContainsString(route('public.contact'), $card);
     }
 
-    /**
-     * @return array<string, mixed>
-     */
-    private function leadPayload(): array
+    public function test_lead_holiday_class_ditolak_form_pendaftaran(): void
     {
-        return [
+        Mail::fake();
+
+        $this->regularClass();
+        $this->holidaySession();
+
+        $this->post(route('public.contact.store'), [
             'child_name' => 'Alya Putri',
             'date_of_birth' => '2018-05-17',
-            'child_age' => 7,
             'parent_name' => 'Bu Rina',
             'parent_phone' => '081234567890',
             'parent_email' => 'rina@example.com',
             'address' => 'Jl. Mulawarman No. 3, Tarakan',
-        ];
-    }
-
-    public function test_lead_peminat_holiday_class_tersimpan(): void
-    {
-        Mail::fake();
-
-        $this->regularClass();
-        $this->holidaySession();
-
-        $this->post(route('public.contact.store'), $this->leadPayload() + [
-            'class_type' => 'holiday',
+            'class_type' => 'regular',
             'program' => 'holiday',
-        ])->assertSessionHasNoErrors();
+        ])->assertSessionHasErrors('program');
 
-        $this->assertDatabaseHas('leads', [
-            'child_name' => 'Alya Putri',
-            'class_type' => 'holiday',
-            'program' => 'holiday',
-        ]);
-    }
-
-    public function test_pilihan_kelas_wajib_hanya_bila_sesi_holiday_class_ada(): void
-    {
-        Mail::fake();
-
-        $this->regularClass();
-
-        // Belum ada sesi → form tidak boleh buntu, pilihan kelas dilonggarkan.
-        $this->post(route('public.contact.store'), $this->leadPayload() + ['class_type' => 'holiday'])
-            ->assertSessionHasNoErrors();
-
-        $this->holidaySession();
-
-        // Sesi ada → pendaftaran tetap diterima walau program kosong (nullable).
-        $this->post(route('public.contact.store'), $this->leadPayload() + ['class_type' => 'holiday'])
-            ->assertSessionHasNoErrors();
+        $this->assertDatabaseCount('leads', 0);
     }
 }

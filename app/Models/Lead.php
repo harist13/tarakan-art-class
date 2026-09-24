@@ -30,62 +30,55 @@ class Lead extends Model
     ];
 
     /**
-     * Tipe kelas untuk sesi liburan.
+     * Tipe kelas pada form kontak — berlaku untuk semua program di form.
      *
-     * Nilai khusus yang tidak ada di tabel `classes`: ketersediaannya ditentukan
-     * sesi mendatang di modul Holiday Class, bukan oleh kategori kelas reguler.
+     * @var array<string, string> nilai => label
      */
-    public const HOLIDAY_TYPE = 'holiday';
+    public const CLASS_TYPES = [
+        'regular' => 'Reguler (bulanan)',
+        'visit' => 'Visit (sekali datang)',
+    ];
 
     /**
-     * Pilihan tipe kelas pada form kontak: kategori kelas yang ada di Class Management,
-     * digabung dengan program yang diiklankan di config, ditutup Holiday Class.
-     *
-     * Daftarnya tidak bisa lagi ditulis tetap di kode — sejak `classes.class_category`
-     * menjadi teks bebas, admin menamai sendiri kategorinya, jadi konstanta tiga nilai
-     * akan langsung melenceng begitu ada kategori baru.
-     *
-     * Program di config tetap ikut walau jadwalnya belum ada: brosurnya sudah tayang di
-     * website, jadi orang tua harus tetap bisa menyatakan minat pada program yang belum
-     * dijadwalkan — itu justru sinyal yang berguna buat admin. Ejaan dari database
-     * didahulukan saat keduanya menyebut kategori yang sama.
-     *
+     * Label lama yang masih mungkin tersimpan di lead sebelum form memakai
+     * pilihan Reguler/Visit (dulu tipe kelas berisi kategori kelas).
+     */
+    private const LEGACY_TYPES = [
+        'holiday' => 'Holiday Class',
+    ];
+
+    /**
      * @return array<string, string> nilai => label
      */
     public static function classTypeOptions(): array
     {
-        $fromDatabase = ClassRoom::query()
-            ->distinct()
-            ->orderBy('class_category')
-            ->pluck('class_category');
+        return self::CLASS_TYPES;
+    }
 
-        return $fromDatabase
-            ->concat(collect(config('site.programs', []))->pluck('category'))
-            ->filter(fn ($category) => filled($category))
-            // Dedup mengabaikan besar-kecil huruf supaya kategori "Coloring" milik admin
-            // tidak muncul dua kali bersama slug "coloring" di config. unique() menyimpan
-            // kemunculan pertama, dan database disebut lebih dulu — jadi ejaan adminlah
-            // yang bertahan.
-            ->unique(fn (string $category) => mb_strtolower($category))
-            ->mapWithKeys(fn (string $category) => [$category => $category])
-            ->put(self::HOLIDAY_TYPE, 'Holiday Class')
+    /**
+     * Pilihan program pada form kontak: program tetap di config, tanpa Holiday
+     * Class — harganya berbeda tiap sesi, jadi peminatnya diarahkan langsung ke
+     * chat WhatsApp admin.
+     *
+     * @return array<string, string> slug => nama
+     */
+    public static function programOptions(): array
+    {
+        return collect(config('site.programs', []))
+            ->reject(fn (array $program) => ($program['source'] ?? null) === 'holiday_classes')
+            ->mapWithKeys(fn (array $program) => [$program['slug'] => $program['name']])
             ->all();
     }
 
     /**
-     * Label tipe kelas untuk ditampilkan ke admin.
-     *
-     * Kategori kelas disimpan apa adanya, jadi nilainya sekaligus labelnya; yang
-     * perlu diterjemahkan hanya Holiday Class. Lead lama yang kategorinya sudah
-     * dihapus tetap tampil dengan nilai aslinya, bukan kosong.
+     * Label tipe kelas untuk ditampilkan ke admin. Lead lama yang nilainya
+     * berupa kategori kelas tetap tampil dengan nilai aslinya, bukan kosong.
      */
     public function classTypeName(): ?string
     {
-        if ($this->class_type === self::HOLIDAY_TYPE) {
-            return 'Holiday Class';
-        }
-
-        return $this->class_type;
+        return self::CLASS_TYPES[$this->class_type]
+            ?? self::LEGACY_TYPES[$this->class_type]
+            ?? $this->class_type;
     }
 
     /**

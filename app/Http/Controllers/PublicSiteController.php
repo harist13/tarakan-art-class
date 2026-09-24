@@ -124,77 +124,40 @@ class PublicSiteController extends Controller
 
     public function contact()
     {
-        $classOptions = $this->classOptions();
-        $wanted = request()->query('kelas');
-        $selected = $this->resolveSelectedClass($classOptions, $wanted);
+        $type = (string) request()->query('tipe');
 
         return view('public.contact', [
-            'classOptions' => $classOptions,
+            'programOptions' => $this->programOptions(),
             'hours' => config('site.hours', []),
             'faq' => config('site.faq', []),
-            // Pra-pilih kelas & tipenya bila datang dari tombol "Daftar kelas ini".
-            'selected' => $selected,
-            'selectedType' => $this->resolveSelectedType($classOptions, $wanted, $selected),
+            // Pra-pilih program & tipenya bila datang dari tombol "Daftar kelas ini".
+            'selectedProgram' => $this->resolveSelectedProgram(request()->query('kelas')),
+            'selectedType' => array_key_exists($type, Lead::classTypeOptions()) ? $type : null,
             'ageSuggestions' => $this->ageSuggestions(),
         ]);
     }
 
     /**
-     * Rentang usia tiap kategori kelas beserta nilainya untuk dropdown "Tipe
-     * kelas", supaya pilihannya terisi otomatis begitu orang tua mengisi tanggal
-     * lahir.
-     *
-     * Kategori diambil dari tabel `classes` (nilainya harus sama persis dengan
-     * isi dropdown), sedangkan batas usianya dari keterangan statis di config —
-     * tidak ada kolom usia di tabel `classes`. Kategori yang belum ditulis
-     * keterangannya tidak ikut disarankan: usia bawaan berlaku untuk semua
-     * kategori, jadi menyarankannya sama saja dengan menebak. Begitu pula
-     * kategori ber-`suggest_by_age` false, yang penentunya bukan umur.
+     * Rentang usia tiap program beserta slug-nya, supaya dropdown "Program"
+     * terisi otomatis begitu orang tua mengisi tanggal lahir. Holiday Class
+     * tidak ikut: sesi liburan terbuka untuk segala usia.
      *
      * @return list<array{max: int, value: string}> urut menaik menurut usia minimum
      */
     private function ageSuggestions(): array
     {
-        $copy = collect(config('site.program_copy', []))
-            ->keyBy(fn (array $text, string $category) => $this->copyKey($category));
-
-        $ranges = ClassRoom::query()
-            ->distinct()
-            ->pluck('class_category')
-            ->filter(fn (?string $category) => filled($category))
-            ->unique(fn (string $category) => $this->copyKey($category))
-            ->map(function (string $category) use ($copy) {
-                $text = $copy[$this->copyKey($category)] ?? [];
-
-                return ($text['suggest_by_age'] ?? true) === false
-                    ? null
-                    : ['age' => $text['age'] ?? null, 'value' => $category];
-            })
-            ->filter();
-
-        // Database masih kosong: brosur di config yang jadi acuannya. Program
-        // tanpa kategori (Holiday Class) tidak ikut — sesi liburan terbuka untuk
-        // segala usia.
-        if ($ranges->isEmpty()) {
-            $ranges = collect(config('site.programs', []))
-                ->filter(fn (array $program) => filled($program['category'] ?? null))
-                ->map(fn (array $program) => [
-                    'age' => $program['age'] ?? null,
-                    'value' => $program['category'],
-                ]);
-        }
-
-        return $ranges
-            ->map(function (array $range) {
-                // "3 – 5 tahun" → [3, 5]. Kategori dengan satu angka saja dianggap
+        return collect(config('site.programs', []))
+            ->reject(fn (array $program) => $this->isHolidayProgram($program))
+            ->map(function (array $program) {
+                // "3 – 5 tahun" → [3, 5]. Program dengan satu angka saja dianggap
                 // batas bawah sekaligus batas atasnya.
-                preg_match_all('/\d+/', (string) $range['age'], $angka);
+                preg_match_all('/\d+/', (string) ($program['age'] ?? ''), $angka);
                 $bounds = array_map('intval', $angka[0]);
 
                 return $bounds === [] ? null : [
                     'min' => $bounds[0],
                     'max' => end($bounds),
-                    'value' => $range['value'],
+                    'value' => $program['slug'],
                 ];
             })
             ->filter()
@@ -287,23 +250,14 @@ class PublicSiteController extends Controller
     }
 
     /**
-     * Kartu program untuk halaman depan & halaman Program.
-     *
-     * Isinya kategori kelas yang benar-benar ada di Class Management, ditutup
-     * kartu Holiday Class dari modulnya sendiri. Brosur di config baru dipakai
-     * bila tabel `classes` masih kosong — lihat programsFromClasses().
+     * Kartu program untuk halaman depan & halaman Program: empat program tetap
+     * di config, dengan angka live dari slot kelas yang sedang dibuka.
      *
      * @return Collection<int, array<string, mixed>>
      */
     private function programsWithLiveData(): Collection
     {
-        $programs = $this->programsFromClasses($this->openClasses());
-
-        if ($programs->isEmpty()) {
-            $programs = $this->fallbackPrograms();
-        }
-
-        return $programs->concat($this->holidayPrograms())->values();
+        return $this->programsFromClasses($this->openClasses());
     }
 
     /**
@@ -320,60 +274,51 @@ class PublicSiteController extends Controller
     }
 
     /**
-     * Susun kartu program dari kategori kelas di tabel `classes`.
+     * Susun kartu keempat program di config dari slot kelas di tabel `classes`.
      *
-     * Satu kartu mewakili satu kategori, bukan satu baris kelas: sanggar bisa
-     * punya belasan slot "Basic Mewarnai" pada hari & jam berbeda, dan yang
-     * dicari orang tua adalah kelasnya, bukan daftar slotnya. Karena itu angka
-     * yang berbeda antarslot dirangkum jadi rentang ("6 – 10 anak per kelas")
-     * alih-alih diam-diam memilih salah satu.
+     * Satu kartu mewakili satu program, yang bisa mencakup beberapa kategori
+     * kelas (mis. Sketching = Basic Sketch + Basic Perspective + Character) —
+     * lihat `categories` di config/site.php. Angka yang berbeda antarslot
+     * dirangkum jadi rentang ("6 – 10 anak per kelas") alih-alih diam-diam
+     * memilih salah satu.
      *
-     * Yang datang dari database: durasi, kapasitas, biaya, jadwal, dan tipe
-     * kelas. Yang tetap dari config: usia, warna, ikon, ringkasan, poin materi —
-     * tidak ada kolomnya di tabel `classes`, dan memang kalimat brosur.
-     *
-     * Kategori diperbandingkan tanpa peduli ejaan ("Pre-school" = "preschool")
-     * karena `class_category` diketik bebas oleh admin; ejaan yang ditampilkan
-     * tetap ejaan admin.
+     * Yang datang dari database: durasi, kapasitas, biaya, dan jadwal. Program
+     * yang belum punya slot dibuka tetap tampil dengan angka cadangan dari config.
      *
      * @param  Collection<int, ClassRoom>  $classes  slot yang sedang dibuka
      * @return Collection<int, array<string, mixed>>
      */
     private function programsFromClasses(Collection $classes): Collection
     {
-        $copy = collect(config('site.program_copy', []))
-            ->keyBy(fn (array $text, string $category) => $this->copyKey($category));
+        return collect(config('site.programs', []))
+            ->map(function (array $program) use ($classes) {
+                if ($this->isHolidayProgram($program)) {
+                    return $this->withHolidaySession($program, HolidayClass::upcoming()->first());
+                }
 
-        // Kategori yang keterangannya sudah ditulis tampil lebih dulu, dengan
-        // urutan seperti di config; sisanya menyusul menurut abjad.
-        $order = $copy->keys()->flip();
+                $group = $classes->filter(fn (ClassRoom $class) => $this->belongsToProgram($class->class_category, $program));
 
-        return $classes
-            ->filter(fn (ClassRoom $class) => filled($class->class_category))
-            ->groupBy(fn (ClassRoom $class) => $this->copyKey($class->class_category))
-            ->sortBy(fn (Collection $group, string $key) => sprintf('%03d-%s', $order[$key] ?? 999, $key))
-            ->map(function (Collection $group, string $key) use ($copy) {
+                if ($group->isEmpty()) {
+                    return $program + [
+                        'schedule' => $program['schedule_hint'] ?? null,
+                        'is_live' => false,
+                        'next_class' => null,
+                        'next_holiday' => null,
+                    ];
+                }
+
                 // Kelas trial dijual per kedatangan, jadi tarifnya tidak boleh
                 // ikut terhitung sebagai iuran bulanan. Jadwal & kapasitasnya
                 // pun sekali jalan — kalau ada slot reguler, itu yang mewakili.
+                // Tarif visit sendiri tetap per program (`visit_price` di config),
+                // tidak dibaca dari kelas trial.
                 $regular = $group->reject->isTrial();
-                $trial = $group->filter->isTrial();
                 $main = $regular->isNotEmpty() ? $regular : $group;
 
-                $name = trim((string) $group->first()->class_category);
-                $text = ($copy[$key] ?? []) + config('site.program_default', []);
-
-                return $text + [
-                    // Untuk anchor "#basic-mewarnai" di halaman Program.
-                    'slug' => Str::slug($name) ?: $key,
-                    // Nilai yang dikirim ke form kontak — sama persis dengan isi
-                    // dropdown "Kelas yang diminati", yang juga dari kolom ini.
-                    'category' => $name,
-                    'name' => $name,
+                return array_merge($program, [
                     'duration' => $this->durationLabel($main),
                     'capacity' => $this->capacityLabel($main),
                     'price' => $this->feeLabel($regular, '/ bulan'),
-                    'visit_price' => $this->feeLabel($trial, '/ visit'),
                     'schedule_hint' => $this->compactScheduleLabel($main),
                     'schedule' => $this->weeklyScheduleLabel($main),
                     'is_live' => true,
@@ -381,57 +326,41 @@ class PublicSiteController extends Controller
                     // terdekat dihitung dari sesi berikutnya masing-masing slot.
                     'next_class' => $main->sortBy(fn (ClassRoom $c) => $c->nextOccurrence()?->timestamp ?? PHP_INT_MAX)->first(),
                     'next_holiday' => null,
-                ];
+                ]);
             })
             ->values();
     }
 
     /**
-     * Kunci pencocokan keterangan statis: huruf & angka saja, huruf kecil.
+     * Apakah sebuah kategori kelas termasuk program ini.
      *
      * `classes.class_category` diketik bebas, jadi "Pre-school", "pre school",
-     * dan "Preschool" harus mengenai entri config yang sama — kalau tidak,
-     * kartunya diam-diam jatuh ke keterangan umum hanya karena satu tanda hubung.
+     * dan "Preschool" harus sama-sama cocok — perbandingan memakai huruf & angka
+     * saja, huruf kecil.
+     *
+     * @param  array<string, mixed>  $program
      */
+    private function belongsToProgram(?string $category, array $program): bool
+    {
+        if (blank($category)) {
+            return false;
+        }
+
+        $keys = array_map(fn (string $c) => $this->copyKey($c), $program['categories'] ?? []);
+
+        return in_array($this->copyKey($category), $keys, true);
+    }
+
+    /** Kunci pencocokan kategori: huruf & angka saja, huruf kecil. */
     private function copyKey(string $category): string
     {
         return preg_replace('/[^a-z0-9]+/', '', mb_strtolower(trim($category))) ?: mb_strtolower(trim($category));
     }
 
-    /**
-     * Brosur cadangan dari config, tanpa Holiday Class (diurus terpisah).
-     *
-     * Dipakai saat belum ada satu pun kelas di database — instalasi baru tidak
-     * seharusnya menampilkan halaman Program yang kosong melompong.
-     *
-     * @return Collection<int, array<string, mixed>>
-     */
-    private function fallbackPrograms(): Collection
+    /** @param  array<string, mixed>  $program */
+    private function isHolidayProgram(array $program): bool
     {
-        return collect(config('site.programs', []))
-            ->reject(fn (array $program) => ($program['source'] ?? null) === 'holiday_classes')
-            ->map(fn (array $program) => $program + [
-                'schedule' => $program['schedule_hint'] ?? null,
-                'is_live' => false,
-                'next_class' => null,
-                'next_holiday' => null,
-            ])
-            ->values();
-    }
-
-    /**
-     * Kartu Holiday Class — nol atau satu, tergantung ada tidaknya program
-     * semacam itu di config.
-     *
-     * @return Collection<int, array<string, mixed>>
-     */
-    private function holidayPrograms(): Collection
-    {
-        $program = $this->holidayProgram();
-
-        return $program
-            ? collect([$this->withHolidaySession($program, HolidayClass::upcoming()->first())])
-            : collect();
+        return ($program['source'] ?? null) === 'holiday_classes';
     }
 
     /** "90 menit / pertemuan", atau rentangnya bila antarslot berbeda-beda. */
@@ -539,13 +468,17 @@ class PublicSiteController extends Controller
     private function withHolidaySession(array $program, ?HolidayClass $session): array
     {
         if (! $session) {
-            return $program + ['next_class' => null, 'next_holiday' => null];
+            return $program + [
+                'schedule' => $program['schedule_hint'] ?? null,
+                'is_live' => false,
+                'next_class' => null,
+                'next_holiday' => null,
+            ];
         }
 
         return array_merge($program, [
             'schedule_hint' => $this->formatSession($session->schedule),
             'capacity' => $session->capacity.' anak per sesi',
-            'price' => 'Rp'.number_format((float) $session->price, 0, ',', '.').' / sesi',
             'next_class' => null,
             'next_holiday' => $session,
         ]);
@@ -566,13 +499,10 @@ class PublicSiteController extends Controller
     }
 
     /**
-     * Baris tabel "Jadwal umum per program" pada halaman Jadwal.
-     *
-     * Program & jadwalnya sama-sama disusun dari slot yang benar-benar ada di
-     * Class Management: satu baris per kategori kelas, dengan hari + jam yang
-     * berulang dikelompokkan jadi satu kalimat. Saat database masih kosong,
-     * yang tampil adalah brosur cadangan di config, ditandai `is_live` false
-     * supaya tabelnya mengaku "perkiraan".
+     * Baris tabel "Jadwal umum per program" pada halaman Jadwal: empat program
+     * yang sama dengan kartu program, dengan hari + jam dari slot yang benar-benar
+     * ada di Class Management. Program tanpa slot ditandai `is_live` false supaya
+     * tabelnya mengaku "perkiraan".
      *
      * Holiday Class tidak berulang mingguan, jadi barisnya diisi tanggal sesi
      * mendatang dari modul Holiday Class, bukan pola hari + jam.
@@ -584,156 +514,51 @@ class PublicSiteController extends Controller
     private function programsWithWeeklySchedule(Collection $classes, Collection $holidayClasses): Collection
     {
         // Kelas yang ditutup tidak ikut diiklankan sebagai jadwal rutin.
-        $programs = $this->programsFromClasses($classes->where('status', 'open'));
+        return $this->programsFromClasses($classes->where('status', 'open'))
+            ->map(function (array $program) use ($holidayClasses) {
+                if (! $this->isHolidayProgram($program)) {
+                    return $program;
+                }
 
-        if ($programs->isEmpty()) {
-            $programs = $this->fallbackPrograms();
-        }
+                $sessions = $holidayClasses
+                    ->map(fn (HolidayClass $session) => $this->formatSession($session->schedule))
+                    ->implode(' · ');
 
-        $holiday = $this->holidayProgram();
-
-        if ($holiday) {
-            $sessions = $holidayClasses
-                ->map(fn (HolidayClass $session) => $this->formatSession($session->schedule))
-                ->implode(' · ');
-
-            $programs = $programs->push($holiday + [
-                'schedule' => $sessions ?: $holiday['schedule_hint'],
-                'is_live' => $sessions !== '',
-            ]);
-        }
-
-        return $programs->values();
+                return array_merge($program, [
+                    'schedule' => $sessions ?: $program['schedule_hint'],
+                    'is_live' => $sessions !== '',
+                ]);
+            })
+            ->values();
     }
 
     /**
-     * Pilihan "Kelas yang diminati" pada form kontak, diambil live dari tabel
-     * `classes` supaya dropdown ikut berubah begitu admin menambah kelas baru.
-     * Bila database masih kosong (mis. instalasi baru), jatuh kembali ke daftar
-     * program di config agar form tetap bisa dipakai.
+     * Pilihan "Program" pada form kontak. Holiday Class tidak ikut — pendaftarannya
+     * lewat chat WhatsApp admin, lihat Lead::programOptions().
      *
-     * @return Collection<int, array{value: string, label: string, category: ?string}>
+     * @return array<string, string> slug => label
      */
-    private function classOptions(): Collection
+    private function programOptions(): array
     {
-        $fromDb = ClassRoom::query()
-            ->select('class_category')
-            ->distinct()
-            ->orderBy('class_category')
-            ->get()
-            ->map(fn (ClassRoom $class) => [
-                'value' => $class->class_category,
-                'label' => $class->class_category,
-                'category' => $class->class_category,
-            ]);
-
-        if ($fromDb->isNotEmpty()) {
-            return $fromDb->concat($this->holidayClassOption())->values();
-        }
-
-        // Instalasi baru tanpa kelas sama sekali: seluruh program di config
-        // ditawarkan sebagai brosur, termasuk Holiday Class walau belum ada sesi.
-        return collect(config('site.programs', []))->map(fn (array $program) => [
-            'value' => $program['slug'],
-            'label' => $program['name'].' ('.$program['age'].')',
-            'category' => $this->programCategory($program),
-        ]);
+        return Lead::programOptions();
     }
 
     /**
-     * Opsi "Holiday Class" pada dropdown kelas. Hanya ditawarkan bila ada sesi
-     * mendatang: beda dari kelas reguler yang jadwalnya berulang, sesi liburan
-     * yang sudah lewat tidak bisa diikuti lagi. Label menyebut tema & tanggalnya
-     * supaya orang tua tahu persis yang didaftarkan.
-     *
-     * @return Collection<int, array{value: string, label: string, category: ?string}>
+     * Terjemahkan `?kelas=` menjadi slug program. Tombol "Daftar kelas ini"
+     * mengirim slug; tautan lama yang masih mengirim nama kategori kelas
+     * ("Basic Mewarnai") dipetakan lewat `categories` di config.
      */
-    private function holidayClassOption(): Collection
+    private function resolveSelectedProgram(?string $wanted): ?string
     {
-        $program = $this->holidayProgram();
-        $session = $program ? HolidayClass::upcoming()->first() : null;
-
-        if (! $program || ! $session) {
-            return collect();
-        }
-
-        return collect([[
-            'value' => $program['slug'],
-            'label' => $program['name'].' — '.$session->class_name
-                .' ('.$this->formatSessionShort($session->schedule).')',
-            'category' => $this->programCategory($program),
-        ]]);
-    }
-
-    /**
-     * Program di config yang datanya berasal dari modul Holiday Class.
-     *
-     * @return array<string, mixed>|null
-     */
-    private function holidayProgram(): ?array
-    {
-        return collect(config('site.programs', []))
-            ->first(fn (array $program) => ($program['source'] ?? null) === 'holiday_classes');
-    }
-
-    /**
-     * Kategori sebuah program untuk keperluan penyaringan di form kontak.
-     *
-     * Holiday Class tidak punya kategori di tabel `classes`, jadi dipetakan ke
-     * tipe kelas khusus milik Lead — dengan begitu dropdown "Tipe kelas" dan
-     * "Kelas yang diminati" memakai nilai yang sama.
-     *
-     * @param  array<string, mixed>  $program
-     */
-    private function programCategory(array $program): ?string
-    {
-        return ($program['source'] ?? null) === 'holiday_classes'
-            ? Lead::HOLIDAY_TYPE
-            : $program['category'];
-    }
-
-    /**
-     * Terjemahkan `?kelas=` menjadi salah satu value dropdown. Tombol "Daftar
-     * kelas ini" mengirim slug program, sedangkan dropdown berisi nama kelas
-     * dari database — keduanya dijembatani lewat kategori kelas.
-     *
-     * @param  Collection<int, array{value: string, label: string, category: ?string}>  $options
-     */
-    private function resolveSelectedClass(Collection $options, ?string $wanted): ?string
-    {
-        if (! $wanted) {
+        if (blank($wanted)) {
             return null;
         }
 
-        if ($options->contains(fn (array $option) => $option['value'] === $wanted)) {
-            return $wanted;
-        }
+        $program = collect(config('site.programs', []))
+            ->filter(fn (array $program) => array_key_exists($program['slug'], Lead::programOptions()))
+            ->first(fn (array $program) => $program['slug'] === $wanted || $this->belongsToProgram($wanted, $program));
 
-        return $options->firstWhere('category', $wanted)['value'] ?? null;
-    }
-
-    /**
-     * Tipe kelas yang dipra-pilih pada form kontak.
-     *
-     * Diambil dari opsi kelas yang cocok bila ada. Kalau program yang diklik
-     * belum punya jadwal (kelas reguler belum dibuka, atau sesi liburan belum
-     * dijadwalkan), tipenya tetap dipra-pilih dari config supaya niat orang tua
-     * tidak hilang — form lalu menampilkan petunjuk "belum ada jadwal" alih-alih
-     * dua dropdown kosong.
-     *
-     * @param  Collection<int, array{value: string, label: string, category: ?string}>  $options
-     */
-    private function resolveSelectedType(Collection $options, ?string $wanted, ?string $selected): ?string
-    {
-        $matched = $selected ? $options->firstWhere('value', $selected) : null;
-
-        if ($matched && $matched['category']) {
-            return $matched['category'];
-        }
-
-        $program = collect(config('site.programs', []))->firstWhere('slug', $wanted);
-
-        return $program ? $this->programCategory($program) : null;
+        return $program['slug'] ?? null;
     }
 
     /**
@@ -860,8 +685,8 @@ class PublicSiteController extends Controller
             'Nama orang tua / wali: '.$lead->parent_name,
             'Nomor WhatsApp: '.$lead->parent_phone,
             $lead->parent_email ? 'Email: '.$lead->parent_email : null,
+            $lead->programName() ? 'Program: '.$lead->programName() : null,
             $lead->classTypeName() ? 'Tipe kelas: '.$lead->classTypeName() : null,
-            $lead->programName() ? 'Kelas yang diminati: '.$lead->programName() : null,
             $lead->address ? 'Alamat: '.$lead->address : null,
             $lead->message ? 'Pesan: '.$lead->message : null,
         ]);

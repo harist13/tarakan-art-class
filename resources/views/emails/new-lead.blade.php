@@ -21,8 +21,8 @@ Ada calon murid yang mengisi form kontak di website {{ config('site.name') }}.
 @if($lead->address)
 **Alamat:** {{ $lead->address }}
 @endif
+**Program:** {{ $lead->programName() ?? 'Belum ditentukan' }}
 **Tipe kelas:** {{ $lead->classTypeName() ?? 'Belum ditentukan' }}
-**Kelas diminati:** {{ $lead->programName() ?? 'Belum ditentukan' }}
 **Masuk:** {{ $lead->created_at->format('d M Y H:i') }}
 
 @if($lead->message)

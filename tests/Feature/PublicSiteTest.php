@@ -59,12 +59,15 @@ class PublicSiteTest extends TestCase
         $this->actingAs($user)->get('/dashboard')->assertOk();
     }
 
-    public function test_halaman_program_jatuh_ke_brosur_config_saat_belum_ada_kelas(): void
+    public function test_halaman_program_menampilkan_empat_program_tetap(): void
     {
-        // Instalasi baru: tabel `classes` kosong, jadi yang tampil brosur config.
+        // Instalasi baru: tabel `classes` kosong, keempat program tetap tampil
+        // dengan angka cadangan dari config.
         $this->get(route('public.programs'))
             ->assertOk()
-            ->assertSee('Coloring Class')
+            ->assertSee('Preschool')
+            ->assertSee('Sketching')
+            ->assertSee('Coloring')
             ->assertSee('Holiday Class')
             ->assertSee('Daftar kelas ini');
     }
@@ -78,16 +81,16 @@ class PublicSiteTest extends TestCase
 
         $this->get(route('public.programs'))
             ->assertOk()
-            // Nama, biaya, kapasitas, durasi & jadwal dari tabel `classes`…
-            ->assertSee('Basic Mewarnai')
+            // Biaya, kapasitas, durasi & jadwal dari tabel `classes`…
             ->assertSee('Rp360.000 / bulan')
             ->assertSee('10 anak per kelas')
             ->assertSee('90 menit / pertemuan')
             // …usia & ringkasan tetap dari keterangan statis di config.
             ->assertSee('5 – 8 tahun', false)
             ->assertSee('Gradasi &amp; pencampuran warna', false)
-            // Brosur config tidak lagi ikut tampil begitu database terisi.
-            ->assertDontSee('Coloring Class');
+            // Kartunya bernama program, bukan kategori kelas di database.
+            ->assertSee('Coloring')
+            ->assertDontSee('Basic Mewarnai');
     }
 
     public function test_angka_yang_berbeda_antarslot_dirangkum_jadi_rentang(): void
@@ -105,31 +108,41 @@ class PublicSiteTest extends TestCase
             ->assertSee('Mulai Rp360.000 / bulan');
     }
 
-    public function test_kategori_tanpa_keterangan_memakai_teks_bawaan(): void
+    public function test_kategori_di_luar_empat_program_tidak_tampil(): void
     {
         $this->makeClass(Carbon::today()->addDay(), category: 'Eksperimen Clay');
 
         $this->get(route('public.programs'))
             ->assertOk()
-            ->assertSee('Eksperimen Clay')
-            ->assertSee(config('site.program_default.summary'));
+            ->assertDontSee('Eksperimen Clay');
     }
 
-    public function test_pilihan_bulanan_dan_visit_tetap_ditawarkan_pada_kelas_reguler(): void
+    public function test_beberapa_kategori_kelas_digabung_ke_satu_program(): void
     {
-        // Hanya ada kelas reguler — pilihan visit tetap harus muncul, dengan
-        // harganya diserahkan ke admin karena belum ada kelas trial-nya.
+        $this->makeClass(Carbon::today()->addDay(), category: 'Basic Sketch', fee: 360000);
+        $this->makeClass(Carbon::today()->addDays(2), category: 'Character', fee: 400000);
+
+        $this->get(route('public.programs'))
+            ->assertOk()
+            ->assertSee('Mulai Rp360.000 / bulan')
+            ->assertDontSee('Character');
+    }
+
+    public function test_pilihan_bulanan_dan_visit_ditawarkan_dengan_tarif_visit_tetap(): void
+    {
+        $this->makeClass(Carbon::today()->addDay(), category: 'Pre-school');
+        $this->makeClass(Carbon::today()->addDay(), category: 'Basic Sketch');
         $this->makeClass(Carbon::today()->addDay(), category: 'Basic Mewarnai');
 
         $this->get(route('public.programs'))
             ->assertOk()
-            ->assertSee('Tipe kelas')
             ->assertSee('Reguler (bulanan)')
             ->assertSee('Kelas Visit (sekali datang)')
-            ->assertSee('data-visit-price="Tanyakan admin"', false);
+            ->assertSee('data-visit-price="Rp115.000 / visit"', false)
+            ->assertSee('data-visit-price="Rp105.000 / visit"', false);
     }
 
-    public function test_tarif_visit_diambil_dari_kelas_trial_pada_kategori_yang_sama(): void
+    public function test_tarif_visit_tidak_ditimpa_kelas_trial(): void
     {
         $this->makeClass(Carbon::today()->addDay(), category: 'Basic Mewarnai', fee: 360000);
         $this->makeClass(Carbon::today()->addDays(2), category: 'Basic Mewarnai', fee: 120000, type: 'trial');
@@ -137,21 +150,24 @@ class PublicSiteTest extends TestCase
         $this->get(route('public.programs'))
             ->assertOk()
             ->assertSee('data-regular-price="Rp360.000 / bulan"', false)
-            ->assertSee('data-visit-price="Rp120.000 / visit"', false);
+            ->assertDontSee('Rp120.000 / visit')
+            ->assertSee('data-visit-price="Rp105.000 / visit"', false);
     }
 
-    public function test_tombol_daftar_kartu_program_membawa_kategori_kelasnya(): void
+    public function test_tombol_daftar_kartu_program_membawa_slug_programnya(): void
     {
         $this->makeClass(Carbon::today()->addDay(), category: 'Basic Mewarnai');
 
         $this->get(route('public.programs'))
             ->assertOk()
-            ->assertSee(route('public.contact', ['kelas' => 'Basic Mewarnai']), false);
+            ->assertSee(e(route('public.contact', ['kelas' => 'coloring', 'tipe' => 'regular'])), false)
+            ->assertSee(e(route('public.contact', ['kelas' => 'coloring', 'tipe' => 'visit'])), false);
 
-        // …dan tautan itu memang mempra-pilih kelasnya di form kontak.
-        $this->get(route('public.contact', ['kelas' => 'Basic Mewarnai']))
+        // …dan tautan itu memang mempra-pilih program & tipenya di form kontak.
+        $this->get(route('public.contact', ['kelas' => 'coloring', 'tipe' => 'visit']))
             ->assertOk()
-            ->assertSee('value="Basic Mewarnai" selected', false);
+            ->assertSee('value="coloring" selected', false)
+            ->assertSee('value="visit" selected', false);
     }
 
     public function test_tabel_jadwal_umum_menyebut_hari_dan_jam_dari_database(): void
@@ -193,7 +209,7 @@ class PublicSiteTest extends TestCase
             'child_name' => 'Alya Putri',
             'date_of_birth' => '2018-05-17',
             'child_age' => 7,
-            'class_type' => 'coloring',
+            'class_type' => 'regular',
             'parent_name' => 'Bu Rina',
             'parent_phone' => '0812 3456 7890',
             'parent_email' => 'rina@example.com',
@@ -221,7 +237,7 @@ class PublicSiteTest extends TestCase
         $this->post(route('public.contact.store'), [
             'child_name' => 'Alya Putri',
             'date_of_birth' => '2018-05-17',
-            'class_type' => 'coloring',
+            'class_type' => 'regular',
             'parent_name' => 'Bu Rina',
             'parent_phone' => '0812 3456 7890',
             'parent_email' => 'rina@example.com',
@@ -250,7 +266,7 @@ class PublicSiteTest extends TestCase
         $rendered = (new NewLeadNotification($lead))->render();
 
         $this->assertStringContainsString('Alya Putri', $rendered);
-        $this->assertStringContainsString('Coloring Class', $rendered);
+        $this->assertStringContainsString('Coloring', $rendered);
         // Nomor lokal 0812… harus jadi 62812… pada tautan wa.me.
         $this->assertStringContainsString('wa.me/6281234567890', $rendered);
     }
@@ -263,7 +279,7 @@ class PublicSiteTest extends TestCase
             'child_name' => 'Alya Putri',
             'date_of_birth' => '2018-05-17',
             'child_age' => 7,
-            'class_type' => 'coloring',
+            'class_type' => 'visit',
             'parent_name' => 'Bu Rina',
             'parent_phone' => '081234567890',
             'parent_email' => 'rina@example.com',
@@ -273,7 +289,8 @@ class PublicSiteTest extends TestCase
 
         $this->assertDatabaseHas('leads', [
             'child_name' => 'Alya Putri',
-            'class_type' => 'coloring',
+            'class_type' => 'visit',
+            'program' => 'coloring',
             'address' => 'Jl. Mulawarman No. 3, Tarakan',
         ]);
 
@@ -287,53 +304,52 @@ class PublicSiteTest extends TestCase
             'parent_name' => 'Bu Rina',
             'parent_phone' => '081234567890',
             'class_type' => 'melukis-mural',
+            'program' => 'Basic Mewarnai',
             'date_of_birth' => Carbon::tomorrow()->toDateString(),
-        ])->assertSessionHasErrors(['class_type', 'date_of_birth']);
+        ])->assertSessionHasErrors(['class_type', 'program', 'date_of_birth']);
 
         $this->assertDatabaseCount('leads', 0);
     }
 
-    public function test_dropdown_kelas_diambil_dari_database(): void
+    public function test_dropdown_program_berisi_tiga_program_reguler(): void
     {
-        $class = $this->makeClass(Carbon::today()->addDay());
+        $this->makeClass(Carbon::today()->addDay(), category: 'Basic Mewarnai');
 
-        // Nama kelas dari database menggantikan daftar program di config.
+        // Kategori kelas di database tidak lagi jadi pilihan pendaftaran.
         $this->get(route('public.contact'))
             ->assertOk()
-            ->assertSee($class->class_category)
-            ->assertDontSee('Coloring Class (5 – 8 tahun)', false);
+            ->assertSee('value="preschool"', false)
+            ->assertSee('value="sketching"', false)
+            ->assertSee('value="coloring"', false)
+            // Holiday Class lewat chat admin, bukan form.
+            ->assertDontSee('value="holiday"', false)
+            ->assertSee('value="regular"', false)
+            ->assertSee('value="visit"', false)
+            ->assertDontSee('value="Basic Mewarnai"', false);
     }
 
-    public function test_kelas_dari_database_diterima_form_kontak(): void
+    public function test_kategori_kelas_database_ditolak_sebagai_program(): void
     {
-        Mail::fake();
-
-        $class = $this->makeClass(Carbon::today()->addDay());
+        $class = $this->makeClass(Carbon::today()->addDay(), category: 'Basic Mewarnai');
 
         $this->post(route('public.contact.store'), [
             'child_name' => 'Alya Putri',
             'date_of_birth' => '2018-05-17',
-            'child_age' => 7,
-            'class_type' => $class->class_category,
+            'class_type' => 'regular',
             'parent_name' => 'Bu Rina',
             'parent_phone' => '081234567890',
             'parent_email' => 'rina@example.com',
             'address' => 'Jl. Mulawarman No. 3, Tarakan',
             'program' => $class->class_category,
-        ])->assertSessionHasNoErrors();
-
-        $this->assertDatabaseHas('leads', ['program' => $class->class_category]);
+        ])->assertSessionHasErrors('program');
     }
 
-    public function test_tombol_daftar_kelas_ini_memilih_kelas_lewat_kategori(): void
+    public function test_tautan_lama_berisi_kategori_kelas_dipetakan_ke_programnya(): void
     {
-        $class = $this->makeClass(Carbon::today()->addDay());
-
-        // ?kelas=coloring (slug program) → opsi kelas 'Coloring Sore' terpilih,
-        // berikut tipe kelasnya yang ikut terisi.
-        $this->get(route('public.contact', ['kelas' => $class->class_category]))
+        // ?kelas=Basic Mewarnai (tautan lama) → program Coloring terpilih.
+        $this->get(route('public.contact', ['kelas' => 'Basic Mewarnai']))
             ->assertOk()
-            ->assertSee('value="'.$class->class_category.'" selected', false);
+            ->assertSee('value="coloring" selected', false);
     }
 
     public function test_form_kontak_menolak_data_tidak_lengkap(): void
@@ -341,7 +357,7 @@ class PublicSiteTest extends TestCase
         // Semua isian wajib kecuali usia anak & pesan.
         $this->post(route('public.contact.store'), ['child_name' => 'Alya'])
             ->assertSessionHasErrors([
-                'date_of_birth', 'class_type',
+                'date_of_birth', 'class_type', 'program',
                 'parent_name', 'parent_phone', 'parent_email', 'address',
             ])
             ->assertSessionDoesntHaveErrors(['child_age', 'message']);
@@ -349,28 +365,30 @@ class PublicSiteTest extends TestCase
         $this->assertDatabaseCount('leads', 0);
     }
 
-    public function test_kelas_yang_diminati_tidak_wajib_bila_tipe_kelas_belum_ada_jadwalnya(): void
+    public function test_semua_program_di_form_bisa_reguler_atau_visit(): void
     {
         Mail::fake();
-
-        // Hanya ada kelas coloring di database, calon murid memilih tipe drawing.
-        $this->makeClass(Carbon::today()->addDay());
+        // Enam kiriman beruntun menyentuh batas throttle form kontak.
+        $this->withoutMiddleware(\Illuminate\Routing\Middleware\ThrottleRequests::class);
 
         $payload = [
             'child_name' => 'Alya Putri',
             'date_of_birth' => '2018-05-17',
-            'child_age' => 7,
             'parent_name' => 'Bu Rina',
             'parent_phone' => '081234567890',
             'parent_email' => 'rina@example.com',
             'address' => 'Jl. Mulawarman No. 3, Tarakan',
         ];
 
-        $this->post(route('public.contact.store'), $payload + ['class_type' => 'drawing'])
-            ->assertSessionHasNoErrors();
+        // Tidak ada satu pun kelas di database: semua kombinasi tetap diterima.
+        foreach (['preschool', 'sketching', 'coloring'] as $program) {
+            foreach (['regular', 'visit'] as $type) {
+                $this->post(route('public.contact.store'), $payload + ['program' => $program, 'class_type' => $type])
+                    ->assertSessionHasNoErrors();
+            }
+        }
 
-        $this->post(route('public.contact.store'), $payload + ['class_type' => 'coloring'])
-            ->assertSessionHasNoErrors();
+        $this->assertDatabaseCount('leads', 6);
     }
 
     public function test_honeypot_memblokir_kiriman_bot(): void
@@ -531,10 +549,12 @@ class PublicSiteTest extends TestCase
             'child_name' => 'Alya',
             'parent_name' => 'Bu Rina',
             'parent_phone' => '081234567890',
-            'program' => 'drawing',
+            'program' => 'sketching',
+            'class_type' => 'visit',
         ]);
 
-        $this->assertSame('Drawing Class', $lead->programName());
+        $this->assertSame('Sketching', $lead->programName());
+        $this->assertSame('Visit (sekali datang)', $lead->classTypeName());
     }
 
     public function test_navbar_tidak_memuat_menu_jadwal(): void
