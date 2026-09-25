@@ -230,7 +230,8 @@ Kecuali buku modul dan peralatan yang setiap murid perlu miliki (jika ada)', 'bg
                 <div class="tac-card tac-card-hover h-100 p-4">
                     <span class="tac-icon {{ $reason['bg'] }}" aria-hidden="true">{{ $reason['icon'] }}</span>
                     <h3 class="fs-5 mt-3 mb-2">{{ $reason['title'] }}</h3>
-                    <p class="small lh-lg tac-muted mb-0">{{ $reason['body'] }}</p>
+                    {{-- Baris baru di teks ikut ditampilkan (mis. catatan "Note:" di kartu Kelas pengganti). --}}
+                    <p class="small lh-lg tac-muted mb-0">{!! nl2br(e(trim($reason['body']))) !!}</p>
                 </div>
             </div>
         @endforeach
