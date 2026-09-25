@@ -293,7 +293,7 @@ class MidtransSnapPaymentTest extends TestCase
         $halaman = $this->get(route('pay.show', $payment->pay_token))->assertOk();
 
         $halaman->assertSee('Kirim bukti ke admin');
-        $halaman->assertSee('https://wa.me/6281234567890', false);
+        $halaman->assertSee('https://api.whatsapp.com/send?phone=6281234567890', false);
 
         $pesan = urldecode(InvoiceWhatsApp::receiptLink($payment));
         $this->assertStringContainsString($payment->invoice_number, $pesan);

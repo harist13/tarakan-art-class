@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Payment;
 use App\Models\Student;
 use App\Models\User;
+use App\Support\InvoiceWhatsApp;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -72,10 +73,10 @@ class PaymentWhatsappInvoiceTest extends TestCase
 
         $response = $this->actingAs($user)->get(route('payments.whatsapp', $payment));
 
-        $response->assertRedirectContains('https://wa.me/6281234567890');
+        $response->assertRedirectContains('https://api.whatsapp.com/send?phone=6281234567890');
 
         $target = urldecode($response->headers->get('Location'));
-        $this->assertStringContainsString('Ibu Ani', $target);
+        $this->assertStringContainsString('Hai wali murid Budi Santoso', $target);
         $this->assertStringContainsString($payment->invoice_number, $target);
         $this->assertStringContainsString('Rp 250.000', $target);
         $this->assertStringContainsString('Belum dibayar', $target);
@@ -97,6 +98,30 @@ class PaymentWhatsappInvoiceTest extends TestCase
 
         $this->assertStringContainsString('LUNAS', $target);
         $this->assertStringContainsString('sudah kami terima', $target);
+    }
+
+    public function test_isi_pesan_mengikuti_template_studio(): void
+    {
+        $payment = $this->makePayment($this->makeStudent(), [
+            'billing_period' => '2026-10',
+            'due_date' => '2026-10-02',
+            'payment_amount' => 360000,
+        ]);
+
+        $expected = "Hai wali murid Budi Santoso, apa kabar? Semoga selalu dalam keadaan yang sehat☺️\n\n"
+            .'Kami dari '.config('site.name')." ingin menginformasikan untuk biaya les dengan rincian:\n\n\n"
+            ."No. Invoice: {$payment->invoice_number}\n"
+            ."Nama murid: Budi Santoso\n"
+            ."Periode pembayaran : Oktober\n"
+            ."Jatuh tempo: 02/10/2026\n"
+            ."Jumlah: Rp 360.000\n"
+            ."Metode: Transfer\n"
+            ."Status: Belum dibayar\n\n"
+            ."Pembayaran bisa dilakukan lewat tautan berikut:\n"
+            ."https://contoh.test/bayar/abc\n\n"
+            .'Terima kasih banyak😊🙏🏻';
+
+        $this->assertSame($expected, InvoiceWhatsApp::message($payment->fresh('student'), 'https://contoh.test/bayar/abc'));
     }
 
     public function test_nomor_tidak_valid_ditolak_dengan_pesan_kesalahan(): void

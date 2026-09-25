@@ -119,7 +119,7 @@ return [
             'slug' => 'sketching',
             'name' => 'Sketching',
             'form_label' => 'Sketching / Sketsa',
-            'categories' => ['Sketching', 'Basic Sketch', 'Basic Perspective', 'Character', 'Drawing'],
+            'categories' => ['Basic Sketch','Basic Perspective', 'Character', 'Drawing'],
             'age' => '7 tahun ke atas',
             'duration' => '90 menit / pertemuan',
             'capacity' => '8 anak per kelas',

@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\ActivityLog;
 use App\Models\ClassRoom;
+use App\Models\Payment;
 use App\Models\Student;
 use App\Models\Tutor;
 use App\Models\User;
@@ -285,6 +286,56 @@ class StudentManagementTest extends TestCase
             ->assertOk()
             ->assertSee('Murid Kelas A')
             ->assertDontSee('Murid Kelas B');
+    }
+
+    public function test_index_filters_by_category_across_schedules(): void
+    {
+        $senin = $this->makeClass('drawing');
+        $rabu = $this->makeClass('drawing');
+        $lain = $this->makeClass('coloring');
+
+        foreach (['Murid Senin' => $senin, 'Murid Rabu' => $rabu, 'Murid Lain' => $lain] as $name => $class) {
+            Student::create($this->validPayload(['name' => $name]))
+                ->classes()->attach($class->id, ['status' => 'active', 'enrolled_at' => now()->toDateString()]);
+        }
+
+        $response = $this->actingAs($this->makeUser('admin'))
+            ->get(route('students.index', ['category' => 'drawing']))
+            ->assertOk()
+            ->assertSee('Murid Senin')
+            ->assertSee('Murid Rabu')
+            ->assertDontSee('Murid Lain');
+
+        // Dua jadwal "drawing" tetap satu pilihan di dropdown.
+        $this->assertSame(1, substr_count($response->getContent(), '<option value="drawing"'));
+    }
+
+    public function test_index_filters_by_payment_and_sorts_by_name(): void
+    {
+        $lunas = Student::create($this->validPayload(['name' => 'Zaki Lunas']));
+        $nunggak = Student::create($this->validPayload(['name' => 'Ayu Nunggak']));
+
+        foreach ([[$lunas, 'paid'], [$nunggak, 'unpaid']] as [$student, $status]) {
+            Payment::create([
+                'student_id' => $student->id,
+                'payment_date' => now()->toDateString(),
+                'billing_period' => Payment::periodFor(),
+                'payment_amount' => 100000,
+                'payment_method' => 'cash',
+                'payment_status' => $status,
+            ]);
+        }
+
+        $admin = $this->makeUser('admin');
+
+        $this->actingAs($admin)->get(route('students.index', ['status' => 'paid']))
+            ->assertSee('Zaki Lunas')->assertDontSee('Ayu Nunggak');
+
+        $this->actingAs($admin)->get(route('students.index', ['status' => 'unpaid']))
+            ->assertSee('Ayu Nunggak')->assertDontSee('Zaki Lunas');
+
+        $this->actingAs($admin)->get(route('students.index', ['status' => 'az']))
+            ->assertSeeInOrder(['Ayu Nunggak', 'Zaki Lunas']);
     }
 
     // ─── CREATE + STORE ────────────────────────────────────────────

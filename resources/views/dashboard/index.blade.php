@@ -129,7 +129,7 @@
                         {{ $unpaidCount }} Tagihan pending
                     </span>
                     <span class="badge rounded-pill px-2 py-1 text-nowrap" style="font-size: 0.76rem; background: #F1F5F9; color: #374151; border: 1px solid #E2E8F0;">
-                        {{ $pendingReplacements }} Replacement
+                        {{ $upcomingReplacements }} Replacement mendatang
                     </span>
                 </div>
             </div>

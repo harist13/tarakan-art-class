@@ -46,7 +46,7 @@ class DashboardController extends Controller
 
         // Angka akademik menghitung semua murid — data akademik tidak lagi
         // disaring status tagihan. Tunggakan punya scorecard-nya sendiri.
-        $pendingReplacements = ReplacementRequest::where('request_status', 'pending')->count();
+        $upcomingReplacements = ReplacementRequest::approved()->whereDate('replacement_date', '>=', today())->count();
         $todayAttendance = Attendance::whereDate('attendance_date', today())->count();
 
         // Murid yang punya invoice lewat jatuh tempo, plus yang sudah ditangguhkan.
@@ -211,7 +211,7 @@ class DashboardController extends Controller
             'unpaidCount',
             'studentsInArrears',
             'suspendedStudents',
-            'pendingReplacements',
+            'upcomingReplacements',
             'todayAttendance',
             'studentActiveRate',
             'monthNet',

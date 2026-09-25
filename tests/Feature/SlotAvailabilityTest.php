@@ -660,8 +660,43 @@ class SlotAvailabilityTest extends TestCase
             'student_id' => $student->id,
             'origin_class_id' => $origin->id,
             'class_id' => $target->id,
-            'request_status' => 'pending',
+            // Tanpa persetujuan Super Admin: langsung berlaku.
+            'request_status' => 'approved',
         ]);
+    }
+
+    public function test_replacement_langsung_berlaku_tanpa_persetujuan(): void
+    {
+        $admin = $this->makeUser();
+        $this->actingAs($admin);
+        $origin = $this->makeClass();
+        $target = $this->makeClass(['class_category' => 'drawing']);
+        $student = $this->makeStudent();
+
+        $this->post(route('schedules.store'), [
+            'student_id' => $student->id,
+            'origin_class_id' => $origin->id,
+            'class_id' => $target->id,
+            'replacement_date' => now()->addDays(3)->toDateString(),
+            'replacement_time' => '09:00',
+        ])->assertSessionHasNoErrors();
+
+        $saved = ReplacementRequest::sole();
+        $this->assertSame('approved', $saved->request_status);
+        $this->assertSame($admin->id, $saved->approved_by);
+
+        // Request lama yang ditolak ikut berlaku begitu diatur ulang.
+        $saved->update(['request_status' => 'rejected']);
+        $this->put(route('schedules.update', $saved), [
+            'student_id' => $student->id,
+            'origin_class_id' => $origin->id,
+            'class_id' => $target->id,
+            'replacement_date' => now()->addDays(4)->toDateString(),
+            'replacement_time' => '09:00',
+        ])->assertSessionHasNoErrors();
+        $this->assertSame('approved', $saved->fresh()->request_status);
+
+        $this->assertFalse(\Illuminate\Support\Facades\Route::has('schedules.status'));
     }
 
     /**
@@ -889,7 +924,7 @@ class SlotAvailabilityTest extends TestCase
         $this->get(route('schedules.index'))
             ->assertOk()
             ->assertSee('Slot tersedia')
-            ->assertSee('Replacement Pending')
+            ->assertSee('Replacement mendatang')
             ->assertSee('Ketersediaan slot kelas');
     }
 

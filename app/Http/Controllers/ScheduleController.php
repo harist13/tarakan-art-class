@@ -11,7 +11,6 @@ use App\Support\ScheduleCalendar;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class ScheduleController extends Controller
@@ -46,7 +45,9 @@ class ScheduleController extends Controller
             ->with(['student.payments', 'classRoom', 'originClass', 'approver'])
             // Request lama tetap terlihat walau muridnya kini menunggak; yang
             // dicegah adalah pengajuan baru (lihat validateReplacement).
-            ->when(in_array($status, ['pending', 'approved', 'rejected'], true), fn ($q) => $q->where('request_status', $status))
+            ->when($status === 'upcoming', fn ($q) => $q->approved()->whereDate('replacement_date', '>=', today()))
+            ->when($status === 'past', fn ($q) => $q->approved()->whereDate('replacement_date', '<', today()))
+            ->when($status === 'rejected', fn ($q) => $q->where('request_status', 'rejected'))
             ->when($search, fn ($q) => $q->where(function ($sub) use ($search) {
                 $sub->whereHas('student', fn ($s) => $s->where('name', 'like', "%{$search}%"))
                     ->orWhereHas('classRoom', fn ($c) => $c->where('class_category', 'like', "%{$search}%"))
@@ -110,19 +111,15 @@ class ScheduleController extends Controller
         // Ringkasan untuk scorecard di atas halaman — dihitung dari seluruh slot,
         // bukan dari hasil filter panel: ini gambaran keadaan, bukan cerminan
         // pencarian yang sedang dilakukan admin.
-        $pendingCount = ReplacementRequest::where('request_status', 'pending')->count();
+        $upcomingCount = ReplacementRequest::approved()
+            ->whereDate('replacement_date', '>=', today())
+            ->count();
         $totalSlots = $allSlots->count();
         $availableSlots = $allSlots->filter->isAvailable()->count();
 
-        // Request pending milik murid yang menunggak — perlu ditinjau admin
-        // sebelum di-approve.
-        $arrearsCount = ReplacementRequest::where('request_status', 'pending')
-            ->whereHas('student', fn ($s) => $s->inArrears())
-            ->count();
-
         return view('schedules.index', compact(
             'requests', 'status', 'search', 'slotGroups', 'rosters',
-            'pendingCount', 'availableSlots', 'totalSlots', 'arrearsCount', 'tab',
+            'upcomingCount', 'availableSlots', 'totalSlots', 'tab',
             'slotSearch', 'slotStatus'
         ));
     }
@@ -166,15 +163,18 @@ class ScheduleController extends Controller
     {
         $data = $this->validateReplacement($request);
 
-        // Status default Pending untuk request Admin.
-        $data['request_status'] = 'pending';
+        // Tanpa persetujuan Super Admin: replacement yang diatur admin langsung
+        // berlaku, jadi absensi & kalender (yang hanya membaca status approved)
+        // memindahkan muridnya saat itu juga.
+        $data['request_status'] = 'approved';
+        $data['approved_by'] = auth()->id();
 
         DB::transaction(function () use ($data) {
             $replacement = ReplacementRequest::create($data);
-            ActivityLog::record('created', $replacement, 'Mengajukan replacement class');
+            ActivityLog::record('created', $replacement, 'Mengatur replacement class');
         });
 
-        return redirect()->route('schedules.index')->with('success', 'Request replacement class berhasil diajukan (status Pending).');
+        return redirect()->route('schedules.index')->with('success', 'Replacement class berhasil diatur.');
     }
 
     public function edit(ReplacementRequest $schedule)
@@ -193,29 +193,17 @@ class ScheduleController extends Controller
     {
         $data = $this->validateReplacement($request, $schedule);
 
+        // Request lama yang dulu ditolak ikut berlaku begitu diatur ulang —
+        // tidak ada lagi tahap persetujuan yang bisa mengaktifkannya.
+        $data['request_status'] = 'approved';
+        $data['approved_by'] = $schedule->approved_by ?? auth()->id();
+
         DB::transaction(function () use ($schedule, $data) {
             $schedule->update($data);
             ActivityLog::record('updated', $schedule, 'Memperbarui replacement class');
         });
 
-        return redirect()->route('schedules.index')->with('success', 'Request replacement class berhasil diperbarui.');
-    }
-
-    public function updateStatus(Request $request, ReplacementRequest $schedule)
-    {
-        $data = $request->validate([
-            'request_status' => ['required', Rule::in(['approved', 'rejected'])],
-        ]);
-
-        DB::transaction(function () use ($schedule, $data) {
-            $schedule->update([
-                'request_status' => $data['request_status'],
-                'approved_by' => auth()->id(),
-            ]);
-            ActivityLog::record('updated', $schedule, "Replacement class {$data['request_status']}");
-        });
-
-        return back()->with('success', "Request berhasil di-{$data['request_status']}.");
+        return redirect()->route('schedules.index')->with('success', 'Replacement class berhasil diperbarui.');
     }
 
     public function destroy(ReplacementRequest $schedule)

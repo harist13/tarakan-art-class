@@ -409,6 +409,40 @@ class Student extends Model
     }
 
     /**
+     * Saringan halaman Data murid & wali — dipakai juga oleh export-nya
+     * supaya file yang diunduh sama dengan yang terlihat di layar.
+     *
+     * $status sekaligus memuat pilihan urutan & pembayaran: "sudah dibayar"
+     * berarti invoice bulan ini lunas; "belum dibayar" berarti masih ada
+     * invoice unpaid dari periode mana pun — tunggakan bulan lalu ikut terlihat.
+     * $classId (satu jadwal) didahulukan atas $category bila keduanya ada.
+     */
+    public function scopeListFilter(
+        Builder $query,
+        string $search = '',
+        string $status = '',
+        string $category = '',
+        ?int $classId = null,
+        bool $unbilled = false,
+    ): Builder {
+        $period = Payment::periodFor();
+
+        return $query
+            ->when($search !== '', fn ($q) => $q->where(function ($sub) use ($search) {
+                $sub->where('name', 'like', "%{$search}%")
+                    ->orWhere('student_id', 'like', "%{$search}%")
+                    ->orWhere('parent_name', 'like', "%{$search}%");
+            }))
+            ->when(in_array($status, ['active', 'inactive'], true), fn ($q) => $q->where('status', $status))
+            ->when($status === 'paid', fn ($q) => $q->whereHas('payments', fn ($p) => $p->forPeriod($period)->where('payment_status', 'paid')))
+            ->when($status === 'unpaid', fn ($q) => $q->whereHas('payments', fn ($p) => $p->outstanding()))
+            ->when($classId, fn ($q) => $q->whereHas('classes', fn ($c) => $c->where('classes.id', $classId)))
+            ->when(! $classId && $category !== '', fn ($q) => $q->whereHas('classes', fn ($c) => $c->where('class_category', $category)))
+            ->when($unbilled, fn ($q) => $q->unbilledFor())
+            ->when($status === 'az', fn ($q) => $q->orderBy('name'), fn ($q) => $q->orderByDesc('id'));
+    }
+
+    /**
      * Penanda tagihan di daftar murid: label, warna, dan penjelasannya.
      * null bila tidak ada yang perlu ditandai.
      *

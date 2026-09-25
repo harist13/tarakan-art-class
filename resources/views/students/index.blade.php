@@ -46,16 +46,31 @@
                 <span class="input-group-text bg-transparent border-end-0"><i class="bi bi-search text-muted"></i></span>
                 <input type="text" name="search" value="{{ $search }}" class="form-control border-start-0 ps-0 py-2" placeholder="Cari nama / ID...">
             </div>
-            <select name="class_id" class="form-select form-select-sm" style="width:160px;">
+            {{-- Datang dari tautan satu jadwal di halaman kelas: jadwalnya
+                 dititipkan agar tidak lepas saat filter lain berubah. --}}
+            @if($selectedClass)
+                <input type="hidden" name="class_id" value="{{ $selectedClass->id }}">
+            @endif
+            <select name="category" class="form-select form-select-sm" style="width:160px;">
                 <option value="">Semua kelas</option>
-                @foreach($classes as $class)
-                    <option value="{{ $class->id }}" @selected($classId == $class->id)>{{ $class->class_category }}</option>
+                @foreach($categories as $cat)
+                    <option value="{{ $cat }}" @selected($category === $cat)>{{ $cat }}</option>
                 @endforeach
             </select>
+            @if($selectedClass)
+                <a href="{{ route('students.index', request()->except(['page', 'class_id'])) }}"
+                   class="badge bg-light text-dark border rounded-pill px-2 py-1 fw-semibold text-decoration-none"
+                   title="Lepas saringan jadwal, tampilkan semua jadwal {{ $selectedClass->class_category }}">
+                    {{ $selectedClass->scheduleLabel() }} <i class="bi bi-x"></i>
+                </a>
+            @endif
             <select name="status" class="form-select form-select-sm" style="width:150px;">
                 <option value="">Semua status</option>
                 <option value="active" @selected($status === 'active')>Aktif</option>
                 <option value="inactive" @selected($status === 'inactive')>Nonaktif</option>
+                <option value="az" @selected($status === 'az')>Nama A–Z</option>
+                <option value="paid" @selected($status === 'paid')>Sudah dibayar</option>
+                <option value="unpaid" @selected($status === 'unpaid')>Belum dibayar</option>
             </select>
             {{-- Saringan "belum ditagih". Angkanya dihitung dari seluruh murid,
                  bukan dari halaman yang sedang tampil — badge yang tersebar di
@@ -71,7 +86,7 @@
                 <i class="bi bi-receipt me-1"></i>Belum ditagih
                 <span class="badge rounded-pill ms-1 fw-bold" style="background-color: rgba(245, 136, 12, 1); color: #FFFFFF !important; font-size: 0.75rem; padding: 0.2rem 0.55rem;">{{ $unbilledCount }}</span>
             </a>
-            @if($search !== '' || $classId || $status !== '' || $unbilled)
+            @if($search !== '' || $category !== '' ||$status !== '' || $unbilled)
                 <a href="{{ route('students.index') }}" class="btn btn-sm btn-outline-secondary" title="Reset filter"><i class="bi bi-x-lg"></i></a>
             @endif
         </form>

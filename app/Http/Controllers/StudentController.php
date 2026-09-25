@@ -16,21 +16,19 @@ class StudentController extends Controller
     {
         $search = $request->string('search')->toString();
         $status = $request->string('status')->toString();
+        $category = $request->string('category')->toString();
         $classId = $request->integer('class_id');
         $unbilled = $request->boolean('unbilled');
+
+        $selectedClass = ClassRoom::forStudentList($classId, $category);
+        if ($selectedClass) {
+            $category = $selectedClass->class_category;
+        }
 
         $students = Student::query()
             // `payments` dimuat untuk menandai murid yang terkunci dari modul akademik.
             ->with(['classes', 'payments'])
-            ->when($search, fn ($q) => $q->where(function ($sub) use ($search) {
-                $sub->where('name', 'like', "%{$search}%")
-                    ->orWhere('student_id', 'like', "%{$search}%")
-                    ->orWhere('parent_name', 'like', "%{$search}%");
-            }))
-            ->when(in_array($status, ['active', 'inactive'], true), fn ($q) => $q->where('status', $status))
-            ->when($classId, fn ($q) => $q->whereHas('classes', fn ($c) => $c->where('classes.id', $classId)))
-            ->when($unbilled, fn ($q) => $q->unbilledFor())
-            ->orderByDesc('id')
+            ->listFilter($search, $status, $category, $selectedClass?->id, $unbilled)
             ->paginate(10)
             ->withQueryString();
 
@@ -39,10 +37,14 @@ class StudentController extends Controller
         // "berapa yang belum ditagih di antara hasil pencarian saat ini".
         $unbilledCount = Student::unbilledFor()->count();
 
-        $classes = ClassRoom::orderBy('class_category')->get();
+        $categories = ClassRoom::query()
+            ->whereNotNull('class_category')
+            ->distinct()
+            ->orderBy('class_category')
+            ->pluck('class_category');
 
         return view('students.index', compact(
-            'students', 'search', 'status', 'classId', 'classes', 'unbilled', 'unbilledCount'
+            'students', 'search', 'status', 'category', 'selectedClass', 'categories', 'unbilled', 'unbilledCount'
         ));
     }
 

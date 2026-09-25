@@ -198,6 +198,25 @@ class ClassRoom extends Model
         return 'CLS'.str_pad((string) $next, 3, '0', STR_PAD_LEFT);
     }
 
+    /**
+     * Jadwal yang disaring di daftar murid, bila ada.
+     *
+     * Dropdown di sana menyaring per kategori (satu kategori punya beberapa
+     * baris kelas, satu per jadwal). class_id hanya datang dari tautan "Buka di
+     * daftar murid" di halaman kelas; begitu admin memilih kategori lain di
+     * dropdown, jadwal itu dilepas.
+     */
+    public static function forStudentList(?int $classId, string $category): ?self
+    {
+        $class = $classId ? self::find($classId) : null;
+
+        if ($class && $category !== '' && $category !== $class->class_category) {
+            return null;
+        }
+
+        return $class;
+    }
+
     public function tutor(): BelongsTo
     {
         return $this->belongsTo(Tutor::class);

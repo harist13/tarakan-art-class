@@ -97,8 +97,6 @@ Route::middleware('auth')->group(function () {
 
     // ─── Scheduler / Replacement Class (F4) ────────────────────
     Route::get('schedules/calendar', [ScheduleController::class, 'calendar'])->name('schedules.calendar');
-    Route::patch('schedules/{schedule}/status', [ScheduleController::class, 'updateStatus'])
-        ->middleware('role:super_admin')->name('schedules.status');
     Route::resource('schedules', ScheduleController::class)->except('show');
 
     // ─── Attendance (F5) ───────────────────────────────────────

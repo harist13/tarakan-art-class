@@ -185,7 +185,8 @@
 
 {{-- Ringkasan pemeriksaan akhir: lima isian di atas dirangkum jadi satu baris
      "dari sesi ini → ke sesi itu". Ini satu-satunya tempat admin bisa memastikan
-     sesi mana yang benar-benar berpindah sebelum mengajukan. --}}
+     sesi mana yang benar-benar berpindah sebelum menyimpan — replacement
+     langsung berlaku, tidak ada tahap persetujuan yang bisa menangkap salah pilih. --}}
 <div class="border rounded p-3 mb-4 bg-light d-none" id="replacementSummary">
     <div class="row g-3 align-items-center">
         <div class="col-md-4">
@@ -207,7 +208,7 @@
 
 <div class="mb-3">
     <label class="form-label" for="reason">Alasan <span class="text-muted">(opsional)</span></label>
-    <textarea name="reason" id="reason" class="form-control" rows="2" placeholder="mis. sakit, ada acara keluarga — dibaca Super Admin saat menyetujui">{{ old('reason', $request->reason ?? '') }}</textarea>
+    <textarea name="reason" id="reason" class="form-control" rows="2" placeholder="mis. sakit, ada acara keluarga">{{ old('reason', $request->reason ?? '') }}</textarea>
 </div>
 
 @push('scripts')

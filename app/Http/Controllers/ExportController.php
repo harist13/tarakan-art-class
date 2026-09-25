@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Attendance;
+use App\Models\ClassRoom;
 use App\Models\Payment;
 use App\Models\Student;
 use App\Models\Transaction;
@@ -17,20 +18,12 @@ class ExportController extends Controller
     {
         $search = $request->string('search')->toString();
         $status = $request->string('status')->toString();
-        $classId = $request->integer('class_id');
-        $unbilled = $request->boolean('unbilled');
+        $category = $request->string('category')->toString();
+        $selectedClass = ClassRoom::forStudentList($request->integer('class_id'), $category);
 
         $students = Student::query()
             ->with('classes')
-            ->when($search, fn ($q) => $q->where(function ($sub) use ($search) {
-                $sub->where('name', 'like', "%{$search}%")
-                    ->orWhere('student_id', 'like', "%{$search}%")
-                    ->orWhere('parent_name', 'like', "%{$search}%");
-            }))
-            ->when(in_array($status, ['active', 'inactive'], true), fn ($q) => $q->where('status', $status))
-            ->when($classId, fn ($q) => $q->whereHas('classes', fn ($c) => $c->where('classes.id', $classId)))
-            ->when($unbilled, fn ($q) => $q->unbilledFor())
-            ->orderByDesc('id')
+            ->listFilter($search, $status, $category, $selectedClass?->id, $request->boolean('unbilled'))
             ->get();
 
         $headers = ['Student ID', 'Nama', 'Tgl lahir', 'Usia', 'Orang tua', 'Telepon', 'Kelas', 'Tipe kelas', 'Status', 'Tgl gabung'];

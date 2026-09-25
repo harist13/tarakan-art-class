@@ -187,11 +187,11 @@
 <div class="d-sm-flex align-items-start justify-content-between mb-3">
     <div>
         <h1 class="h3 mb-1 text-gray-800 fw-bold">Jadwal & Replacement Class</h1>
-        <p class="text-muted small mb-0">Proses permintaan kelas pengganti, lalu atur ketersediaan slot yang bisa dipakai sebagai kelas pengganti.</p>
+        <p class="text-muted small mb-0">Atur kelas pengganti murid (langsung berlaku), lalu atur ketersediaan slot yang bisa dipakai sebagai kelas pengganti.</p>
     </div>
     <div class="d-flex gap-2 mt-2 mt-sm-0">
         <a href="{{ route('schedules.calendar') }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-calendar3 me-1"></i>Lihat kalender</a>
-        <a href="{{ route('schedules.create') }}" class="btn btn-sm btn-primary shadow-sm"><i class="bi bi-plus-lg me-1"></i>Ajukan Replacement</a>
+        <a href="{{ route('schedules.create') }}" class="btn btn-sm btn-primary shadow-sm"><i class="bi bi-plus-lg me-1"></i>Atur Replacement</a>
     </div>
 </div>
 
@@ -199,11 +199,10 @@
      Tiap kartu membuka panel yang mengelolanya — angka yang menarik perhatian
      dan tempat menindaklanjutinya jadi satu klik. --}}
 @php
-    // Nol pengajuan bukan angka yang perlu diteriaki. Kartunya berganti nada:
-    // amber selama ada yang menunggu, hijau tenang begitu bersih — supaya warna
-    // di layar ini selalu berarti "ada yang harus dikerjakan", bukan sekadar
-    // penanda kartu mana yang mana.
-    $adaPending = $pendingCount > 0;
+    // Replacement tidak lagi menunggu persetujuan, jadi kartunya hanya memberi
+    // tahu berapa sesi pengganti yang akan datang — tidak ada yang perlu
+    // ditindak, maka warnanya tenang (biru), bukan amber.
+    $adaUpcoming = $upcomingCount > 0;
 
     // Slot: hijau selama masih ada yang bisa dipakai, merah bila kelas ada tapi
     // tak satu pun bisa dipilih (itu keadaan yang perlu ditindak), kelabu bila
@@ -215,17 +214,17 @@
 @endphp
 <div class="row g-3 mb-4">
     <div class="col-md-6">
-        <a href="{{ route('schedules.index', ['status' => 'pending']) }}" class="stat-card"
-            style="--stat-color: {{ $adaPending ? 'var(--stat-warning)' : 'var(--stat-success)' }};"
-            aria-label="{{ $adaPending ? $pendingCount.' request replacement menunggu persetujuan. Buka daftarnya.' : 'Tidak ada request replacement yang menunggu. Buka riwayatnya.' }}">
+        <a href="{{ route('schedules.index', ['status' => 'upcoming']) }}" class="stat-card"
+            style="--stat-color: {{ $adaUpcoming ? 'var(--primary-dark)' : 'var(--stat-neutral)' }};"
+            aria-label="{{ $upcomingCount }} replacement class akan datang. Buka daftarnya.">
             <span class="stat-head">
-                <span class="stat-icon"><i class="bi {{ $adaPending ? 'bi-hourglass-split' : 'bi-check2-circle' }}" aria-hidden="true"></i></span>
-                <span class="stat-label">Replacement Pending</span>
+                <span class="stat-icon"><i class="bi bi-calendar-check" aria-hidden="true"></i></span>
+                <span class="stat-label">Replacement mendatang</span>
             </span>
-            <span class="stat-value">{{ $pendingCount }}</span>
+            <span class="stat-value">{{ $upcomingCount }}</span>
             <span class="stat-foot">
-                <span class="stat-note">{{ $adaPending ? 'menunggu persetujuan' : 'semua request sudah ditinjau' }}</span>
-                <span class="stat-action">{{ $adaPending ? 'Tinjau' : 'Lihat daftar' }}<i class="bi bi-arrow-right" aria-hidden="true"></i></span>
+                <span class="stat-note">{{ $adaUpcoming ? 'sesi pengganti terjadwal' : 'belum ada sesi pengganti terjadwal' }}</span>
+                <span class="stat-action">Lihat daftar<i class="bi bi-arrow-right" aria-hidden="true"></i></span>
             </span>
         </a>
     </div>
@@ -265,7 +264,7 @@
     <input type="radio" class="btn-check" name="panelToggle" id="toggleRequests" autocomplete="off" @checked($tab === 'requests')>
     <label class="btn btn-outline-primary" for="toggleRequests">
         <i class="bi bi-arrow-left-right me-1"></i>Request Replacement
-        @if($pendingCount)<span class="badge rounded-pill ms-1 fw-bold" style="background-color: rgba(245, 136, 12, 1); color: #FFFFFF !important;">{{ $pendingCount }}</span>@endif
+        @if($upcomingCount)<span class="badge rounded-pill ms-1 fw-bold bg-primary">{{ $upcomingCount }}</span>@endif
     </label>
     <input type="radio" class="btn-check" name="panelToggle" id="toggleSlots" autocomplete="off" @checked($tab === 'slots')>
     <label class="btn btn-outline-primary" for="toggleSlots">
@@ -286,9 +285,9 @@
             </div>
             <select name="status" class="form-select form-select-sm" style="width:150px;">
                 <option value="">Semua status</option>
-                <option value="pending" @selected($status === 'pending')>Pending</option>
-                <option value="approved" @selected($status === 'approved')>Approved</option>
-                <option value="rejected" @selected($status === 'rejected')>Rejected</option>
+                <option value="upcoming" @selected($status === 'upcoming')>Akan datang</option>
+                <option value="past" @selected($status === 'past')>Sudah lewat</option>
+                <option value="rejected" @selected($status === 'rejected')>Ditolak (lama)</option>
             </select>
             @if($search !== '' || $status !== '')
                 <a href="{{ route('schedules.index') }}" class="btn btn-sm btn-outline-secondary" title="Reset filter"><i class="bi bi-x-lg"></i></a>
@@ -296,11 +295,6 @@
         </form>
     </div>
     <div class="card-body">
-        @include('partials.arrears-note', [
-            'count' => $arrearsCount,
-            'label' => 'request replacement pending',
-            'effect' => 'Pengajuan baru untuk mereka ditolak sampai tunggakan lunas — tinjau dulu sebelum approve.',
-        ])
         <div class="table-responsive">
             <table class="table table-hover align-middle">
                 <thead class="text-muted small text-uppercase">
@@ -330,30 +324,21 @@
                             </td>
                             <td class="small">{{ $req->reason ?: '—' }}</td>
                             <td>
+                                {{-- Tanpa tahap persetujuan, statusnya cukup menjawab
+                                     "sudah lewat atau belum". "Ditolak" hanya tersisa
+                                     pada request lama dari masa persetujuan; mengubahnya
+                                     lewat tombol edit membuatnya berlaku. --}}
                                 @php
-                                    $reqStyles = [
-                                        'pending'  => ['bg' => 'rgba(245, 136, 12, 1)', 'label' => 'Pending'],
-                                        'approved' => ['bg' => '#15803D',               'label' => 'Approved'],
-                                        'rejected' => ['bg' => '#DC2626',               'label' => 'Rejected'],
-                                    ];
-                                    $st = $reqStyles[$req->request_status] ?? ['bg' => '#475569', 'label' => ucfirst($req->request_status)];
+                                    $st = match (true) {
+                                        $req->request_status === 'rejected' => ['bg' => '#DC2626', 'label' => 'Ditolak'],
+                                        $req->isPast() => ['bg' => '#475569', 'label' => 'Selesai'],
+                                        default => ['bg' => '#15803D', 'label' => 'Terjadwal'],
+                                    };
                                 @endphp
                                 <span class="badge rounded-pill px-3 py-1 text-white fw-semibold" style="background-color: {{ $st['bg'] }};">{{ $st['label'] }}</span>
                                 @if($req->approver)<br><small class="text-muted">oleh {{ $req->approver->full_name }}</small>@endif
                             </td>
                             <td class="text-end text-nowrap">
-                                @if($req->request_status === 'pending' && auth()->user()->isSuperAdmin())
-                                    <form action="{{ route('schedules.status', $req) }}" method="POST" class="d-inline">
-                                        @csrf @method('PATCH')
-                                        <input type="hidden" name="request_status" value="approved">
-                                        <button class="btn btn-sm btn-success" title="Setujui"><i class="bi bi-check-lg"></i></button>
-                                    </form>
-                                    <form action="{{ route('schedules.status', $req) }}" method="POST" class="d-inline">
-                                        @csrf @method('PATCH')
-                                        <input type="hidden" name="request_status" value="rejected">
-                                        <button class="btn btn-sm btn-danger" title="Tolak"><i class="bi bi-x-lg"></i></button>
-                                    </form>
-                                @endif
                                 <a href="{{ route('schedules.edit', $req) }}" class="btn btn-sm btn-info text-white" title="Ubah"><i class="bi bi-pencil"></i></a>
                                 <form action="{{ route('schedules.destroy', $req) }}" method="POST" class="d-inline" onsubmit="return confirm('Hapus request ini?')">
                                     @csrf @method('DELETE')

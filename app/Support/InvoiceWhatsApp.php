@@ -3,9 +3,10 @@
 namespace App\Support;
 
 use App\Models\Payment;
+use Illuminate\Support\Carbon;
 
 /**
- * Menyusun tautan wa.me berisi rincian invoice untuk dikirim ke wali murid.
+ * Menyusun tautan chat WhatsApp berisi rincian invoice untuk dikirim ke wali murid.
  *
  * Dipisah dari controller karena isi pesannya akan dipakai lagi begitu tautan
  * pembayaran (Midtrans Snap) ikut disertakan lewat $payUrl.
@@ -15,7 +16,7 @@ use App\Models\Payment;
  */
 class InvoiceWhatsApp
 {
-    /** Tautan wa.me siap buka; null bila nomor wali murid tidak dapat dipakai. */
+    /** Tautan chat siap buka; null bila nomor wali murid tidak dapat dipakai. */
     public static function link(Payment $payment, ?string $payUrl = null): ?string
     {
         $number = $payment->student?->whatsappNumber();
@@ -24,7 +25,7 @@ class InvoiceWhatsApp
             return null;
         }
 
-        return 'https://wa.me/'.$number.'?text='.rawurlencode(self::message($payment, $payUrl));
+        return self::chatUrl($number, self::message($payment, $payUrl));
     }
 
     /**
@@ -43,7 +44,17 @@ class InvoiceWhatsApp
             return null;
         }
 
-        return 'https://wa.me/'.$admin.'?text='.rawurlencode(self::receiptMessage($payment));
+        return self::chatUrl($admin, self::receiptMessage($payment));
+    }
+
+    /**
+     * Langsung ke api.whatsapp.com, bukan lewat wa.me: pengalihan wa.me →
+     * api.whatsapp.com merusak emoji 4-byte (😊, 🙏🏻) jadi "��" di WhatsApp
+     * Web/Desktop. Tujuan akhirnya sama, hanya tanpa pengalihan itu.
+     */
+    private static function chatUrl(string $number, string $text): string
+    {
+        return 'https://api.whatsapp.com/send?phone='.$number.'&text='.rawurlencode($text);
     }
 
     /** Isi pesan bukti pembayaran, ditulis dari sudut pandang orang tua. */
@@ -63,26 +74,28 @@ class InvoiceWhatsApp
     }
 
     /**
-     * Isi pesan invoice. Nadanya dibedakan: invoice yang belum dibayar berisi
-     * ajakan membayar, yang sudah lunas jadi tanda terima.
+     * Isi pesan invoice, mengikuti template sapaan dari admin studio. Nadanya
+     * dibedakan: invoice yang belum dibayar berisi ajakan membayar, yang sudah
+     * lunas jadi tanda terima.
      */
     public static function message(Payment $payment, ?string $payUrl = null): string
     {
         $student = $payment->student;
         $paid = $payment->payment_status === 'paid';
 
-        $greeting = $student?->parent_name
-            ? 'Halo Bapak/Ibu '.$student->parent_name.','
-            : 'Halo Bapak/Ibu,';
+        $greeting = 'Hai wali murid '.($student?->name ?? 'anak').', apa kabar? Semoga selalu dalam keadaan yang sehat☺️';
 
         $intro = $paid
-            ? 'Terima kasih, pembayaran untuk '.($student?->name ?? 'murid').' sudah kami terima. Berikut rinciannya:'
-            : 'Berikut invoice kelas seni untuk '.($student?->name ?? 'murid').':';
+            ? 'Kami dari '.config('site.name').' ingin mengonfirmasi bahwa pembayaran biaya les sudah kami terima, dengan rincian:'
+            : 'Kami dari '.config('site.name').' ingin menginformasikan untuk biaya les dengan rincian:';
 
         $lines = array_filter([
             'No. Invoice: '.$payment->invoice_number,
             'Nama murid: '.($student?->name ?? '-'),
-            'Tanggal: '.$payment->payment_date->format('d/m/Y'),
+            // Nama bulan saja ("Oktober"); tagihan lepas tanpa periode tidak punya baris ini.
+            $payment->billing_period
+                ? 'Periode pembayaran : '.Carbon::createFromFormat('Y-m-d', $payment->billing_period.'-01')->locale('id')->translatedFormat('F')
+                : null,
             $payment->due_date ? 'Jatuh tempo: '.$payment->due_date->format('d/m/Y') : null,
             'Jumlah: Rp '.number_format((float) $payment->payment_amount, 0, ',', '.'),
             'Metode: '.$payment->methodLabel(),
@@ -90,13 +103,16 @@ class InvoiceWhatsApp
         ]);
 
         $closing = match (true) {
-            $paid => 'Terima kasih atas kepercayaan Bapak/Ibu kepada '.config('site.name').'.',
+            $paid => null,
             $payUrl !== null => "Pembayaran bisa dilakukan lewat tautan berikut:\n".$payUrl,
             $payment->isOverdue() => 'Invoice ini sudah lewat jatuh tempo '.$payment->daysOverdue()
-                .' hari. Mohon segera diselesaikan ya, terima kasih.',
-            default => 'Mohon pembayaran diselesaikan sebelum tanggal jatuh tempo. Terima kasih.',
+                .' hari. Mohon segera diselesaikan ya.',
+            default => 'Mohon pembayaran diselesaikan sebelum tanggal jatuh tempo ya.',
         };
 
-        return $greeting."\n\n".$intro."\n\n".implode("\n", $lines)."\n\n".$closing;
+        // Dua baris kosong sebelum rincian memang bagian dari template.
+        return $greeting."\n\n".$intro."\n\n\n".implode("\n", $lines)."\n\n"
+            .($closing !== null ? $closing."\n\n" : '')
+            .'Terima kasih banyak😊🙏🏻';
     }
 }
