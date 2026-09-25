@@ -1,7 +1,7 @@
 @extends('layouts.public')
 
 @section('title', 'Tentang kami')
-@section('description', 'Cerita di balik Tarakan Art Class, visi & misi kami, metode belajar yang membedakan, dan profil tutor yang mendampingi anak setiap kelas.')
+@section('description', 'Tentang Tarakan Art Class: ruang belajar seni dari dasar di Tarakan. Visi & misi kami, metode belajar, dan fasilitas studio.')
 
 @section('content')
 

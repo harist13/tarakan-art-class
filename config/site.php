@@ -195,10 +195,10 @@ perspektif',
 
     // ─── Tentang ───────────────────────────────────────────────────────
     'about' => [
-        'story' => 'Tarakan Art Class lahir dari satu keresahan sederhana: anak-anak di Tarakan '
-            .'punya banyak ide, tapi sedikit ruang untuk menuangkannya. Sejak 2019 kami membuka '
-            .'studio kecil yang hangat, tempat anak usia 3 sampai 12 tahun bisa mencoret, mewarnai, '
-            .'dan menggambar tanpa takut salah.',
+        // Sama dengan deskripsi hero di beranda.
+        'story' => 'Tarakan Art Class hadir sebagai ruang buat kamu belajar seni dari dasar. '
+            .'Memberi kamu ruang untuk berkreativitas, eksplorasi ide, dan tentunya '
+            .'berkarya tanpa takut salah!',
         'vision' => 'Menjadi ruang belajar seni yang menyenangkan, kreatif, dan inspiratif, tempat setiap anak '
             .'dapat mengembangkan potensi, menemukan cara berekspresi, dan berani berkarya.',
         'mission' => [
@@ -231,7 +231,6 @@ perspektif',
         'stats' => [
             ['value' => '6', 'label' => 'Tahun berjalan'],
             ['value' => '8', 'label' => 'Maks. anak per kelas (semi private class)'],
-            ['value' => '12', 'label' => 'Pameran karya'],
         ],
     ],
 

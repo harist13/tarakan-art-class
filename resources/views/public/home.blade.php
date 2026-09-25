@@ -71,7 +71,7 @@
 
                 <p class="tac-rise tac-d3 tac-hero-lead lh-lg tac-muted mt-4 mb-0">
                     Tarakan Art Class hadir sebagai ruang buat kamu belajar seni dari dasar.
-                    Memberi kamu ruang untuk berkreativitas, eksplorasi ide, dan tentunya…
+                    Memberi kamu ruang untuk berkreativitas, eksplorasi ide, dan tentunya
                     berkarya tanpa takut salah!
                 </p>
 
