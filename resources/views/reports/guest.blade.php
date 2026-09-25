@@ -113,6 +113,9 @@
         .artwork-item figcaption { padding-top: .35rem; line-height: 1.45; }
         .artwork-date { display: block; font-size: .72rem; font-weight: 700; color: #0EA5E9; }
         .artwork-desc { display: block; font-size: .75rem; opacity: .75; }
+        /* Foto progres dibandingkan berdampingan, jadi dibuat lebih besar. */
+        .progress-grid { grid-template-columns: repeat(2, 1fr); }
+        .progress-grid .artwork-item img { height: 220px; }
 
         @media print {
             body { background: #fff !important; padding: 0 !important; }
@@ -123,6 +126,7 @@
             .class-chip { border: 1px solid #fff !important; color: #fff !important; }
             /* Grid dipersempit agar tiap karya tetap utuh di atas kertas. */
             .artwork-grid { grid-template-columns: repeat(3, 1fr) !important; }
+            .progress-grid { grid-template-columns: repeat(2, 1fr) !important; }
             .artwork-item { break-inside: avoid; }
         }
     </style>
@@ -190,11 +194,32 @@
                     </div>
                 @endif
 
-                {{-- Galeri karya sepanjang periode raport. Ikut tertahan bersama
-                     raportnya bila muridnya menunggak — akses keduanya satu pintu. --}}
+                {{-- Foto progres awal vs akhir periode: menjelaskan karya yang
+                     butuh lebih dari sebulan tanpa perlu kata-kata panjang. --}}
+                @if($progress = $report->progressPhotos())
+                    <div class="report-section">
+                        <h6><i class="bi bi-arrow-left-right"></i> Progres bulan ini</h6>
+                        <div class="artwork-grid progress-grid">
+                            @foreach($progress as $foto)
+                                <figure class="artwork-item">
+                                    <img src="{{ $foto['url'] }}" alt="Progres {{ strtolower($foto['label']) }} — {{ $report->student->name }}" loading="lazy">
+                                    <figcaption>
+                                        <span class="artwork-date">{{ $foto['label'] }}</span>
+                                        @if($foto['caption'])
+                                            <span class="artwork-desc">{{ $foto['caption'] }}</span>
+                                        @endif
+                                    </figcaption>
+                                </figure>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
+
+                {{-- Galeri karya selesai sepanjang periode raport. Ikut tertahan
+                     bersama raportnya bila muridnya menunggak — akses keduanya satu pintu. --}}
                 @if($artworks->isNotEmpty())
                     <div class="report-section">
-                        <h6><i class="bi bi-images"></i> Karya periode ini ({{ $artworks->count() }})</h6>
+                        <h6><i class="bi bi-images"></i> Karya selesai periode ini ({{ $artworks->count() }})</h6>
                         <div class="artwork-grid">
                             @foreach($artworks as $artwork)
                                 <figure class="artwork-item">

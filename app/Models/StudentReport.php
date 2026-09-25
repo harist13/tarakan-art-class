@@ -14,6 +14,10 @@ class StudentReport extends Model
         'period_end',
         'activity_notes',
         'tutor_notes',
+        'progress_first_photo',
+        'progress_first_caption',
+        'progress_last_photo',
+        'progress_last_caption',
         'credential_key',
         'created_by',
     ];
@@ -58,6 +62,45 @@ class StudentReport extends Model
             ->inPeriod($this->period_start, $this->period_end)
             ->orderBy('taken_on')
             ->orderBy('id');
+    }
+
+    /**
+     * Slot foto progres: kunci form → label yang dilihat orang tua.
+     * "Terakhir", bukan "keempat": ada bulan yang punya lima minggu.
+     */
+    public const PROGRESS_SLOTS = [
+        'first' => 'Minggu pertama',
+        'last' => 'Minggu terakhir',
+    ];
+
+    /**
+     * Foto progres yang terisi, berurutan awal → akhir.
+     *
+     * @return list<array{label: string, url: string, caption: ?string}>
+     */
+    public function progressPhotos(): array
+    {
+        $photos = [];
+
+        foreach (self::PROGRESS_SLOTS as $slot => $label) {
+            $path = $this->{"progress_{$slot}_photo"};
+
+            if ($path) {
+                $photos[] = [
+                    'label' => $label,
+                    'url' => asset('storage/'.$path),
+                    'caption' => $this->{"progress_{$slot}_caption"},
+                ];
+            }
+        }
+
+        return $photos;
+    }
+
+    /** @return list<string> berkas foto progres yang tersimpan di disk public. */
+    public function progressPhotoPaths(): array
+    {
+        return array_values(array_filter([$this->progress_first_photo, $this->progress_last_photo]));
     }
 
     public function student(): BelongsTo

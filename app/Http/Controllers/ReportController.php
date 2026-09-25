@@ -8,6 +8,7 @@ use App\Models\Student;
 use App\Models\StudentReport;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class ReportController extends Controller
 {
@@ -96,13 +97,19 @@ class ReportController extends Controller
     {
         $data = $this->validateData($request);
         $data['created_by'] = auth()->id();
+        [$data, $baru] = $this->storeProgressPhotos($request, $data);
 
-        $report = DB::transaction(function () use ($data) {
-            $report = StudentReport::create($data);
-            ActivityLog::record('created', $report, "Membuat raport {$report->credential_key}");
+        try {
+            $report = DB::transaction(function () use ($data) {
+                $report = StudentReport::create($data);
+                ActivityLog::record('created', $report, "Membuat raport {$report->credential_key}");
 
-            return $report;
-        });
+                return $report;
+            });
+        } catch (\Throwable $e) {
+            Storage::disk('public')->delete($baru);
+            throw $e;
+        }
 
         return redirect()->route('reports.index', ['month' => $report->period_start->format('Y-m')])
             ->with('success', "Raport berhasil dibuat. Credential key: {$report->credential_key}");
@@ -133,21 +140,36 @@ class ReportController extends Controller
     public function update(Request $request, StudentReport $report)
     {
         $data = $this->validateData($request, $report->id);
+        $lama = $report->progressPhotoPaths();
+        [$data, $baru] = $this->storeProgressPhotos($request, $data, $report);
 
-        DB::transaction(function () use ($report, $data) {
-            $report->update($data);
-            ActivityLog::record('updated', $report, "Memperbarui raport {$report->credential_key}");
-        });
+        try {
+            DB::transaction(function () use ($report, $data) {
+                $report->update($data);
+                ActivityLog::record('updated', $report, "Memperbarui raport {$report->credential_key}");
+            });
+        } catch (\Throwable $e) {
+            Storage::disk('public')->delete($baru);
+            throw $e;
+        }
+
+        // Berkas lama dibuang hanya setelah database benar-benar berganti, dan
+        // hanya yang memang tidak dipakai lagi (diganti atau dihapus).
+        Storage::disk('public')->delete(array_diff($lama, $report->fresh()->progressPhotoPaths()));
 
         return redirect()->route('reports.index', ['month' => $report->period_start->format('Y-m')])->with('success', 'Raport berhasil diperbarui.');
     }
 
     public function destroy(StudentReport $report)
     {
+        $berkas = $report->progressPhotoPaths();
+
         DB::transaction(function () use ($report) {
             ActivityLog::record('deleted', $report, "Menghapus raport {$report->credential_key}");
             $report->delete();
         });
+
+        Storage::disk('public')->delete($berkas);
 
         return redirect()->route('reports.index', ['month' => $report->period_start->format('Y-m')])->with('success', 'Raport berhasil dihapus.');
     }
@@ -224,6 +246,17 @@ class ReportController extends Controller
             ],
             'activity_notes' => ['required', 'string'],
             'tutor_notes' => ['nullable', 'string'],
+            'progress_first_photo' => ['nullable', 'image', 'mimes:jpeg,jpg,png,webp', 'max:4096'],
+            'progress_first_caption' => ['nullable', 'string', 'max:255'],
+            'remove_progress_first_photo' => ['nullable', 'boolean'],
+            'progress_last_photo' => ['nullable', 'image', 'mimes:jpeg,jpg,png,webp', 'max:4096'],
+            'progress_last_caption' => ['nullable', 'string', 'max:255'],
+            'remove_progress_last_photo' => ['nullable', 'boolean'],
+        ], [
+            'progress_first_photo.image' => 'Foto minggu pertama harus berupa gambar.',
+            'progress_first_photo.max' => 'Ukuran foto minggu pertama maksimal 4MB.',
+            'progress_last_photo.image' => 'Foto minggu terakhir harus berupa gambar.',
+            'progress_last_photo.max' => 'Ukuran foto minggu terakhir maksimal 4MB.',
         ]);
 
         // Cek duplikat: murid yang sama di bulan periode yang sama.
@@ -242,5 +275,34 @@ class ReportController extends Controller
         }
 
         return $data;
+    }
+
+    /**
+     * Tulis foto progres yang baru diunggah ke disk dan siapkan kolomnya.
+     *
+     * Berkas ditulis sebelum transaksi (disk tidak ikut rollback); pemanggil
+     * membuang $baru bila penyimpanan gagal. Slot yang tidak diunggah ulang dan
+     * tidak dicentang "hapus" dibiarkan apa adanya.
+     *
+     * @return array{0: array<string, mixed>, 1: list<string>} [data, berkas baru]
+     */
+    private function storeProgressPhotos(Request $request, array $data, ?StudentReport $report = null): array
+    {
+        $baru = [];
+
+        foreach (array_keys(StudentReport::PROGRESS_SLOTS) as $slot) {
+            $kolom = "progress_{$slot}_photo";
+            $hapus = (bool) ($data["remove_{$kolom}"] ?? false);
+            unset($data[$kolom], $data["remove_{$kolom}"]);
+
+            if ($request->hasFile($kolom)) {
+                $data[$kolom] = $baru[] = $request->file($kolom)->store('report-progress', 'public');
+            } elseif ($hapus && $report) {
+                $data[$kolom] = null;
+                $data["progress_{$slot}_caption"] = null;
+            }
+        }
+
+        return [$data, $baru];
     }
 }

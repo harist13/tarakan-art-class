@@ -88,10 +88,28 @@
         </div>
     @endif
 
-    {{-- Karya sepanjang periode raport — sama persis dengan yang dilihat orang
-         tua lewat credential key. Unggahnya di modul Galeri karya. --}}
+    {{-- Foto progres awal vs akhir periode — diunggah lewat form raport. --}}
+    @if($progress = $report->progressPhotos())
+        <div class="report-section">
+            <h6><i class="bi bi-arrow-left-right"></i> Progres bulan ini</h6>
+            <div class="row g-3">
+                @foreach($progress as $foto)
+                    <div class="col-6 col-md-4">
+                        <a href="{{ $foto['url'] }}" target="_blank" rel="noopener">
+                            <img src="{{ $foto['url'] }}" alt="Progres {{ strtolower($foto['label']) }}" class="w-100 rounded border" style="height:180px; object-fit:cover;">
+                        </a>
+                        <div class="small fw-semibold text-primary mt-1">{{ $foto['label'] }}</div>
+                        @if($foto['caption'])<div class="small text-muted">{{ $foto['caption'] }}</div>@endif
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    @endif
+
+    {{-- Karya selesai sepanjang periode raport — sama persis dengan yang dilihat
+         orang tua lewat credential key. Unggahnya di modul Galeri karya. --}}
     <div class="report-section">
-        <h6><i class="bi bi-images"></i> Karya periode ini ({{ $artworks->count() }})</h6>
+        <h6><i class="bi bi-images"></i> Karya selesai periode ini ({{ $artworks->count() }})</h6>
         @if($artworks->isNotEmpty())
             <div class="row g-2">
                 @foreach($artworks as $artwork)

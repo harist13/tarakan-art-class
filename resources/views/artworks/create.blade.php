@@ -13,6 +13,8 @@
         <div class="alert alert-info small mb-4">
             <i class="bi bi-folder me-1"></i>Foto masuk ke folder bulan sesuai <strong>tanggal karya</strong> yang diisi di bawah — tidak ada folder yang perlu dibuat manual.
             Karya bulan yang sama dengan periode raport murid ini akan ikut terlihat orang tua lewat credential key.
+            <div class="mt-1"><i class="bi bi-check2-circle me-1"></i>Galeri ini khusus <strong>karya yang sudah selesai</strong>. Foto karya yang masih berjalan
+            (perbandingan minggu pertama &amp; terakhir) diunggah di form <a href="{{ route('reports.index') }}" class="alert-link">Raport</a>.</div>
         </div>
 
         <form action="{{ route('artworks.store') }}" method="POST" enctype="multipart/form-data">
