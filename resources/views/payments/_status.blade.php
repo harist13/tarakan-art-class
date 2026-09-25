@@ -15,15 +15,6 @@
         </span>
     @endif
 
-    {{-- Sedang ditagih lewat tagihan gabungan — orang tua mungkin membayarnya
-         dari tautan gabungan, bukan dari tautan invoice ini. --}}
-    @if($bundle = $payment->openBundle())
-        <a href="{{ route('payment-bundles.index') }}" class="badge rounded-pill px-3 py-1 text-white fw-semibold text-nowrap text-decoration-none" style="background-color: #6D28D9;"
-           title="Ditagih bersama invoice lain dalam {{ $bundle->code }}">
-            <i class="bi bi-collection me-1"></i>{{ $bundle->code }}
-        </a>
-    @endif
-
     @if($payment->isOverdue())
         <span class="badge rounded-pill px-3 py-1 text-white fw-semibold text-nowrap" style="background-color: #DC2626;">
             <i class="bi bi-clock-history me-1"></i>Lewat {{ $payment->daysOverdue() }} hari

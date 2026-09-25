@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ActivityLog;
 use App\Models\Payment;
+use App\Models\PaymentBundle;
 use App\Models\Student;
 use App\Support\InvoiceWhatsApp;
 use App\Support\MidtransSnap;
@@ -19,17 +20,54 @@ class PaymentController extends Controller
         $search = $request->string('search')->toString();
         $status = $request->string('status')->toString();
 
+        // Gabungan yang masih menagih: belum lunas & belum dibatalkan.
+        $openBundle = fn ($b) => $b->whereNull('payment_bundles.paid_at')->whereNull('payment_bundles.cancelled_at');
+
         $payments = Payment::query()
-            ->with(['student', 'bundles'])
-            ->when($search, fn ($q) => $q->where('invoice_number', 'like', "%{$search}%")
-                ->orWhereHas('student', fn ($s) => $s->where('name', 'like', "%{$search}%")))
+            ->with('student')
+            // Invoice yang sedang ditagih lewat tagihan gabungan tidak tampil
+            // sendiri-sendiri — ia dilebur ke satu baris gabungan di atas daftar.
+            // Yang lunas tetap tampil per invoice: itu catatan pembayarannya.
+            ->where(fn ($q) => $q->where('payment_status', 'paid')->orWhereDoesntHave('bundles', $openBundle))
+            // Dikelompokkan dalam satu where(): tanpa itu orWhereHas di dalamnya
+            // lolos dari filter status di bawah.
+            ->when($search, fn ($q) => $q->where(fn ($w) => $w
+                ->where('invoice_number', 'like', "%{$search}%")
+                ->orWhereHas('student', fn ($s) => $s->where('name', 'like', "%{$search}%"))))
             ->when(in_array($status, ['paid', 'unpaid'], true), fn ($q) => $q->where('payment_status', $status))
             // "overdue" = belum dibayar DAN sudah lewat jatuh tempo; ini yang
             // sebenarnya perlu ditagih, bukan seluruh invoice unpaid.
             ->when($status === 'overdue', fn ($q) => $q->overdue())
+            // Filter "Tagihan gabungan": hanya baris gabungan, tanpa invoice lepas.
+            ->when($status === 'bundle', fn ($q) => $q->whereRaw('1 = 0'))
             ->orderByDesc('id')
             ->paginate(10)
             ->withQueryString();
+
+        // Baris gabungan, di halaman pertama saja: jumlahnya kecil (satu per
+        // keluarga), dan memecahnya ke paginasi invoice hanya membuatnya
+        // tercecer. Filter & pencarian yang sama ikut berlaku.
+        $bundles = collect();
+        if ($payments->onFirstPage() && $status !== 'paid') {
+            $bundles = PaymentBundle::query()
+                ->with(['payments.student'])
+                ->whereNull('paid_at')->whereNull('cancelled_at')
+                ->whereHas('payments', fn ($p) => $p->where('payment_status', '!=', 'paid'))
+                ->when($search, fn ($q) => $q->where(fn ($w) => $w
+                    ->where('code', 'like', "%{$search}%")
+                    ->orWhereHas('payments', fn ($p) => $p
+                        ->where('payments.invoice_number', 'like', "%{$search}%")
+                        ->orWhereHas('student', fn ($s) => $s->where('name', 'like', "%{$search}%")))))
+                ->when($status === 'overdue', fn ($q) => $q->whereHas('payments', fn ($p) => $p->overdue()))
+                ->orderByDesc('id')
+                ->get();
+        }
+
+        // Angka di pilihan filter "Tagihan gabungan" — seluruh gabungan yang
+        // masih menagih, lepas dari pencarian yang sedang aktif.
+        $bundleCount = PaymentBundle::whereNull('paid_at')->whereNull('cancelled_at')
+            ->whereHas('payments', fn ($p) => $p->where('payment_status', '!=', 'paid'))
+            ->count();
 
         // Menentukan tampil-tidaknya tombol "salin tautan bayar": tanpa kunci
         // Midtrans, tautannya tidak ada gunanya dikirim.
@@ -44,10 +82,10 @@ class PaymentController extends Controller
         // Halaman hanya perlu memantau bila masih ada yang ditunggu. Kalau semua
         // invoice di layar sudah lunas, tidak ada perubahan yang mungkin datang,
         // dan menjalankan pemantau hanya membuang permintaan tiap dua detik.
-        $hasPending = $payments->contains(fn (Payment $p) => $p->payment_status !== 'paid');
+        $hasPending = $bundles->isNotEmpty() || $payments->contains(fn (Payment $p) => $p->payment_status !== 'paid');
 
         return view('payments.index', compact(
-            'payments', 'search', 'status', 'midtransActive', 'webhookUnreachable', 'hasPending'
+            'payments', 'bundles', 'bundleCount', 'search', 'status', 'midtransActive', 'webhookUnreachable', 'hasPending'
         ));
     }
 

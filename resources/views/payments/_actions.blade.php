@@ -52,11 +52,26 @@
         </form>
     @endif
 
+    <a href="{{ route('payments.edit', $payment) }}" class="btn btn-sm btn-info text-white" title="Edit">
+        <i class="bi bi-pencil"></i>
+    </a>
+
+    @if(auth()->user()->isSuperAdmin())
+        <form action="{{ route('payments.destroy', $payment) }}" method="POST"
+              onsubmit="return confirm('Void pembayaran ini?')">
+            @csrf @method('DELETE')
+            <button class="btn btn-sm btn-danger" title="Void"><i class="bi bi-x-circle"></i></button>
+        </form>
+    @endif
+
     {{-- Konfirmasi lunas manual hanya untuk pembayaran tunai. Untuk channel
          gateway, pelunasan datang dari Midtrans; tombolnya tetap ditampilkan
          (dimatikan) supaya admin tahu tombol itu ada dan tahu sebabnya —
          menyembunyikannya hanya memindahkan pertanyaan ke grup WhatsApp. --}}
     @if($payment->payment_status !== 'paid')
+        {{-- Pemutus baris: tombol Lunas selalu di baris sendiri, di bawah
+             Edit & Void, bukan terselip di antara tombol lain. --}}
+        <div class="w-100"></div>
         @if($payment->canConfirmManually())
             <form action="{{ route('payments.confirm', $payment) }}" method="POST"
                   onsubmit="return confirm('Konfirmasi invoice ini sebagai LUNAS?')">
@@ -77,17 +92,5 @@
                 </button>
             </span>
         @endif
-    @endif
-
-    <a href="{{ route('payments.edit', $payment) }}" class="btn btn-sm btn-info text-white" title="Edit">
-        <i class="bi bi-pencil"></i>
-    </a>
-
-    @if(auth()->user()->isSuperAdmin())
-        <form action="{{ route('payments.destroy', $payment) }}" method="POST"
-              onsubmit="return confirm('Void pembayaran ini?')">
-            @csrf @method('DELETE')
-            <button class="btn btn-sm btn-danger" title="Void"><i class="bi bi-x-circle"></i></button>
-        </form>
     @endif
 </div>

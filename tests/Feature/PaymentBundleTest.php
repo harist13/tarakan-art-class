@@ -263,4 +263,66 @@ class PaymentBundleTest extends TestCase
             ->assertSee('Tagihan gabungan')
             ->assertSee($bundle->code);
     }
+
+    public function test_kode_gabungan_mudah_dibaca(): void
+    {
+        [$bundle] = $this->siblingsBundle();
+
+        $this->assertSame('Gabungan-001', $bundle->code);
+    }
+
+    public function test_invoice_gabungan_tampil_sebagai_satu_baris_di_daftar_pembayaran(): void
+    {
+        [$bundle, $a, $t] = $this->siblingsBundle();
+        $lain = $this->invoice($this->student('Murid Lain', 'Wali Lain', '089999999999'), 100);
+
+        $halaman = $this->get(route('payments.index'))->assertOk()
+            ->assertSee($bundle->code)
+            ->assertSee('Rp 660.000')
+            ->assertSee($lain->invoice_number)
+            ->getContent();
+
+        // Invoice di dalam gabungan tidak lagi punya baris sendiri: penandanya
+        // hanya dua (pemantau di baris tabel & di kartu gabungan), bukan empat.
+        $this->assertSame(2, substr_count($halaman, 'data-payment-invoice="'.$a->invoice_number.'"'));
+        $this->assertSame(2, substr_count($halaman, 'data-copy-link="'.$bundle->payUrl().'"'));
+
+        // Mencari satu anak memunculkan baris gabungannya (berisi saudaranya).
+        $this->get(route('payments.index', ['search' => 'Alice']))
+            ->assertOk()
+            ->assertSee($bundle->code)
+            ->assertSee('Tiffany')
+            ->assertDontSee($lain->invoice_number);
+
+        // Setelah dibatalkan, keduanya kembali tampil sendiri-sendiri.
+        $this->delete(route('payment-bundles.destroy', $bundle));
+        $this->get(route('payments.index'))->assertOk()
+            ->assertDontSee('data-copy-link="'.$bundle->payUrl().'"', false)
+            ->assertSee('data-payment-invoice="'.$a->invoice_number.'"', false)
+            ->assertSee('data-payment-invoice="'.$t->invoice_number.'"', false);
+    }
+
+    public function test_filter_tagihan_gabungan_menampilkan_jumlah_dan_hanya_barisnya(): void
+    {
+        [$bundle] = $this->siblingsBundle();
+        $lain = $this->invoice($this->student('Murid Lain', 'Wali Lain', '089999999999'), 100);
+
+        $this->get(route('payments.index'))
+            ->assertSee('Tagihan gabungan (1)');
+
+        $this->get(route('payments.index', ['status' => 'bundle']))
+            ->assertOk()
+            ->assertSee('data-copy-link="'.$bundle->payUrl().'"', false)
+            ->assertDontSee($lain->invoice_number);
+    }
+
+    public function test_filter_status_tetap_berlaku_saat_mencari(): void
+    {
+        [, $a, $t] = $this->siblingsBundle();
+        $t->forceFill(['payment_status' => 'paid', 'payment_method' => 'cash'])->save();
+
+        $this->get(route('payments.index', ['search' => 'Tiffany', 'status' => 'unpaid']))
+            ->assertOk()
+            ->assertDontSee($t->invoice_number);
+    }
 }

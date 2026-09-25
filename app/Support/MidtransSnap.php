@@ -270,7 +270,7 @@ class MidtransSnap
         return $result;
     }
 
-    /** GAB-003-7-k3f9-1, -2, … — pola sama dengan nextOrderId(), lihat alasannya di sana. */
+    /** Gabungan-003-7-k3f9-1, -2, … — pola sama dengan nextOrderId(), lihat alasannya di sana. */
     private function nextBundleOrderId(PaymentBundle $bundle): string
     {
         $token = strtolower(Str::random(4));

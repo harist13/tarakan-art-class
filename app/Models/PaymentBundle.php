@@ -38,13 +38,13 @@ class PaymentBundle extends Model
         });
     }
 
-    /** GAB-001, GAB-002, … */
+    /** Gabungan-001, Gabungan-002, … (kode lama GAB-001 tetap dihitung). */
     public static function generateCode(): string
     {
         $last = self::orderByDesc('id')->value('code');
         $next = $last ? ((int) preg_replace('/\D/', '', $last)) + 1 : 1;
 
-        return 'GAB-'.str_pad((string) $next, 3, '0', STR_PAD_LEFT);
+        return 'Gabungan-'.str_pad((string) $next, 3, '0', STR_PAD_LEFT);
     }
 
     public function payments(): BelongsToMany

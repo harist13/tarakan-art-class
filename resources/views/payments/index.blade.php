@@ -71,12 +71,13 @@
              hanya menyalin gaya inline dari select — ukuran yang dipasang di
              sini aman dari penggantian itu. --}}
         <form method="GET" data-live class="d-flex flex-nowrap align-items-center gap-2">
-            <div style="flex:0 1 160px;">
+            <div style="flex:0 1 190px;">
                 <select name="status" class="form-select form-select-sm w-100">
                     <option value="">Semua status</option>
                     <option value="paid" @selected($status === 'paid')>Paid</option>
                     <option value="unpaid" @selected($status === 'unpaid')>Unpaid</option>
                     <option value="overdue" @selected($status === 'overdue')>Lewat jatuh tempo</option>
+                    <option value="bundle" @selected($status === 'bundle')>Tagihan gabungan ({{ $bundleCount }})</option>
                 </select>
             </div>
             <div class="input-group input-group-sm" style="flex:0 1 240px; min-width:140px;">
@@ -106,6 +107,25 @@
                     </tr>
                 </thead>
                 <tbody>
+                    {{-- Tagihan gabungan: beberapa invoice satu keluarga dalam satu baris,
+                         satu tautan bayar. Invoice di dalamnya tidak tampil lagi sendiri. --}}
+                    @foreach($bundles as $bundle)
+                        <tr style="background-color: rgba(109, 40, 217, 0.04);">
+                            <td>
+                                <div class="fw-bold text-nowrap">{{ $bundle->code }}</div>
+                                <small class="text-muted text-nowrap">{{ $bundle->created_at->format('d M Y') }}</small>
+                                @include('payments._bundle-parts', ['part' => 'watch'])
+                            </td>
+                            <td>@include('payments._bundle-parts', ['part' => 'students'])</td>
+                            <td class="text-end">
+                                <div class="fw-semibold text-nowrap">Rp {{ number_format($bundle->totalDue(), 0, ',', '.') }}</div>
+                                <small class="text-muted text-nowrap">{{ $bundle->unpaidPayments()->count() }} invoice</small>
+                            </td>
+                            <td class="text-nowrap">@include('payments._bundle-parts', ['part' => 'due'])</td>
+                            <td>@include('payments._bundle-parts', ['part' => 'status'])</td>
+                            <td>@include('payments._bundle-parts', ['part' => 'actions'])</td>
+                        </tr>
+                    @endforeach
                     @forelse($payments as $payment)
                         {{-- Ditandai supaya pemantau tahu invoice mana yang masih
                              ditunggu pelunasannya. Baris yang sama juga muncul di
@@ -136,7 +156,9 @@
                             <td>@include('payments._actions')</td>
                         </tr>
                     @empty
-                        <tr><td colspan="6" class="text-center text-muted py-4">Belum ada pembayaran.</td></tr>
+                        @if($bundles->isEmpty())
+                            <tr><td colspan="6" class="text-center text-muted py-4">{{ $status === 'bundle' ? 'Belum ada tagihan gabungan yang berjalan.' : 'Belum ada pembayaran.' }}</td></tr>
+                        @endif
                     @endforelse
                 </tbody>
             </table>
@@ -146,6 +168,29 @@
              Tabel enam kolom pun tidak terbaca di ponsel; menggesernya ke
              samping menyembunyikan kolom Aksi. Datanya disusun menurun. --}}
         <div class="d-xl-none d-flex flex-column gap-3">
+            @foreach($bundles as $bundle)
+                <div class="border rounded-3 p-3" style="background-color: rgba(109, 40, 217, 0.04);">
+                    @include('payments._bundle-parts', ['part' => 'watch'])
+                    <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                        <div style="min-width:0">
+                            <div class="fw-bold">{{ $bundle->code }}</div>
+                            @include('payments._bundle-parts', ['part' => 'students'])
+                        </div>
+                        @include('payments._bundle-parts', ['part' => 'status', 'statusAlign' => 'justify-content-end'])
+                    </div>
+                    <div class="d-flex justify-content-between align-items-end gap-2 flex-wrap mb-3">
+                        <div>
+                            <div class="fs-5 fw-bold">Rp {{ number_format($bundle->totalDue(), 0, ',', '.') }}</div>
+                            <small class="text-muted">{{ $bundle->unpaidPayments()->count() }} invoice</small>
+                        </div>
+                        <small class="text-muted text-nowrap">
+                            <i class="bi bi-calendar-event me-1"></i>
+                            Jatuh tempo @include('payments._bundle-parts', ['part' => 'due'])
+                        </small>
+                    </div>
+                    @include('payments._bundle-parts', ['part' => 'actions', 'actionsAlign' => 'justify-content-start'])
+                </div>
+            @endforeach
             @forelse($payments as $payment)
                 <div class="border rounded-3 p-3"
                      data-payment-id="{{ $payment->id }}" data-payment-status="{{ $payment->payment_status }}"
@@ -177,7 +222,9 @@
                     @include('payments._actions', ['actionsAlign' => 'justify-content-start'])
                 </div>
             @empty
-                <p class="text-center text-muted mb-0 py-4">Belum ada pembayaran.</p>
+                @if($bundles->isEmpty())
+                    <p class="text-center text-muted mb-0 py-4">{{ $status === 'bundle' ? 'Belum ada tagihan gabungan yang berjalan.' : 'Belum ada pembayaran.' }}</p>
+                @endif
             @endforelse
         </div>
 

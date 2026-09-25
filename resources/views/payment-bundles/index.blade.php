@@ -111,11 +111,17 @@
                 <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
                     <span class="fw-bold">{{ $group['guardian'] }}</span>
                     @foreach($group['students'] as $s)
-                        <span class="badge bg-light text-dark border rounded-pill">{{ $s->name }}</span>
+                        <span class="badge bg-light text-dark border rounded-pill">
+                            {{ $s->name }}
+                            @if($group['name_only'])<span class="fw-normal text-muted ms-1">{{ $s->phone_number ?: 'tanpa nomor' }}</span>@endif
+                        </span>
                     @endforeach
                     @if($group['name_only'])
-                        <span class="badge rounded-pill text-dark" style="background-color:#FEF3C7;" title="Nomor WhatsApp walinya berbeda; dikelompokkan karena nama walinya sama.">
-                            <i class="bi bi-exclamation-triangle me-1"></i>Hanya nama wali yang sama — pastikan satu keluarga
+                        {{-- Tersambung lewat nama wali saja; nomornya disebut satu per satu
+                             supaya admin bisa langsung menilai apakah ini satu keluarga. --}}
+                        <span class="badge rounded-pill text-dark" style="background-color:#FEF3C7;"
+                              title="Dikelompokkan karena nama walinya sama. Nomor wali: {{ $group['students']->map(fn ($s) => $s->name.' '.($s->phone_number ?: '-'))->implode(', ') }}">
+                            <i class="bi bi-exclamation-triangle me-1"></i>Nomor WhatsApp wali berbeda — pastikan satu keluarga
                         </span>
                     @endif
                 </div>
