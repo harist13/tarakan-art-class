@@ -139,8 +139,9 @@
                         <input type="text" id="website" name="website" tabindex="-1" autocomplete="off">
                     </div>
 
-                    {{-- Urutan & lebar kolom mengikuti form Data Murid & Wali di panel admin,
-                         supaya isian yang sama tampil di posisi yang sama di kedua halaman. --}}
+                    {{-- Urutan mengikuti form Data Murid & Wali di panel admin. Tiap baris
+                         satu kelompok: data anak, data wali, lalu pilihan kelas. Usia terisi
+                         otomatis dari tanggal lahir, jadi kolomnya cukup sempit. --}}
                     <div class="row g-3 mt-0">
                         <div class="col-md-6">
                             <label for="child_name" class="tac-label">
@@ -153,7 +154,7 @@
                                 <div class="text-danger small mt-1">{{ $message }}</div>
                             @enderror
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-7 col-md-4">
                             <label for="date_of_birth" class="tac-label">
                                 Tanggal lahir <span class="tac-text-coral" aria-hidden="true">*</span>
                             </label>
@@ -164,7 +165,7 @@
                                 <div class="text-danger small mt-1">{{ $message }}</div>
                             @enderror
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-5 col-md-2">
                             <label for="child_age" class="tac-label">
                                 Usia <span class="fw-normal tac-muted-soft"></span>
                             </label>
@@ -194,17 +195,6 @@
                                    value="{{ old('parent_phone') }}" placeholder="0812 3456 7890"
                                    @class(['tac-input', 'is-invalid border-danger' => $errors->has('parent_phone')])>
                             @error('parent_phone')
-                                <div class="text-danger small mt-1">{{ $message }}</div>
-                            @enderror
-                        </div>
-                        <div class="col-md-6">
-                            <label for="parent_email" class="tac-label">
-                                Email <span class="tac-text-coral" aria-hidden="true">*</span>
-                            </label>
-                            <input type="email" id="parent_email" name="parent_email" required maxlength="150"
-                                   value="{{ old('parent_email') }}" placeholder="nama@email.com"
-                                   @class(['tac-input', 'is-invalid border-danger' => $errors->has('parent_email')])>
-                            @error('parent_email')
                                 <div class="text-danger small mt-1">{{ $message }}</div>
                             @enderror
                         </div>
@@ -286,7 +276,7 @@
                         <span>{{ $item['q'] }}</span>
                         <span class="tac-faq-toggle" aria-hidden="true">+</span>
                     </summary>
-                    <p class="tac-dashed-top small lh-lg tac-muted mt-3 pt-3 mb-0">{{ $item['a'] }}</p>
+                    <p class="tac-dashed-top small lh-lg tac-muted mt-3 pt-3 mb-0">{!! nl2br(e($item['a'])) !!}</p>
                 </details>
             @endforeach
         </div>
@@ -324,14 +314,13 @@
     function applyAgeFilter(age) {
         if (!programSelect || !ageRanges.length) return;
 
-        // Rentang pertama yang menampung usia ini; di atas rentang terakhir dipakai
-        // program tertua, di bawah rentang pertama dipakai program termuda — sama
-        // seperti sebelumnya, supaya usia di luar rentang brosur tetap dapat saran.
-        var match = null;
+        // Program paling lanjut yang usia minimumnya sudah terpenuhi. Batas atas
+        // sengaja tidak dipakai: sebagian program "X tahun ke atas". Usia di bawah
+        // program termuda tetap disarankan program termuda.
+        var match = ageRanges[0];
         for (var i = 0; i < ageRanges.length; i++) {
-            if (age <= ageRanges[i].max) { match = ageRanges[i]; break; }
+            if (age >= ageRanges[i].min) match = ageRanges[i];
         }
-        if (!match) match = ageRanges[ageRanges.length - 1];
 
         programSelect.value = match.value;
     }
@@ -384,7 +373,6 @@
             ['Usia', age ? age + ' tahun' : ''],
             ['Nama orang tua / wali', value('parent_name')],
             ['Nomor WhatsApp', value('parent_phone')],
-            ['Email', value('parent_email')],
             ['Program', selectedLabel('program')],
             ['Tipe kelas', selectedLabel('class_type')],
             ['Alamat', value('address')],

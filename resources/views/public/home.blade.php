@@ -1,7 +1,7 @@
 @extends('layouts.public')
 
 @section('title', 'Kelas seni anak di Tarakan')
-@section('description', 'Kelas menggambar dan mewarnai untuk anak usia 3–12 tahun di Tarakan. Kelas kecil maksimal 8 anak, tutor berpengalaman, dan raport perkembangan tiap semester.')
+@section('description', 'Ruang belajar seni dari dasar di Tarakan: menggambar, sketsa, dan mewarnai tanpa takut salah. Kelas kecil, tutor yang sabar, dan raport perkembangan tiap semester.')
 
 @section('content')
 
@@ -70,9 +70,9 @@
                 </h1>
 
                 <p class="tac-rise tac-d3 tac-hero-lead lh-lg tac-muted mt-4 mb-0">
-                    Kelas menggambar &amp; mewarnai untuk anak usia 3–12 tahun di Tarakan.
-                    Kelas kecil, tutor yang sabar, dan ruang aman untuk bereksperimen —
-                    tanpa takut salah.
+                    Tarakan Art Class hadir sebagai ruang buat kamu belajar seni dari dasar.
+                    Memberi kamu ruang untuk berkreativitas, eksplorasi ide, dan tentunya…
+                    berkarya tanpa takut salah!
                 </p>
 
                 <div class="tac-rise tac-d4 d-flex flex-column flex-sm-row gap-3 mt-4">
@@ -87,7 +87,7 @@
                 </div>
 
                 <dl class="tac-rise tac-d5 tac-hero-stats row g-4 mt-4 mb-0">
-                    @foreach(collect($stats)->take(3) as $stat)
+                    @foreach(collect($stats)->take(2) as $stat)
                         {{-- Angka dipisah dari imbuhannya ("300" + "+") supaya
                              imbuhan bisa diberi warna aksen seperti pada desain. --}}
                         @php preg_match('/^(\d*)(.*)$/u', $stat['value'], $parts); @endphp
@@ -213,12 +213,14 @@
 
     @php
         $reasons = [
-            ['icon' => '👩‍🎨', 'title' => 'Tutor berpengalaman', 'body' => 'Tim tutor dengan latar seni rupa dan PAUD yang terbiasa mengajar anak.', 'bg' => 'tac-bg-coral tac-text-paper'],
-            ['icon' => '🧒', 'title' => 'Kelas kecil', 'body' => 'Maksimal 8 anak per kelas agar setiap anak dapat perhatian personal.', 'bg' => 'tac-bg-sun'],
+            ['icon' => '👩‍🎨', 'title' => 'Tutor berpengalaman', 'body' => 'Tim tutor dengan latar seni dan terbiasa mengajar dengan metode yang dapat dimengerti anak anak', 'bg' => 'tac-bg-coral tac-text-paper'],
+            ['icon' => '🧒', 'title' => 'Semi private class', 'body' => 'Setiap tutor mengajar dengan kapasitas max 3-4 anak per sesinya', 'bg' => 'tac-bg-sun'],
             ['icon' => '📘', 'title' => 'Materi bertingkat', 'body' => 'Kurikulum naik bertahap sesuai usia dan kemampuan awal anak.', 'bg' => 'tac-bg-sky tac-text-paper'],
-            ['icon' => '📝', 'title' => 'Raport perkembangan', 'body' => 'Orang tua menerima catatan kemajuan anak berikut dokumentasi karyanya.', 'bg' => 'tac-bg-leaf'],
-            ['icon' => '🔁', 'title' => 'Kelas pengganti', 'body' => 'Anak berhalangan hadir? Ada slot replacement tanpa biaya tambahan.', 'bg' => 'tac-bg-grape tac-text-paper'],
-            ['icon' => '🎒', 'title' => 'Alat disediakan', 'body' => 'Semua bahan sudah termasuk biaya bulanan. Anak cukup datang.', 'bg' => 'tac-bg-coral tac-text-paper'],
+            ['icon' => '📝', 'title' => 'Raport bulanan', 'body' => 'Orang tua menerima catatan perkembangan anak', 'bg' => 'tac-bg-leaf'],
+            ['icon' => '🔁', 'title' => 'Kelas pengganti', 'body' => 'anak berhalangan hadir? Bisa tanyakan admin untuk jadwal pengganti yang tersedia di bulan tersebut ya
+Note: pastikan diganti di bulan yang sama ya agar tidak hangus', 'bg' => 'tac-bg-grape tac-text-paper'],
+            ['icon' => '🎒', 'title' => 'Alat disediakan', 'body' => 'semua alat dan bahan sudah termasuk biaya bulanan. 
+Kecuali buku modul dan peralatan yang setiap murid perlu miliki (jika ada)', 'bg' => 'tac-bg-coral tac-text-paper'],
         ];
     @endphp
 

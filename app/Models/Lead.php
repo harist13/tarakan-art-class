@@ -66,7 +66,9 @@ class Lead extends Model
     {
         return collect(config('site.programs', []))
             ->reject(fn (array $program) => ($program['source'] ?? null) === 'holiday_classes')
-            ->mapWithKeys(fn (array $program) => [$program['slug'] => $program['name']])
+            // `form_label` opsional: nama yang lebih jelas bagi orang tua di
+            // dropdown, mis. "Sketching / Sketsa". Kartu program tetap pakai `name`.
+            ->mapWithKeys(fn (array $program) => [$program['slug'] => $program['form_label'] ?? $program['name']])
             ->all();
     }
 

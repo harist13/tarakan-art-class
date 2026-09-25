@@ -45,10 +45,11 @@
 <x-site.section tone="paper">
     <div class="row g-4">
         <div class="col-lg-5">
-            <div class="tac-card tac-bg-ink tac-text-paper h-100 p-4 p-sm-5">
+            {{-- Biru tua, bukan --tac-sky: teks terang di atas biru muda sulit dibaca. --}}
+            <div class="tac-card tac-bg-sky-dark tac-text-paper h-100 p-4 p-sm-5">
                 <span class="tac-icon tac-bg-sun border-0" aria-hidden="true">🎯</span>
                 <h2 class="fs-3 tac-text-paper mt-4 mb-3">Visi</h2>
-                <p class="lh-lg tac-muted-invert mb-0">{{ $about['vision'] }}</p>
+                <p class="lh-lg tac-text-paper mb-0" style="opacity: 0.92;">{{ $about['vision'] }}</p>
             </div>
         </div>
 
@@ -95,40 +96,8 @@
     </div>
 </x-site.section>
 
-{{-- ─── Tutor ──────────────────────────────────────────────────── --}}
-<x-site.section tone="paper">
-    <x-site.heading
-        eyebrow="Tim tutor"
-        title="Orang-orang yang mendampingi anak Anda"
-        subtitle="Tutor kami terbiasa mengajar anak, bukan sekadar mahir menggambar." />
-
-    <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-4 mt-3">
-        @php $tones = ['tac-bg-coral-soft', 'tac-bg-sun-soft', 'tac-bg-sky-soft']; @endphp
-        @foreach($about['tutors'] as $i => $tutor)
-            <div class="col">
-                <article class="tac-card tac-card-hover h-100 overflow-hidden text-center">
-                    @if(! empty($tutor['photo']) && is_file(public_path('images/tutors/'.$tutor['photo'])))
-                        <img src="{{ asset('images/tutors/'.$tutor['photo']) }}" alt="Foto {{ $tutor['name'] }}"
-                             loading="lazy" decoding="async" class="tac-thumb-wide">
-                    @else
-                        <div class="{{ $tones[$i % 3] }} tac-thumb-wide tac-thumb-placeholder" aria-hidden="true">🧑‍🎨</div>
-                    @endif
-
-                    <div class="p-4">
-                        <h3 class="fs-5 mb-1">{{ $tutor['name'] }}</h3>
-                        <p class="tac-text-coral fw-semibold text-uppercase mb-0" style="font-size: 0.7rem; letter-spacing: 0.06em;">
-                            {{ $tutor['role'] }}
-                        </p>
-                        <p class="small lh-lg tac-muted mt-3 mb-0">{{ $tutor['bio'] }}</p>
-                    </div>
-                </article>
-            </div>
-        @endforeach
-    </div>
-</x-site.section>
-
 {{-- ─── Fasilitas ──────────────────────────────────────────────── --}}
-<x-site.section tone="paper-2">
+<x-site.section tone="paper">
     <x-site.heading
         eyebrow="Fasilitas"
         title="Studio yang aman dan nyaman"
@@ -137,15 +106,14 @@
     @php
         $facilities = [
             ['icon' => '🪑', 'label' => 'Meja & kursi ukuran anak'],
-            ['icon' => '🧴', 'label' => 'Cat & alat non-toxic'],
             ['icon' => '💡', 'label' => 'Ruang terang & berventilasi'],
             ['icon' => '🧼', 'label' => 'Wastafel di dalam studio'],
             ['icon' => '🛋️', 'label' => 'Ruang tunggu orang tua'],
-            ['icon' => '🖼️', 'label' => 'Dinding pameran karya'],
         ];
     @endphp
 
-    <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-3 mt-3">
+    {{-- Empat fasilitas: satu baris di desktop, 2×2 di tablet. --}}
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-3 mt-3">
         @foreach($facilities as $facility)
             <div class="col">
                 <div class="d-flex align-items-center gap-3 bg-white tac-shadow-sm px-4 py-3 h-100"

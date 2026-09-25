@@ -142,27 +142,21 @@ class PublicSiteController extends Controller
      * terisi otomatis begitu orang tua mengisi tanggal lahir. Holiday Class
      * tidak ikut: sesi liburan terbuka untuk segala usia.
      *
-     * @return list<array{max: int, value: string}> urut menaik menurut usia minimum
+     * @return list<array{min: int, value: string}> urut menaik menurut usia minimum
      */
     private function ageSuggestions(): array
     {
         return collect(config('site.programs', []))
             ->reject(fn (array $program) => $this->isHolidayProgram($program))
             ->map(function (array $program) {
-                // "3 – 5 tahun" → [3, 5]. Program dengan satu angka saja dianggap
-                // batas bawah sekaligus batas atasnya.
-                preg_match_all('/\d+/', (string) ($program['age'] ?? ''), $angka);
-                $bounds = array_map('intval', $angka[0]);
-
-                return $bounds === [] ? null : [
-                    'min' => $bounds[0],
-                    'max' => end($bounds),
-                    'value' => $program['slug'],
-                ];
+                // Cukup usia minimumnya: "3 – 5 tahun" → 3, "7 tahun ke atas" → 7,
+                // "2,5 – 3 tahun" → 2 (bulat ke bawah, usia di form juga bulat).
+                return preg_match('/\d+/', (string) ($program['age'] ?? ''), $angka)
+                    ? ['min' => (int) $angka[0], 'value' => $program['slug']]
+                    : null;
             })
             ->filter()
             ->sortBy('min')
-            ->map(fn (array $range) => ['max' => $range['max'], 'value' => $range['value']])
             ->values()
             ->all();
     }
@@ -299,7 +293,7 @@ class PublicSiteController extends Controller
                 $group = $classes->filter(fn (ClassRoom $class) => $this->belongsToProgram($class->class_category, $program));
 
                 if ($group->isEmpty()) {
-                    return $program + [
+                    return $this->withFixedLabels($program) + [
                         'schedule' => $program['schedule_hint'] ?? null,
                         'is_live' => false,
                         'next_class' => null,
@@ -315,7 +309,7 @@ class PublicSiteController extends Controller
                 $regular = $group->reject->isTrial();
                 $main = $regular->isNotEmpty() ? $regular : $group;
 
-                return array_merge($program, [
+                return $this->withFixedLabels(array_merge($program, [
                     'duration' => $this->durationLabel($main),
                     'capacity' => $this->capacityLabel($main),
                     'price' => $this->feeLabel($regular, '/ bulan'),
@@ -326,9 +320,31 @@ class PublicSiteController extends Controller
                     // terdekat dihitung dari sesi berikutnya masing-masing slot.
                     'next_class' => $main->sortBy(fn (ClassRoom $c) => $c->nextOccurrence()?->timestamp ?? PHP_INT_MAX)->first(),
                     'next_holiday' => null,
-                ]);
+                ]));
             })
             ->values();
+    }
+
+    /**
+     * Teks kapasitas & jadwal yang ditetapkan manual di config (`capacity_label`,
+     * `schedule_label`) menang atas rangkuman dari slot. Dipakai saat rangkuman
+     * slot tidak mewakili cara program itu dijual, mis. "1 tutor, maks. 3–4 anak".
+     *
+     * @param  array<string, mixed>  $program
+     * @return array<string, mixed>
+     */
+    private function withFixedLabels(array $program): array
+    {
+        if (filled($program['capacity_label'] ?? null)) {
+            $program['capacity'] = $program['capacity_label'];
+        }
+
+        if (filled($program['schedule_label'] ?? null)) {
+            $program['schedule_hint'] = $program['schedule_label'];
+            $program['schedule'] = $program['schedule_label'];
+        }
+
+        return $program;
     }
 
     /**

@@ -27,9 +27,10 @@
         return 'PT'.$m[1].(strtolower($m[2]) === 'jam' ? 'H' : 'M');
     };
 
-    // "3 – 5 tahun" → "3-5". Tanda pisahnya en dash, bukan hyphen.
+    // "3 – 5 tahun" → "3-5", "2,5 – 3 tahun" → "2.5-3", "7 tahun ke atas" → "7-".
+    // Tanda pisahnya en dash, bukan hyphen.
     $usia = fn (?string $label) => $label
-        ? trim(str_replace(['–', ' tahun'], ['-', ''], $label))
+        ? preg_replace('/\s+/', '', str_replace(['–', ' tahun', 'ke atas', ','], ['-', '', '-', '.'], $label))
         : null;
 
     $courses = collect($programs)->map(fn (array $p) => array_filter([

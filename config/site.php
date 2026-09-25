@@ -13,8 +13,8 @@ return [
 
     'name' => 'Tarakan Art Class',
     'tagline' => 'Kelas seni untuk anak di Tarakan',
-    'description' => 'Kelas menggambar & mewarnai untuk anak usia pra-sekolah sampai SD di Tarakan. '
-        .'Tutor berpengalaman, kelas kecil, suasana ramah anak.',
+    'description' => 'Ruang belajar seni dari dasar di Tarakan: berkreativitas, eksplorasi ide, '
+        .'dan berkarya tanpa takut salah. Kelas kecil dengan tutor yang sabar.',
 
     // ─── Kontak ────────────────────────────────────────────────────────
     'contact' => [
@@ -23,7 +23,7 @@ return [
         'whatsapp_display' => env('SITE_WHATSAPP_DISPLAY', '+62 852-1742-3987'),
         'email' => env('SITE_EMAIL', 'halo@tarakanartclass.com'),
         'instagram' => env('SITE_INSTAGRAM', 'tarakanartclass'),
-        'address' => env('SITE_ADDRESS', 'Jl. Yos Sudarso No. 12, Tarakan, Kalimantan Utara'),
+        'address' => env('SITE_ADDRESS', 'Jalan Gajah Mada No. 31, Tarakan, Kalimantan Utara'),
         // URL embed peta studio. Ambil dari Google Maps → Bagikan → Sematkan peta,
         // lalu salin isi atribut src milik iframe-nya (bukan tautan biasa).
         // ?: dipakai karena SITE_MAPS_EMBED= (kosong di .env) dibaca sebagai string
@@ -35,9 +35,8 @@ return [
     'lead_notification_email' => env('SITE_LEAD_EMAIL'),
 
     'hours' => [
-        ['day' => 'Senin – Jumat', 'time' => '13.00 – 18.00 WITA'],
-        ['day' => 'Sabtu', 'time' => '09.00 – 17.00 WITA'],
-        ['day' => 'Minggu', 'time' => 'Tutup (kecuali Holiday Class)'],
+        ['day' => 'Senin – Sabtu', 'time' => '09.00 – 12.00, 13.00 – 18.00 WITA'],
+        ['day' => 'Minggu', 'time' => 'Tutup'],
     ],
 
     // Jam operasional yang sama, tapi dalam bentuk yang bisa dibaca mesin —
@@ -45,8 +44,9 @@ return [
     // Dipisah dari 'hours' di atas karena yang itu ditulis untuk dibaca manusia
     // dan formatnya bebas berubah tanpa merusak apa pun.
     'hours_schema' => [
-        ['days' => ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'], 'opens' => '13:00', 'closes' => '18:00'],
-        ['days' => ['Saturday'], 'opens' => '09:00', 'closes' => '17:00'],
+        // Istirahat 12.00–13.00, jadi satu hari ditulis sebagai dua rentang.
+        ['days' => ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'], 'opens' => '09:00', 'closes' => '12:00'],
+        ['days' => ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'], 'opens' => '13:00', 'closes' => '18:00'],
     ],
 
     // ─── SEO ───────────────────────────────────────────────────────────
@@ -59,7 +59,7 @@ return [
         'google_verification' => env('SITE_GOOGLE_VERIFICATION'),
 
         'address' => [
-            'street' => env('SITE_ADDRESS_STREET', 'Jl. Yos Sudarso No. 12'),
+            'street' => env('SITE_ADDRESS_STREET', 'Jalan Gajah Mada No. 31'),
             'locality' => env('SITE_ADDRESS_CITY', 'Tarakan'),
             'region' => env('SITE_ADDRESS_REGION', 'Kalimantan Utara'),
             'postal_code' => env('SITE_ADDRESS_POSTAL'),
@@ -99,7 +99,7 @@ return [
             'slug' => 'preschool',
             'name' => 'Preschool',
             'categories' => ['Preschool', 'Pre-school'],
-            'age' => '3 – 5 tahun',
+            'age' => '2,5 – 3 tahun',
             'duration' => '60 menit / pertemuan',
             'capacity' => '6 anak per kelas',
             'price' => 'Rp250.000 / bulan',
@@ -118,37 +118,46 @@ return [
         [
             'slug' => 'sketching',
             'name' => 'Sketching',
+            'form_label' => 'Sketching / Sketsa',
             'categories' => ['Sketching', 'Basic Sketch', 'Basic Perspective', 'Character', 'Drawing'],
-            'age' => '8 – 12 tahun',
+            'age' => '7 tahun ke atas',
             'duration' => '90 menit / pertemuan',
             'capacity' => '8 anak per kelas',
             'price' => 'Rp300.000 / bulan',
             'visit_price' => 'Rp105.000 / visit',
             'schedule_hint' => 'Jumat & Sabtu, 16.00 WITA',
+            // Teks tetap yang menang atas angka hasil rangkuman slot di database.
+            'capacity_label' => '1 tutor max 3–4 anak',
+            'schedule_label' => 'Senin – Sabtu',
             'color' => 'sky',
             'icon' => 'pencil',
-            'summary' => 'Dasar menggambar: proporsi, garis, perspektif, dan shading. '
-                .'Anak mulai membangun gaya menggambarnya sendiri.',
+            'summary' => 'Anak belajar menggambar dari dasar: cara memegang pensil, menarik garis, '
+                .'bentuk-bentuk dasar, dan fundamental art lainnya. sketsa & proporsi
+merancang karakter sendiri
+perspektif',
             'highlights' => [
                 'Sketsa & proporsi',
-                'Arsir, gelap terang & perspektif',
                 'Merancang karakter sendiri',
+                'Perspektif',
             ],
         ],
         [
             'slug' => 'coloring',
             'name' => 'Coloring',
+            'form_label' => 'Coloring / Mewarnai',
             'categories' => ['Coloring', 'Basic Mewarnai', 'Mewarnai'],
-            'age' => '5 – 8 tahun',
+            'age' => '4 tahun ke atas',
             'duration' => '75 menit / pertemuan',
             'capacity' => '8 anak per kelas',
             'price' => 'Rp275.000 / bulan',
             'visit_price' => 'Rp105.000 / visit',
             'schedule_hint' => 'Rabu & Sabtu, 14.00 WITA',
+            'capacity_label' => '1 tutor max 3–4 anak',
+            'schedule_label' => 'Senin – Sabtu',
             'color' => 'coral',
             'icon' => 'palette',
-            'summary' => 'Teknik mewarnai rapi dengan crayon, pensil warna, dan cat air. '
-                .'Anak belajar gradasi, komposisi, dan kesabaran.',
+            'summary' => 'Belajar mewarnai dengan krayon dari dasar. '
+                .'Anak belajar berbagai teknik mewarnai dengan menggunakan krayon.',
             'highlights' => [
                 'Gradasi & pencampuran warna',
                 'Crayon, pensil warna, cat air',
@@ -190,12 +199,16 @@ return [
             .'punya banyak ide, tapi sedikit ruang untuk menuangkannya. Sejak 2019 kami membuka '
             .'studio kecil yang hangat, tempat anak usia 3 sampai 12 tahun bisa mencoret, mewarnai, '
             .'dan menggambar tanpa takut salah.',
-        'vision' => 'Menjadi ruang tumbuh anak-anak Tarakan untuk berani berekspresi lewat seni.',
+        'vision' => 'Menjadi ruang belajar seni yang menyenangkan, kreatif, dan inspiratif, tempat setiap anak '
+            .'dapat mengembangkan potensi, menemukan cara berekspresi, dan berani berkarya.',
         'mission' => [
-            'Menyediakan kelas seni yang menyenangkan, terstruktur, dan sesuai usia.',
-            'Menjaga kelas tetap kecil agar setiap anak mendapat perhatian tutor.',
-            'Melibatkan orang tua lewat raport perkembangan tiap semester.',
-            'Merayakan karya anak lewat pameran dan kegiatan bersama.',
+            'Menciptakan suasana belajar seni yang fun, nyaman, dan positif agar anak menikmati proses berkarya.',
+            'Fokus menguatkan teknik dasar anak.',
+            'Mengajarkan dasar dan teknik seni sesuai dengan kemampuan dan perkembangan setiap anak.',
+            'Mendorong anak untuk bereksplorasi dan bereksperimen dengan berbagai ide, media, teknik, dan gaya.',
+            'Memberikan ruang bagi anak untuk mengekspresikan diri melalui karya seni tanpa takut salah.',
+            'Menghargai setiap proses dan perkembangan, bukan hanya berfokus pada hasil akhir.',
+            'Menumbuhkan keberanian, kreativitas, dan rasa percaya diri melalui pengalaman berkarya.',
         ],
         'methods' => [
             [
@@ -216,16 +229,9 @@ return [
             ],
         ],
         'stats' => [
-            ['value' => '300+', 'label' => 'Murid & alumni'],
             ['value' => '6', 'label' => 'Tahun berjalan'],
-            ['value' => '8', 'label' => 'Maks. anak per kelas'],
+            ['value' => '8', 'label' => 'Maks. anak per kelas (semi private class)'],
             ['value' => '12', 'label' => 'Pameran karya'],
-        ],
-        // Foto tutor opsional: taruh di public/images/tutors/<file> lalu isi `photo`.
-        'tutors' => [
-            ['name' => 'Kak Ayu', 'role' => 'Preschool & Coloring', 'bio' => 'Sarjana PAUD, 5 tahun mendampingi kelas anak usia dini.', 'photo' => null],
-            ['name' => 'Kak Bima', 'role' => 'Drawing & Ilustrasi', 'bio' => 'Ilustrator lepas, mengajar dasar sketsa dan perspektif.', 'photo' => null],
-            ['name' => 'Kak Nadia', 'role' => 'Cat air & Mixed media', 'bio' => 'Alumni seni rupa, senang eksperimen media baru bersama anak.', 'photo' => null],
         ],
     ],
 
@@ -274,7 +280,10 @@ return [
         ],
         [
             'q' => 'Apakah alat dan bahan disediakan?',
-            'a' => 'Ya, semua alat dan bahan dasar sudah termasuk dalam biaya bulanan. Anak cukup datang membawa semangat.',
+            // Satu baris per kelas; baris baru ("\n") ikut tampil di accordion.
+            'a' => "Kelas Preschool: tidak perlu membawa apa-apa.\n"
+                ."Kelas Mewarnai: setiap murid perlu menyiapkan krayon (rekomendasi: Faber-Castell minimal 48 warna).\n"
+                .'Kelas Sketching: tidak perlu membawa apa-apa selama masih di materi Basic Sketch.',
         ],
         [
             'q' => 'Bagaimana kalau anak berhalangan hadir?',

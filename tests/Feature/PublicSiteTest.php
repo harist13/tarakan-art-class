@@ -74,9 +74,10 @@ class PublicSiteTest extends TestCase
 
     public function test_kartu_program_disusun_dari_kategori_kelas_di_database(): void
     {
-        $this->makeClass(Carbon::today()->addDay(), category: 'Basic Mewarnai', fee: 360000,
+        // Preschool: Sketching & Coloring memakai teks kapasitas/jadwal tetap.
+        $this->makeClass(Carbon::today()->addDay(), category: 'Pre-school', fee: 360000,
             capacity: 10, time: '13:30:00', endTime: '15:00:00');
-        $this->makeClass(Carbon::today()->addDays(2), category: 'Basic Mewarnai', fee: 360000,
+        $this->makeClass(Carbon::today()->addDays(2), category: 'Pre-school', fee: 360000,
             capacity: 10, time: '13:30:00', endTime: '15:00:00');
 
         $this->get(route('public.programs'))
@@ -86,18 +87,19 @@ class PublicSiteTest extends TestCase
             ->assertSee('10 anak per kelas')
             ->assertSee('90 menit / pertemuan')
             // …usia & ringkasan tetap dari keterangan statis di config.
-            ->assertSee('5 – 8 tahun', false)
-            ->assertSee('Gradasi &amp; pencampuran warna', false)
+            ->assertSee('2,5 – 3 tahun', false)
+            ->assertSee('Finger painting &amp; kolase', false)
             // Kartunya bernama program, bukan kategori kelas di database.
-            ->assertSee('Coloring')
-            ->assertDontSee('Basic Mewarnai');
+            ->assertSee('Preschool')
+            ->assertDontSee('Pre-school');
     }
 
     public function test_angka_yang_berbeda_antarslot_dirangkum_jadi_rentang(): void
     {
-        $this->makeClass(Carbon::today()->addDay(), category: 'Basic Sketch', fee: 360000,
+        // Bukan Sketching/Coloring: kapasitasnya teks tetap di config (`capacity_label`).
+        $this->makeClass(Carbon::today()->addDay(), category: 'Preschool', fee: 360000,
             capacity: 6, time: '09:00:00', endTime: '10:00:00');
-        $this->makeClass(Carbon::today()->addDays(2), category: 'Basic Sketch', fee: 400000,
+        $this->makeClass(Carbon::today()->addDays(2), category: 'Preschool', fee: 400000,
             capacity: 10, time: '13:30:00', endTime: '15:00:00');
 
         $this->get(route('public.programs'))
@@ -106,6 +108,19 @@ class PublicSiteTest extends TestCase
             ->assertSee('60 – 90 menit / pertemuan', false)
             // Tarif yang berbeda disebut sebagai batas bawah, bukan dipilih diam-diam.
             ->assertSee('Mulai Rp360.000 / bulan');
+    }
+
+    public function test_teks_kapasitas_dan_jadwal_dari_config_menang_atas_slot(): void
+    {
+        $this->makeClass(Carbon::today()->addDay(), category: 'Basic Sketch', capacity: 7);
+
+        foreach (['public.programs', 'public.home'] as $page) {
+            $this->get(route($page))
+                ->assertOk()
+                ->assertSee('1 tutor max 3–4 anak', false)
+                ->assertSee('Senin – Sabtu', false)
+                ->assertDontSee('7 anak per kelas', false);
+        }
     }
 
     public function test_kategori_di_luar_empat_program_tidak_tampil(): void
@@ -144,7 +159,7 @@ class PublicSiteTest extends TestCase
 
     public function test_tarif_visit_tidak_ditimpa_kelas_trial(): void
     {
-        $this->makeClass(Carbon::today()->addDay(), category: 'Basic Mewarnai', fee: 360000);
+        $this->makeClass(Carbon::today()->addDay(), category: 'Preschool', fee: 360000);
         $this->makeClass(Carbon::today()->addDays(2), category: 'Basic Mewarnai', fee: 120000, type: 'trial');
 
         $this->get(route('public.programs'))
@@ -175,8 +190,8 @@ class PublicSiteTest extends TestCase
         // Dua slot berbeda hari pada jam yang sama digabung jadi satu kalimat.
         $senin = Carbon::today()->next(Carbon::MONDAY);
 
-        $this->makeClass($senin, category: 'Basic Mewarnai', time: '15:00:00', endTime: '16:30:00');
-        $this->makeClass($senin->copy()->addDays(3), category: 'Basic Mewarnai', time: '15:00:00', endTime: '16:30:00');
+        $this->makeClass($senin, category: 'Preschool', time: '15:00:00', endTime: '16:30:00');
+        $this->makeClass($senin->copy()->addDays(3), category: 'Preschool', time: '15:00:00', endTime: '16:30:00');
 
         $this->get(route('public.schedule'))
             ->assertOk()
@@ -212,7 +227,6 @@ class PublicSiteTest extends TestCase
             'class_type' => 'regular',
             'parent_name' => 'Bu Rina',
             'parent_phone' => '0812 3456 7890',
-            'parent_email' => 'rina@example.com',
             'address' => 'Jl. Mulawarman No. 3, Tarakan',
             'program' => 'coloring',
             'message' => 'Anak saya belum pernah ikut kelas seni.',
@@ -240,7 +254,6 @@ class PublicSiteTest extends TestCase
             'class_type' => 'regular',
             'parent_name' => 'Bu Rina',
             'parent_phone' => '0812 3456 7890',
-            'parent_email' => 'rina@example.com',
             'address' => 'Jl. Mulawarman No. 3, Tarakan',
             'program' => 'coloring',
         ])->assertSessionHasNoErrors();
@@ -282,7 +295,6 @@ class PublicSiteTest extends TestCase
             'class_type' => 'visit',
             'parent_name' => 'Bu Rina',
             'parent_phone' => '081234567890',
-            'parent_email' => 'rina@example.com',
             'address' => 'Jl. Mulawarman No. 3, Tarakan',
             'program' => 'coloring',
         ])->assertSessionHasNoErrors();
@@ -338,7 +350,6 @@ class PublicSiteTest extends TestCase
             'class_type' => 'regular',
             'parent_name' => 'Bu Rina',
             'parent_phone' => '081234567890',
-            'parent_email' => 'rina@example.com',
             'address' => 'Jl. Mulawarman No. 3, Tarakan',
             'program' => $class->class_category,
         ])->assertSessionHasErrors('program');
@@ -358,7 +369,7 @@ class PublicSiteTest extends TestCase
         $this->post(route('public.contact.store'), ['child_name' => 'Alya'])
             ->assertSessionHasErrors([
                 'date_of_birth', 'class_type', 'program',
-                'parent_name', 'parent_phone', 'parent_email', 'address',
+                'parent_name', 'parent_phone', 'address',
             ])
             ->assertSessionDoesntHaveErrors(['child_age', 'message']);
 
@@ -376,7 +387,6 @@ class PublicSiteTest extends TestCase
             'date_of_birth' => '2018-05-17',
             'parent_name' => 'Bu Rina',
             'parent_phone' => '081234567890',
-            'parent_email' => 'rina@example.com',
             'address' => 'Jl. Mulawarman No. 3, Tarakan',
         ];
 

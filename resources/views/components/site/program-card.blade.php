@@ -75,7 +75,9 @@
                 <dt class="fw-normal tac-muted-soft">Durasi</dt>
                 <dd class="mb-0 text-end fw-semibold">{{ $program['duration'] }}</dd>
             </div>
-            @if($detailed)
+            {{-- Kapasitas yang ditetapkan manual (`capacity_label`) adalah bagian dari
+                 cara program itu dijual, jadi ikut tampil di kartu ringkas juga. --}}
+            @if($detailed || filled($program['capacity_label'] ?? null))
                 <div class="d-flex justify-content-between gap-3">
                     <dt class="fw-normal tac-muted-soft">Kapasitas</dt>
                     <dd class="mb-0 text-end fw-semibold">{{ $program['capacity'] }}</dd>

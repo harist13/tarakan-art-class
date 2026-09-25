@@ -108,6 +108,7 @@ html { scroll-behavior: smooth; }
 .tac-bg-coral    { background-color: var(--tac-coral) !important; }
 .tac-bg-sun      { background-color: var(--tac-sun) !important; }
 .tac-bg-sky      { background-color: var(--tac-sky) !important; }
+.tac-bg-sky-dark { background-color: var(--tac-sky-dark) !important; }
 .tac-bg-leaf     { background-color: var(--tac-leaf) !important; }
 .tac-bg-grape    { background-color: var(--tac-grape) !important; }
 
