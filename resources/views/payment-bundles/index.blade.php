@@ -110,6 +110,7 @@
                 @csrf
                 <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
                     <span class="fw-bold">{{ $group['guardian'] }}</span>
+                    <span class="badge rounded-pill bg-primary-subtle text-primary-emphasis border border-primary-subtle">{{ $group['students']->count() }} anak</span>
                     @foreach($group['students'] as $s)
                         <span class="badge bg-light text-dark border rounded-pill">
                             {{ $s->name }}

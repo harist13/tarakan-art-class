@@ -50,7 +50,11 @@ class GuardianGroups
                 ];
             })
             ->filter(fn (array $group) => $group['payments']->count() >= 2)
-            ->sortBy('guardian', SORT_NATURAL | SORT_FLAG_CASE)
+            // Keluarga dengan anak terbanyak di atas — merekalah yang paling
+            // diuntungkan tagihan gabungan, dan paling repot bila terlewat.
+            // Sesudah itu alfabetis menurut nama wali.
+            ->sort(fn (array $a, array $b) => [$b['students']->count(), mb_strtolower($a['guardian'])]
+                <=> [$a['students']->count(), mb_strtolower($b['guardian'])])
             ->values();
     }
 
