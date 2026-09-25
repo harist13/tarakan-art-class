@@ -14,10 +14,25 @@
 @enderror
 
 {{-- ─── Gabungan yang sudah dibuat ─────────────────────────────────── --}}
-@if($bundles->isNotEmpty())
+@if($bundles->isNotEmpty() || $cancelledCount > 0)
 <div class="card mb-4">
-    <div class="card-header fw-bold"><i class="bi bi-collection me-2 text-primary"></i>Tagihan gabungan yang sudah dibuat</div>
+    <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <span class="fw-bold"><i class="bi bi-collection me-2 text-primary"></i>Tagihan gabungan yang sudah dibuat</span>
+        {{-- Gabungan yang dibatalkan hanya riwayat; disembunyikan kecuali diminta. --}}
+        @if($cancelledCount > 0)
+            <a href="{{ route('payment-bundles.index', $showCancelled ? [] : ['dibatalkan' => 1]) }}" class="small text-decoration-none">
+                @if($showCancelled)
+                    <i class="bi bi-eye-slash me-1"></i>Sembunyikan yang dibatalkan
+                @else
+                    <i class="bi bi-eye me-1"></i>Tampilkan yang dibatalkan ({{ $cancelledCount }})
+                @endif
+            </a>
+        @endif
+    </div>
     <div class="card-body">
+        @if($bundles->isEmpty())
+            <p class="text-muted small mb-0">Tidak ada tagihan gabungan yang sedang berjalan.</p>
+        @else
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
                 <thead class="text-muted small text-uppercase">
@@ -82,6 +97,7 @@
                 </tbody>
             </table>
         </div>
+        @endif
     </div>
 </div>
 @endif

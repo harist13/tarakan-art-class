@@ -19,21 +19,34 @@ use Illuminate\Validation\ValidationException;
  */
 class PaymentBundleController extends Controller
 {
-    public function index(MidtransSnap $snap)
+    public function index(Request $request, MidtransSnap $snap)
     {
         $groups = GuardianGroups::unpaid();
+        $showCancelled = $request->boolean('dibatalkan');
 
-        // Gabungan yang masih berjalan di atas, lalu yang lunas / dibatalkan.
-        $bundles = PaymentBundle::with(['payments.student', 'creator'])
+        $all = PaymentBundle::with(['payments.student', 'creator'])
             ->latest('id')
             ->limit(30)
-            ->get()
-            ->sortBy(fn (PaymentBundle $b) => $b->isOpen() ? 0 : 1)
+            ->get();
+
+        // Gabungan yang dibatalkan disembunyikan dari tabel kerja: tak punya
+        // aksi apa pun, dan invoicenya sudah kembali ditagih sendiri-sendiri.
+        // Datanya tetap ada sebagai riwayat. Yang dibatalkan tapi VA-nya tetap
+        // dibayar orang tua terhitung Lunas, jadi tetap tampil.
+        $isCancelled = fn (PaymentBundle $b) => $b->cancelled_at !== null && ! $b->isPaid();
+        $cancelledCount = $all->filter($isCancelled)->count();
+
+        // Yang masih berjalan di atas, lalu yang lunas, lalu (bila diminta) yang dibatalkan.
+        $bundles = $all
+            ->when(! $showCancelled, fn ($c) => $c->reject($isCancelled))
+            ->sortBy(fn (PaymentBundle $b) => $b->isOpen() ? 0 : ($isCancelled($b) ? 2 : 1))
             ->values();
 
         return view('payment-bundles.index', [
             'groups' => $groups,
             'bundles' => $bundles,
+            'cancelledCount' => $cancelledCount,
+            'showCancelled' => $showCancelled,
             'midtransActive' => $snap->isConfigured(),
         ]);
     }

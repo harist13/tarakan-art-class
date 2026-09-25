@@ -264,6 +264,29 @@ class PaymentBundleTest extends TestCase
             ->assertSee($bundle->code);
     }
 
+    public function test_gabungan_dibatalkan_disembunyikan_kecuali_diminta(): void
+    {
+        [$batal, $a, $t] = $this->siblingsBundle();
+        $this->delete(route('payment-bundles.destroy', $batal));
+
+        $this->post(route('payment-bundles.store'), ['payment_ids' => [$a->id, $t->id]]);
+        $aktif = PaymentBundle::whereNull('cancelled_at')->sole();
+
+        // Tabel kerja: hanya yang berjalan, plus tautan ke riwayat yang dibatalkan.
+        $this->get(route('payment-bundles.index'))
+            ->assertOk()
+            ->assertSee($aktif->code)
+            ->assertDontSee($batal->code.'</td>', false)
+            ->assertDontSee('>Dibatalkan</span>', false)
+            ->assertSee('Tampilkan yang dibatalkan (1)');
+
+        $this->get(route('payment-bundles.index', ['dibatalkan' => 1]))
+            ->assertOk()
+            ->assertSee($aktif->code)
+            ->assertSee('>Dibatalkan</span>', false)
+            ->assertSee('Sembunyikan yang dibatalkan');
+    }
+
     public function test_kode_gabungan_mudah_dibaca(): void
     {
         [$bundle] = $this->siblingsBundle();
