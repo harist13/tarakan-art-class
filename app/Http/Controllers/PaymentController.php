@@ -20,7 +20,7 @@ class PaymentController extends Controller
         $status = $request->string('status')->toString();
 
         $payments = Payment::query()
-            ->with('student')
+            ->with(['student', 'bundles'])
             ->when($search, fn ($q) => $q->where('invoice_number', 'like', "%{$search}%")
                 ->orWhereHas('student', fn ($s) => $s->where('name', 'like', "%{$search}%")))
             ->when(in_array($status, ['paid', 'unpaid'], true), fn ($q) => $q->where('payment_status', $status))

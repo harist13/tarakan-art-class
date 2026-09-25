@@ -3,6 +3,8 @@
 namespace App\Support;
 
 use App\Models\Payment;
+use App\Models\PaymentBundle;
+use App\Models\Student;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -169,33 +171,44 @@ class MidtransSnap
      */
     private function createTransaction(Payment $payment, string $orderId): array
     {
-        $student = $payment->student;
+        return $this->requestSnap($orderId, [$payment], $payment->student, route('pay.show', $payment->payToken()));
+    }
+
+    /**
+     * Minta transaksi Snap untuk sejumlah invoice — satu untuk tautan biasa,
+     * beberapa untuk tagihan gabungan (satu item_details per invoice).
+     *
+     * @param  list<Payment>  $payments
+     * @return array{token: string, redirect_url: string}
+     */
+    private function requestSnap(string $orderId, array $payments, ?Student $guardian, string $finishUrl): array
+    {
         // Midtrans menolak gross_amount berdesimal; nominal dibulatkan ke rupiah
         // penuh dan item_details harus berjumlah sama persis dengan gross_amount.
-        $amount = (int) round((float) $payment->payment_amount);
+        $items = array_map(fn (Payment $p) => [
+            'id' => $p->invoice_number,
+            'price' => (int) round((float) $p->payment_amount),
+            'quantity' => 1,
+            // Nama item dibatasi 50 karakter oleh Midtrans.
+            'name' => mb_substr('Kelas seni - '.($p->student?->name ?? 'Murid'), 0, 50),
+        ], $payments);
 
         $response = $this->request()->post($this->endpoint('snap'), [
             'transaction_details' => [
                 'order_id' => $orderId,
-                'gross_amount' => $amount,
+                'gross_amount' => array_sum(array_column($items, 'price')),
             ],
-            'item_details' => [[
-                'id' => $payment->invoice_number,
-                'price' => $amount,
-                'quantity' => 1,
-                // Nama item dibatasi 50 karakter oleh Midtrans.
-                'name' => mb_substr('Kelas seni - '.($student?->name ?? 'Murid'), 0, 50),
-            ]],
+            'item_details' => $items,
             'customer_details' => array_filter([
-                'first_name' => mb_substr($student?->parent_name ?: ($student?->name ?? 'Wali Murid'), 0, 50),
-                'phone' => $student?->whatsappNumber(),
+                'first_name' => mb_substr($guardian?->parent_name ?: ($guardian?->name ?? 'Wali Murid'), 0, 50),
+                'phone' => $guardian?->whatsappNumber(),
             ]),
             'expiry' => [
                 'unit' => 'hour',
                 'duration' => (int) config('midtrans.expiry_hours', 24),
             ],
             'callbacks' => [
-                'finish' => route('pay.show', $payment->payToken()),
+                'finish' => $finishUrl,
             ],
         ] + $this->channelWhitelist());
 
@@ -211,6 +224,133 @@ class MidtransSnap
             'token' => $response->json('token'),
             'redirect_url' => $response->json('redirect_url'),
         ];
+    }
+
+    // ─── Tagihan gabungan ─────────────────────────────────────────
+
+    /**
+     * Transaksi Snap untuk tagihan gabungan, atas invoice yang masih belum lunas.
+     *
+     * Token lama dipakai ulang hanya bila belum kedaluwarsa DAN totalnya masih
+     * sama dengan saat token dibuat: invoice di dalamnya bisa dibayar terpisah
+     * atau direvisi kapan saja, dan orang tua tidak boleh ditagih dengan total
+     * yang sudah tidak berlaku.
+     *
+     * @return array{token: string, redirect_url: string}
+     */
+    public function bundleTransactionFor(PaymentBundle $bundle): array
+    {
+        $total = $bundle->totalDue();
+
+        if ($bundle->snap_token !== null
+            && $bundle->snap_amount === $total
+            && $bundle->snap_expires_at?->isAfter(now()->addMinutes(5))) {
+            return ['token' => $bundle->snap_token, 'redirect_url' => $bundle->snap_redirect_url];
+        }
+
+        $orderId = $this->nextBundleOrderId($bundle);
+        $result = $this->requestSnap(
+            $orderId,
+            $bundle->unpaidPayments()->all(),
+            $bundle->guardian(),
+            route('pay.bundle.show', $bundle->pay_token),
+        );
+
+        $bundle->forceFill([
+            'snap_order_id' => $orderId,
+            'snap_token' => $result['token'],
+            'snap_redirect_url' => $result['redirect_url'],
+            'snap_expires_at' => now()->addHours((int) config('midtrans.expiry_hours', 24)),
+            'snap_amount' => $total,
+            'gateway_status' => 'pending',
+        ])->save();
+
+        Log::info("Snap dibuat untuk tagihan gabungan {$bundle->code}: order_id={$orderId}, nominal={$total}");
+
+        return $result;
+    }
+
+    /** GAB-003-7-k3f9-1, -2, … — pola sama dengan nextOrderId(), lihat alasannya di sana. */
+    private function nextBundleOrderId(PaymentBundle $bundle): string
+    {
+        $token = strtolower(Str::random(4));
+        $attempt = 1;
+
+        if ($bundle->snap_order_id && preg_match('/-([a-z0-9]{4})-(\d+)$/', $bundle->snap_order_id, $m)) {
+            $token = $m[1];
+            $attempt = (int) $m[2] + 1;
+        }
+
+        return $bundle->code.'-'.$bundle->getKey().'-'.$token.'-'.$attempt;
+    }
+
+    public function bundleStatusFor(PaymentBundle $bundle): array
+    {
+        return $this->status($bundle->gateway_transaction_id ?: $bundle->snap_order_id);
+    }
+
+    /**
+     * Terapkan status Midtrans ke tagihan gabungan. Begitu lunas, tiap invoice
+     * yang masih belum dibayar ditandai lunas lewat model — PaymentObserver
+     * mencatat pemasukannya satu per satu, persis seperti pembayaran biasa.
+     *
+     * Mengembalikan invoice yang BARU saja lunas (kosong bila belum lunas).
+     *
+     * @return list<Payment>
+     */
+    public function applyBundleStatus(PaymentBundle $bundle, array $payload): array
+    {
+        $bundle->loadMissing('payments.student');
+
+        if ($bundle->paid_at !== null) {
+            return [];
+        }
+
+        if ($this->isSettled($payload)) {
+            $lunas = [];
+
+            foreach ($bundle->unpaidPayments() as $payment) {
+                $payment->forceFill([
+                    'payment_status' => 'paid',
+                    'payment_method' => $this->methodFor($payload['payment_type'] ?? null),
+                    'gateway_status' => $payload['transaction_status'],
+                    'gateway_payment_type' => $payload['payment_type'] ?? null,
+                    'gateway_transaction_id' => $payload['transaction_id'] ?? null,
+                    'paid_at' => now(),
+                ])->save();
+                $lunas[] = $payment;
+            }
+
+            // Dana yang masuk mengikuti total saat transaksi dibuat. Bila sejak
+            // itu ada invoice yang dibayar terpisah, orang tua membayar lebih —
+            // tidak bisa dicegah di sini, tapi harus terlihat oleh admin.
+            $paidNow = array_sum(array_map(fn (Payment $p) => (int) round((float) $p->payment_amount), $lunas));
+            if ($bundle->snap_amount !== null && $paidNow !== $bundle->snap_amount) {
+                Log::warning("Tagihan gabungan {$bundle->code} dibayar Rp {$bundle->snap_amount}, ".
+                    "tapi invoice yang dilunasi hanya Rp {$paidNow} — ada invoice yang sudah dibayar terpisah.");
+            }
+
+            $bundle->forceFill([
+                'gateway_status' => $payload['transaction_status'],
+                'gateway_payment_type' => $payload['payment_type'] ?? null,
+                'gateway_transaction_id' => $payload['transaction_id'] ?? $bundle->gateway_transaction_id,
+                'paid_at' => now(),
+            ])->save();
+
+            return $lunas;
+        }
+
+        $failed = $this->isFailed($payload);
+
+        $bundle->forceFill([
+            'gateway_status' => $payload['transaction_status'] ?? 'unknown',
+            'gateway_payment_type' => $payload['payment_type'] ?? $bundle->gateway_payment_type,
+            'gateway_transaction_id' => $payload['transaction_id'] ?? $bundle->gateway_transaction_id,
+            'snap_token' => $failed ? null : $bundle->snap_token,
+            'snap_expires_at' => $failed ? null : $bundle->snap_expires_at,
+        ])->save();
+
+        return [];
     }
 
     /**

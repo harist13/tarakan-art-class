@@ -15,6 +15,7 @@
              centang semua untuk sebulan penuh. Dulu ini dua tombol, dan karena
              keduanya menghasilkan baris invoice yang sama persis, yang tersisa
              hanyalah tebak-tebakan harus klik yang mana. --}}
+        <a href="{{ route('payment-bundles.index') }}" class="btn btn-sm btn-outline-primary text-nowrap" title="Satukan invoice kakak-adik jadi satu tautan bayar"><i class="bi bi-collection"></i> Tagihan gabungan</a>
         <a href="{{ route('payments.create') }}" class="btn btn-sm btn-primary shadow-sm text-nowrap"><i class="bi bi-receipt"></i> Buat invoice</a>
     </div>
 </div>

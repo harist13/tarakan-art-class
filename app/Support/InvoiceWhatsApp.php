@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\Payment;
+use App\Models\PaymentBundle;
 use Illuminate\Support\Carbon;
 
 /**
@@ -93,9 +94,7 @@ class InvoiceWhatsApp
             'No. Invoice: '.$payment->invoice_number,
             'Nama murid: '.($student?->name ?? '-'),
             // Nama bulan saja ("Oktober"); tagihan lepas tanpa periode tidak punya baris ini.
-            $payment->billing_period
-                ? 'Periode pembayaran : '.Carbon::createFromFormat('Y-m-d', $payment->billing_period.'-01')->locale('id')->translatedFormat('F')
-                : null,
+            $payment->billing_period ? 'Periode pembayaran : '.self::periodMonth($payment) : null,
             $payment->due_date ? 'Jatuh tempo: '.$payment->due_date->format('d/m/Y') : null,
             'Jumlah: Rp '.number_format((float) $payment->payment_amount, 0, ',', '.'),
             'Metode: '.$payment->methodLabel(),
@@ -114,5 +113,49 @@ class InvoiceWhatsApp
         return $greeting."\n\n".$intro."\n\n\n".implode("\n", $lines)."\n\n"
             .($closing !== null ? $closing."\n\n" : '')
             .'Terima kasih banyak😊🙏🏻';
+    }
+
+    /** Tautan chat tagihan gabungan ke wali; null bila tak ada nomor yang bisa dipakai. */
+    public static function bundleLink(PaymentBundle $bundle, ?string $payUrl = null): ?string
+    {
+        $number = $bundle->guardian()?->whatsappNumber();
+
+        return $number === null ? null : self::chatUrl($number, self::bundleMessage($bundle, $payUrl));
+    }
+
+    /**
+     * Pesan tagihan gabungan: template yang sama dengan invoice biasa, dengan
+     * rincian per invoice bernomor lalu satu total. Hanya invoice yang masih
+     * ditagih yang disebut — yang sudah dibayar terpisah tidak ikut.
+     */
+    public static function bundleMessage(PaymentBundle $bundle, ?string $payUrl = null): string
+    {
+        $items = $bundle->unpaidPayments();
+
+        $blocks = $items->values()->map(fn (Payment $p, int $i) => implode("\n", array_filter([
+            ($i + 1).'. No. Invoice: '.$p->invoice_number,
+            'Nama murid: '.($p->student?->name ?? '-'),
+            $p->billing_period ? 'Periode pembayaran : '.self::periodMonth($p) : null,
+            $p->due_date ? 'Jatuh tempo: '.$p->due_date->format('d/m/Y') : null,
+            'Jumlah: Rp '.number_format((float) $p->payment_amount, 0, ',', '.'),
+        ])));
+
+        $closing = $payUrl !== null
+            ? "Pembayaran untuk semua tagihan di atas cukup sekali lewat tautan berikut:\n".$payUrl
+            : 'Mohon pembayaran diselesaikan sebelum tanggal jatuh tempo ya.';
+
+        return 'Hai wali murid '.$bundle->studentNames().', apa kabar? Semoga selalu dalam keadaan yang sehat☺️'
+            ."\n\nKami dari ".config('site.name').' ingin menginformasikan untuk biaya les dengan rincian:'
+            ."\n\n\n".$blocks->implode("\n\n")
+            ."\n\nTotal: Rp ".number_format($bundle->totalDue(), 0, ',', '.')
+            ."\nStatus: Belum dibayar"
+            ."\n\n".$closing
+            ."\n\nTerima kasih banyak😊🙏🏻";
+    }
+
+    /** "2026-10" → "Oktober" — nama bulan saja, seperti di template. */
+    private static function periodMonth(Payment $payment): string
+    {
+        return Carbon::createFromFormat('Y-m-d', $payment->billing_period.'-01')->locale('id')->translatedFormat('F');
     }
 }

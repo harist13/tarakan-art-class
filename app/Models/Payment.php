@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Str;
 
@@ -176,6 +177,20 @@ class Payment extends Model
         }
 
         return $this->pay_token;
+    }
+
+    /** Tagihan gabungan yang memuat invoice ini. */
+    public function bundles(): BelongsToMany
+    {
+        return $this->belongsToMany(PaymentBundle::class, 'payment_bundle_items');
+    }
+
+    /** Tagihan gabungan yang masih berjalan (belum dibayar) untuk invoice ini. */
+    public function openBundle(): ?PaymentBundle
+    {
+        return $this->payment_status === 'paid'
+            ? null
+            : $this->bundles->sortByDesc('id')->first(fn (PaymentBundle $b) => $b->paid_at === null && $b->cancelled_at === null);
     }
 
     /** Tautan yang dikirim ke orang tua lewat WhatsApp. */

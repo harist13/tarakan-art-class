@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Payment;
+use App\Models\PaymentBundle;
 use App\Support\InvoiceWhatsApp;
 use App\Support\MidtransSnap;
 use Illuminate\Http\JsonResponse;
@@ -97,6 +98,67 @@ class PaymentLinkController extends Controller
         return response()->json(['paid' => $settled]);
     }
 
+    /** Halaman bayar tagihan gabungan — sama dengan show(), untuk beberapa invoice sekaligus. */
+    public function showBundle(string $token, MidtransSnap $snap)
+    {
+        $bundle = PaymentBundle::with('payments.student')->where('pay_token', $token)->firstOrFail();
+
+        if ($bundle->isPaid()) {
+            return view('public.pay-bundle', ['bundle' => $bundle, 'state' => 'paid']);
+        }
+
+        // Dibatalkan admin: jangan terbitkan transaksi baru. Invoicenya tetap
+        // bisa dibayar lewat tautan masing-masing / tagihan pengganti.
+        if ($bundle->cancelled_at !== null) {
+            return view('public.pay-bundle', ['bundle' => $bundle, 'state' => 'cancelled']);
+        }
+
+        if (! $snap->isConfigured()) {
+            return view('public.pay-bundle', ['bundle' => $bundle, 'state' => 'unavailable']);
+        }
+
+        try {
+            $transaction = $snap->bundleTransactionFor($bundle);
+        } catch (RuntimeException $e) {
+            Log::error('Snap gagal dibuat untuk tagihan gabungan '.$bundle->code.': '.$e->getMessage());
+
+            return view('public.pay-bundle', ['bundle' => $bundle, 'state' => 'error']);
+        }
+
+        return view('public.pay-bundle', [
+            'bundle' => $bundle,
+            'state' => 'payable',
+            'snapToken' => $transaction['token'],
+            'redirectUrl' => $transaction['redirect_url'],
+            'clientKey' => $snap->clientKey(),
+            'snapJsUrl' => $snap->snapJsUrl(),
+        ]);
+    }
+
+    /** Pasangan verify() untuk tagihan gabungan. */
+    public function verifyBundle(string $token, MidtransSnap $snap): JsonResponse
+    {
+        $bundle = PaymentBundle::with('payments.student')->where('pay_token', $token)->firstOrFail();
+
+        if ($bundle->isPaid()) {
+            return response()->json(['paid' => true]);
+        }
+
+        if (! $snap->isConfigured() || ! $bundle->snap_order_id) {
+            return response()->json(['paid' => false]);
+        }
+
+        $status = $snap->bundleStatusFor($bundle);
+
+        if (empty($status['transaction_status'])) {
+            return response()->json(['paid' => false]);
+        }
+
+        $lunas = DB::transaction(fn () => $snap->applyBundleStatus($bundle, $status));
+
+        return response()->json(['paid' => $lunas !== []]);
+    }
+
     /**
      * Webhook "Payment Notification URL" Midtrans.
      *
@@ -125,6 +187,20 @@ class PaymentLinkController extends Controller
         }
 
         $payment = Payment::where('snap_order_id', $orderId)->first();
+
+        // Order milik tagihan gabungan: satu transaksi melunasi beberapa invoice.
+        if (! $payment && $orderId && ($bundle = PaymentBundle::where('snap_order_id', $orderId)->first())) {
+            $lunas = DB::transaction(fn () => $snap->applyBundleStatus($bundle, $payload));
+
+            if ($lunas) {
+                Log::info("Tagihan gabungan {$bundle->code} lunas via Midtrans ({$payload['payment_type']}): ".
+                    collect($lunas)->pluck('invoice_number')->implode(', ').'.');
+
+                return response()->json(['message' => 'Settled']);
+            }
+
+            return response()->json(['message' => 'Acknowledged']);
+        }
 
         if (! $payment) {
             // Dijawab 200, BUKAN 404. Midtrans menganggap jawaban selain 2xx

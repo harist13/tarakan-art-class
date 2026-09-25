@@ -10,6 +10,7 @@ use App\Http\Controllers\ExportController;
 use App\Http\Controllers\FinancialController;
 use App\Http\Controllers\HolidayClassController;
 use App\Http\Controllers\InventoryController;
+use App\Http\Controllers\PaymentBundleController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PaymentLinkController;
 use App\Http\Controllers\PublicSiteController;
@@ -34,6 +35,11 @@ Route::controller(PublicSiteController::class)->group(function () {
 
 // ─── Pembayaran Online (Midtrans Snap) — tanpa login ───────────
 // Tautan /bayar/{token} dikirim admin ke orang tua lewat WhatsApp.
+// Tagihan gabungan (kakak-adik) — didaftarkan lebih dulu agar "gabungan" tidak
+// tertangkap sebagai {token} tautan biasa.
+Route::get('/bayar/gabungan/{token}', [PaymentLinkController::class, 'showBundle'])->name('pay.bundle.show');
+Route::post('/bayar/gabungan/{token}/verifikasi', [PaymentLinkController::class, 'verifyBundle'])
+    ->middleware('throttle:15,1')->name('pay.bundle.verify');
 Route::get('/bayar/{token}', [PaymentLinkController::class, 'show'])->name('pay.show');
 // Dipanggil halaman bayar setelah popup Snap sukses; statusnya tetap diverifikasi
 // ke Midtrans dari sisi server. Dibatasi rate-nya karena terbuka tanpa login.
@@ -118,6 +124,12 @@ Route::middleware('auth')->group(function () {
     // di-bookmark atau dibagikan tidak mati begitu saja.
     Route::get('payments/bulk', fn () => redirect()->route('payments.create', request()->query()))
         ->name('payments.bulk.create');
+    // Tagihan gabungan: beberapa invoice satu keluarga dibayar sekali.
+    Route::get('payments/bundles', [PaymentBundleController::class, 'index'])->name('payment-bundles.index');
+    Route::post('payments/bundles', [PaymentBundleController::class, 'store'])->name('payment-bundles.store');
+    Route::get('payments/bundles/{bundle}/whatsapp', [PaymentBundleController::class, 'sendWhatsapp'])->name('payment-bundles.whatsapp');
+    Route::patch('payments/bundles/{bundle}/sync-gateway', [PaymentBundleController::class, 'syncGateway'])->name('payment-bundles.sync-gateway');
+    Route::delete('payments/bundles/{bundle}', [PaymentBundleController::class, 'destroy'])->name('payment-bundles.destroy');
     Route::get('payments/{payment}/edit', [PaymentController::class, 'edit'])->name('payments.edit');
     Route::put('payments/{payment}', [PaymentController::class, 'update'])->name('payments.update');
     Route::patch('payments/{payment}/confirm', [PaymentController::class, 'confirmPaid'])->name('payments.confirm');
