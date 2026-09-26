@@ -14,16 +14,16 @@ return [
     'name' => 'Tarakan Art Class',
     'tagline' => 'Kelas seni untuk anak di Tarakan',
     'description' => 'Ruang belajar seni dari dasar di Tarakan: berkreativitas, eksplorasi ide, '
-        .'dan berkarya tanpa takut salah. Kelas kecil dengan tutor yang sabar.',
+        .'dan berkarya tanpa takut salah. Kelas kecil dengan tutor yang paham anak.',
 
     // ─── Kontak ────────────────────────────────────────────────────────
     'contact' => [
         // Format internasional tanpa "+" — dipakai untuk tautan wa.me
         'whatsapp' => env('SITE_WHATSAPP', '6285217423987'),
         'whatsapp_display' => env('SITE_WHATSAPP_DISPLAY', '+62 852-1742-3987'),
-        'email' => env('SITE_EMAIL', 'halo@tarakanartclass.com'),
+        'email' => env('SITE_EMAIL', 'Tarakanartclass@gmail.com'),
         'instagram' => env('SITE_INSTAGRAM', 'tarakanartclass'),
-        'address' => env('SITE_ADDRESS', 'Jalan Gajah Mada No. 31, Tarakan, Kalimantan Utara'),
+        'address' => env('SITE_ADDRESS', 'Jalan Gajah Mada No. 31, Tarakan, Kalimantan Utara (sebelum Mangrove, ruko 2 pintu warna kuning cokelat di sebelah ruko Benuanta)'),
         // URL embed peta studio. Ambil dari Google Maps → Bagikan → Sematkan peta,
         // lalu salin isi atribut src milik iframe-nya (bukan tautan biasa).
         // ?: dipakai karena SITE_MAPS_EMBED= (kosong di .env) dibaca sebagai string
@@ -105,6 +105,9 @@ return [
             'price' => 'Rp250.000 / bulan',
             'visit_price' => 'Rp115.000 / visit',
             'schedule_hint' => 'Selasa & Kamis, 15.00 WITA',
+            // Ditulis tetap, tidak dirangkum dari slot kelas: jadwal Preschool
+            // dijual per hari dengan jam yang berbeda.
+            'schedule_label' => 'Senin 16.00 & Jumat 17.00 WITA',
             'color' => 'sun',
             'icon' => 'sparkle',
             'summary' => 'Pengenalan warna, bentuk, dan tekstur lewat kegiatan bermain. '
@@ -212,25 +215,25 @@ perspektif',
         ],
         'methods' => [
             [
-                'title' => 'Kelas kecil',
-                'body' => 'Maksimal 8 anak per kelas supaya tutor bisa mendampingi satu per satu.',
+                'title' => 'Kelompok Kecil, Pendampingan Lebih Dekat',
+                'body' => '1 tutor mendampingi 3–4 anak agar setiap proses berkarya tetap terarah dan setiap anak mendapat perhatian yang cukup.',
             ],
             [
                 'title' => 'Kurikulum bertingkat',
-                'body' => 'Materi naik bertahap dari mengenal warna sampai ilustrasi, bukan sekadar mewarnai lembar kerja.',
+                'body' => 'Materi naik bertahap mulai dari dasar agar anak mempunyai pondasi dasar yang kuat.',
             ],
             [
                 'title' => 'Tanpa "salah menggambar"',
                 'body' => 'Tutor mengarahkan teknik, bukan menyeragamkan hasil. Gaya tiap anak dihargai.',
             ],
             [
-                'title' => 'Raport perkembangan',
-                'body' => 'Orang tua menerima catatan kemajuan anak berikut dokumentasi karyanya.',
+                'title' => 'Menghargai Setiap Proses',
+                'body' => 'Anak tidak dituntut langsung sempurna. Kami menghargai proses belajar, mencoba, dan berkembang sesuai kemampuan masing-masing.',
             ],
         ],
         'stats' => [
             ['value' => '6', 'label' => 'Tahun berjalan'],
-            ['value' => '8', 'label' => 'Maks. anak per kelas (semi private class)'],
+            ['value' => '3-4', 'label' => 'Anak untuk 1 tutor (semi private class)'],
         ],
     ],
 

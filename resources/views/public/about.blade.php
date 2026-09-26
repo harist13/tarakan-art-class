@@ -108,7 +108,7 @@
             ['icon' => '🪑', 'label' => 'Meja & kursi ukuran anak'],
             ['icon' => '💡', 'label' => 'Ruang terang & berventilasi'],
             ['icon' => '🧼', 'label' => 'Wastafel di dalam studio'],
-            ['icon' => '🛋️', 'label' => 'Ruang tunggu orang tua'],
+            ['icon' => '🛋️', 'label' => 'Tempat tunggu orang tua'],
         ];
     @endphp
 

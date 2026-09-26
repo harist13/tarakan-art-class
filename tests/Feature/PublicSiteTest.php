@@ -188,6 +188,11 @@ class PublicSiteTest extends TestCase
     public function test_tabel_jadwal_umum_menyebut_hari_dan_jam_dari_database(): void
     {
         // Dua slot berbeda hari pada jam yang sama digabung jadi satu kalimat.
+        // Label jadwal statis di config (mis. Preschool) dilepas dulu supaya
+        // yang diuji tetap rangkuman dari slot kelas.
+        config(['site.programs' => collect(config('site.programs'))
+            ->map(fn (array $program) => array_diff_key($program, ['schedule_label' => true]))
+            ->all()]);
         $senin = Carbon::today()->next(Carbon::MONDAY);
 
         $this->makeClass($senin, category: 'Preschool', time: '15:00:00', endTime: '16:30:00');

@@ -208,8 +208,8 @@
 <x-site.section tone="paper">
     <x-site.heading
         eyebrow="Kenapa kami"
-        title="Bukan sekadar tempat menitipkan anak"
-        subtitle="Kami merancang kelas supaya anak pulang membawa keterampilan baru, bukan cuma lembar mewarnai." />
+        title="Tarakan Art Class tidak hanya fokus tentang hasil, tapi tentang proses"
+        subtitle="Karena dari proses berkarya, anak belajar berani mencoba, berpikir kreatif, dan percaya pada idenya." />
 
     @php
         $reasons = [
