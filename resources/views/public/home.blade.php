@@ -213,7 +213,7 @@
 
     @php
         $reasons = [
-            ['icon' => '👩‍🎨', 'title' => 'Tutor berpengalaman', 'body' => 'Tim tutor dengan latar seni dan terbiasa mengajar dengan metode yang dapat dimengerti anak anak', 'bg' => 'tac-bg-coral tac-text-paper'],
+            ['icon' => '👩‍🎨', 'title' => 'Tutor berpengalaman', 'body' => 'Tim tutor dengan latar seni dan terbiasa mengajar dengan metode yang mudah dimengerti anak anak', 'bg' => 'tac-bg-coral tac-text-paper'],
             ['icon' => '🧒', 'title' => 'Semi private class', 'body' => 'Setiap tutor mengajar dengan kapasitas max 3-4 anak per sesinya', 'bg' => 'tac-bg-sun'],
             ['icon' => '📘', 'title' => 'Materi bertingkat', 'body' => 'Kurikulum naik bertahap sesuai usia dan kemampuan awal anak.', 'bg' => 'tac-bg-sky tac-text-paper'],
             ['icon' => '📝', 'title' => 'Raport bulanan', 'body' => 'Orang tua menerima catatan perkembangan anak', 'bg' => 'tac-bg-leaf'],
