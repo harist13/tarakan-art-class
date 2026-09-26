@@ -100,7 +100,7 @@
 <x-site.section tone="paper">
     <x-site.heading
         eyebrow="Fasilitas"
-        title="Tempat anak berani mencoret dunianya"
+        title="Semua yang anak butuhkan untuk berkarya"
         subtitle="Ruang kelas terang, meja setinggi anak, dan alat yang selalu siap pakai." />
 
     @php
