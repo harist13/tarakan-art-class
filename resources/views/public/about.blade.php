@@ -13,12 +13,12 @@
                 level="h1"
                 align="left"
                 eyebrow="Tentang kami"
-                title="Studio kecil, ruang tumbuh yang besar" />
+                title="Tempat anak berani mencoret dunianya" />
             <p class="lh-lg tac-muted mt-4 mb-0">{{ $about['story'] }}</p>
 
             <div class="d-flex flex-wrap gap-3 mt-4">
-                <x-site.btn :href="route('public.programs')">Lihat program</x-site.btn>
-                <x-site.btn :href="route('public.contact')" variant="ghost">Kunjungi studio</x-site.btn>
+                <x-site.btn :href="route('public.contact')">Daftar sekarang</x-site.btn>
+                <x-site.btn :href="route('public.programs')" variant="ghost">Lihat program</x-site.btn>
             </div>
         </div>
 
@@ -100,7 +100,7 @@
 <x-site.section tone="paper">
     <x-site.heading
         eyebrow="Fasilitas"
-        title="Studio yang aman dan nyaman"
+        title="Tempat anak berani mencoret dunianya"
         subtitle="Ruang kelas terang, meja setinggi anak, dan alat yang selalu siap pakai." />
 
     @php
